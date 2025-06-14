@@ -1,0 +1,7 @@
+--Tool Manager V1
+loadstring(game:HttpGet("https://pastebin.com/raw/CNLHMFUD"))()
+
+
+--Tool Manager V2
+--*Added Can Aim Where The Tools Gonna Use*
+loadstring(game:HttpsGet("https://pastebin.com/raw/0xyjY0Zb"))()
