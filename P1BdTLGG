@@ -1,0 +1,23 @@
+local CoreGui = game:GetService("CoreGui")
+
+local function removePauseOverlay()
+    for _, v in pairs(CoreGui:GetDescendants()) do
+        if v:IsA("TextLabel") and v.Text == "Gameplay Paused" then
+            local parent = v.Parent
+            if parent then
+                parent:Destroy()
+            end
+        end
+    end
+end
+
+removePauseOverlay()
+
+CoreGui.DescendantAdded:Connect(function(descendant)
+    if descendant:IsA("TextLabel") and descendant.Text == "Gameplay Paused" then
+        local parent = descendant.Parent
+        if parent then
+            parent:Destroy()
+        end
+    end
+end)
