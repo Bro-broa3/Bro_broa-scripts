@@ -1,0 +1,63 @@
+-- SCRIPT DE EVENTO TEMPORAL
+local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
+local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
+
+-- Cambiar cielo
+local sky = Instance.new("Sky", Lighting)
+sky.SkyboxBk = "rbxassetid://158118263"
+sky.SkyboxDn = "rbxassetid://158118263"
+sky.SkyboxFt = "rbxassetid://158118263"
+sky.SkyboxLf = "rbxassetid://158118263"
+sky.SkyboxRt = "rbxassetid://158118263"
+sky.SkyboxUp = "rbxassetid://158118263"
+
+-- Añadir partículas a todos los jugadores
+for _, player in pairs(Players:GetPlayers()) do
+    local function addParticles(character)
+        local rootPart = character:WaitForChild("HumanoidRootPart", 5) or character:FindFirstChild("Torso")
+        if rootPart then
+            local attachment = Instance.new("Attachment", rootPart)
+            local particle = Instance.new("ParticleEmitter", attachment)
+            particle.Texture = "rbxassetid://158118263"
+            particle.Rate = 25
+            particle.Lifetime = NumberRange.new(2)
+            particle.Speed = NumberRange.new(1, 2)
+            particle.Size = NumberSequence.new(2)
+            particle.LightEmission = 1
+            particle.Transparency = NumberSequence.new(0)
+            particle.SpreadAngle = Vector2.new(360, 360)
+            particle.VelocitySpread = 180
+        end
+    end
+
+    if player.Character then
+        addParticles(player.Character)
+    end
+
+    player.CharacterAdded:Connect(addParticles)
+end
+
+-- Mensaje tipo hint
+local hint = Instance.new("Hint", workspace)
+hint.Text = "Team c00lkidd! Join today!"
+
+-- Música con pitch
+local music = Instance.new("Sound", SoundService)
+music.SoundId = "rbxassetid://95156028272944"
+music.Looped = true
+music.Volume = 1
+music.Pitch = 0.2
+music:Play()
+
+-- Spam de notificaciones cada 2 segundos
+while true do
+    StarterGui:SetCore("SendNotification", {
+        Title = "Team c00lkidd attacks the game!",
+        Text = "TEAM C00LKIDD JOIN TODAY!",
+        Duration = 2,
+        Icon = "rbxassetid://158118263"
+    })
+    wait(2)
+end
