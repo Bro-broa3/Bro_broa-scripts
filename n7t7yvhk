@@ -1,0 +1,39 @@
+local w = game:GetService("Workspace")
+
+pcall(function()
+    if settings().Rendering then
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end
+    if UserSettings then
+        local ugs = UserSettings():GetService("UserGameSettings")
+        if ugs and ugs.SetQualityLevel then
+            ugs:SetQualityLevel(1)
+        end
+    end
+end)
+
+spawn(function()
+    while true do
+        for _, obj in ipairs(w:GetDescendants()) do
+            if obj:IsA("BasePart") then
+                obj.CastShadow = false
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+                obj.Enabled = false
+            elseif obj:IsA("Texture") or obj:IsA("Decal") then
+                obj.Transparency = 1
+            elseif obj:IsA("Terrain") then
+                obj.WaterWaveSize = 0
+                obj.WaterWaveSpeed = 0
+                obj.WaterReflectance = 0
+                obj.WaterTransparency = 0.8
+            end
+        end
+        wait(1)
+    end
+end)
+
+pcall(function()
+    if collectgarbage then
+        collectgarbage("collect")
+    end
+end)
