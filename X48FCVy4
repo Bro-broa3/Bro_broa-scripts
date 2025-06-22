@@ -1,0 +1,211 @@
+--[[
+	WARNING: Heads up! This script has not been verified by ScriptBlox. Use at your own risk!
+]]
+local player = game.Players.LocalPlayer
+local screenGui = Instance.new("ScreenGui", player.PlayerGui)
+screenGui.Name = "ActionButtons"
+
+-- Button Configuration
+local buttonsConfig = {
+    {Name = "Shield", Text = "Shield", Position = UDim2.new(0.9, 0, 0.2, 0), OnClick = function(button)
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+
+            -- Shield animation (hold)
+            local shieldAnimation = Instance.new("Animation")
+            shieldAnimation.AnimationId = "rbxassetid://188790303"
+            local shieldTrack = animator:LoadAnimation(shieldAnimation)
+
+            -- Start animation on button press
+            button.MouseButton1Down:Connect(function()
+                shieldTrack:Play()
+                print("Shield animation playing...")
+            end)
+
+            -- Stop animation when button is released
+            button.MouseButton1Up:Connect(function()
+                shieldTrack:Stop()
+                print("Shield animation stopped.")
+            end)
+        end
+    end},
+    {Name = "Dash", Text = "Dash", Position = UDim2.new(0.9, 0, 0.4, 0), OnClick = function()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+        if humanoid and humanoidRootPart then
+            local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+
+            -- Dash animation
+            local dashAnimation = Instance.new("Animation")
+            dashAnimation.AnimationId = "rbxassetid://80980235"
+            local dashTrack = animator:LoadAnimation(dashAnimation)
+            dashTrack:Play()
+            print("Dash animation playing...")
+
+            -- Apply dash velocity
+            local dashVelocity = 250
+            local dashDirection = humanoidRootPart.CFrame.LookVector
+            humanoidRootPart.Velocity = dashDirection * dashVelocity
+
+            -- Stop animation after a short duration
+            task.wait(0.5) -- Adjust duration as needed
+            dashTrack:Stop()
+            print("Dash animation stopped.")
+        end
+    end},
+    {Name = "Punch", Text = "Punch", Position = UDim2.new(0.9, 0, 0.3, 0), OnClick = function()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            -- Random animation asset
+            local punchAnimations = {"rbxassetid://204062532", "rbxassetid://28156501"}
+            local randomAnimationId = punchAnimations[math.random(1, #punchAnimations)]
+
+            -- Create and play the animation
+            local animation = Instance.new("Animation")
+            animation.AnimationId = randomAnimationId
+            local animator = humanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", humanoid)
+            local animationTrack = animator:LoadAnimation(animation)
+            animationTrack:Play()
+
+            print("Punch executed with animation: " .. randomAnimationId)
+        else
+            warn("No Humanoid found to play punch animation.")
+        end
+    end}
+}
+
+-- Function to create a circular text button
+local function createButton(config, parent)
+    -- Create the button
+    local button = Instance.new("TextButton")
+    button.Name = config.Name
+    button.Text = config.Text
+    button.Size = UDim2.new(0, 60, 0, 60) -- Circular size
+    button.Position = config.Position
+    button.BackgroundColor3 = Color3.fromRGB(30, 30, 30) -- Dark gray background
+    button.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+    button.TextScaled = true -- Scale the text to fit the button
+    button.Font = Enum.Font.FredokaOne -- Clean, bold font
+    button.Parent = parent
+
+    -- Add UICorner for circular shape
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0.5, 0) -- Fully rounded for a circle
+    corner.Parent = button
+
+    -- Add UIStroke for a border
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(100, 100, 100) -- Subtle border color
+    stroke.Thickness = 2
+    stroke.Parent = button
+
+    -- Pass button instance to config for additional events
+    button.MouseButton1Click:Connect(function()
+        config.OnClick(button)
+    end)
+end
+
+-- Create Buttons
+for _, config in ipairs(buttonsConfig) do
+    createButton(config, screenGui)
+end
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local tool = Instance.new("Tool")
+tool.Name = "normal punch"
+tool.RequiresHandle = false
+tool.CanBeDropped = false
+
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://28159255"
+
+tool.Activated:Connect(function()
+    print("Tool Activated")
+    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        print("Humanoid Found")
+        local animTrack = humanoid:LoadAnimation(animation)
+        animTrack:Play()
+    end
+end)
+
+tool.Parent = backpack
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local tool = Instance.new("Tool")
+tool.Name = "Consecutive Punches"
+tool.RequiresHandle = false
+tool.CanBeDropped = false
+
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://126749742"
+
+tool.Activated:Connect(function()
+    print("Tool Activated")
+    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        print("Humanoid Found")
+        local animTrack = humanoid:LoadAnimation(animation)
+        animTrack:Play()
+    end
+end)
+
+tool.Parent = backpack
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local tool = Instance.new("Tool")
+tool.Name = "shove"
+tool.RequiresHandle = false
+tool.CanBeDropped = false
+
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://50248690"
+
+tool.Activated:Connect(function()
+    print("Tool Activated")
+    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        print("Humanoid Found")
+        local animTrack = humanoid:LoadAnimation(animation)
+        animTrack:Play()
+    end
+end)
+
+tool.Parent = backpack
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local backpack = player:WaitForChild("Backpack")
+
+local tool = Instance.new("Tool")
+tool.Name = "uppercut"
+tool.RequiresHandle = false
+tool.CanBeDropped = false
+
+local animation = Instance.new("Animation")
+animation.AnimationId = "rbxassetid://28160593"
+
+tool.Activated:Connect(function()
+    print("Tool Activated")
+    local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        print("Humanoid Found")
+        local animTrack = humanoid:LoadAnimation(animation)
+        animTrack:Play()
+    end
+end)
+
+tool.Parent = backpack
