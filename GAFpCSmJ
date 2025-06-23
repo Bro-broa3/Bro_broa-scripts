@@ -1,0 +1,32 @@
+-- UNESP Script - Removes all ESP effects
+local Players = game:GetService("Players")
+
+-- Function to remove ESP from a player
+local function removeESP(player)
+    if player and player.Character then
+        -- Remove Highlight (glow effect)
+        local highlight = player.Character:FindFirstChild(player.Name .. "_ESP")
+        if highlight then
+            highlight:Destroy()
+        end
+        
+        -- Remove Billboard (name & health display)
+        local billboard = player.Character:FindFirstChild(player.Name .. "_Info")
+        if billboard then
+            billboard:Destroy()
+        end
+    end
+end
+
+-- Remove ESP from all existing players
+for _, player in ipairs(Players:GetPlayers()) do
+    removeESP(player)
+end
+
+-- Prevent new players from getting ESP
+Players.PlayerAdded:Connect(function(player)
+    -- Disconnect any existing CharacterAdded connections
+    for _, conn in pairs(getconnections(player.CharacterAdded)) do
+        conn:Disconnect()
+    end
+end)
