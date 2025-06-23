@@ -1,0 +1,223 @@
+-- Part 1 of 2
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local colorChangeInterval = 2 -- seconds
+local randomColors = {}
+
+-- Function to generate random colors for each player
+local function generateRandomColor(player)
+    return Color3.new(math.random(), math.random(), math.random())
+end
+
+-- Update random colors for all players periodically
+spawn(function()
+    while true do
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= localPlayer then
+                randomColors[player] = generateRandomColor(player)
+            end
+        end
+        wait(colorChangeInterval)
+    end
+end)
+
+-- Function to create ESP for a player
+local function createESP(player)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = player.Name .. "_ESP"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.new(1, 1, 1)
+    highlight.Parent = character
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_Info"
+    billboard.Adornee = rootPart
+    billboard.Size = UDim2.new(0, 200, 0, 50)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextSize = 14
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    nameLabel.Text = player.Name .. " | " .. "<font color='rgb(255,0,0)'>Bro_broa</font>"
+    nameLabel.RichText = true
+    nameLabel.Parent = billboard
+    
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Name = "HealthLabel"
+    healthLabel.Size = UDim2.new(1, 0, 0.5, 0)
+    healthLabel.Position = UDim2.new(0, 0, 0.5, 0)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.TextSize = 12
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextColor3 = Color3.new(1, 1, 1)
+    healthLabel.TextStrokeTransparency = 0
+    healthLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    healthLabel.Parent = billboard
+    
+    -- Update function for the ESP
+    local function updateESP()
+        if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+        
+        -- Update color
+        if randomColors[player] then
+            highlight.FillColor = randomColors[player]
+        end
+        
+        -- Update health
+        local health = humanoid.Health
+        local maxHealth = humanoid.MaxHealth
+        healthLabel.Text = string.format("Health: %d / %d", math.floor(health), math.floor(maxHealth))
+        
+        -- Change health color based on percentage
+        local healthPercent = health / maxHealth
+        if healthPercent > 0.6 then
+            healthLabel.TextColor3 = Color3.new(0, 1, 0)
+        elseif healthPercent > 0.3 then
+            healthLabel.TextColor3 = Color3.new(1, 1, 0)
+        else
+            healthLabel.TextColor3 = Color3.new(1, 0, 0)
+        end
+    end
+    
+    -- Connect update events
+    local conn1
+    conn1 = humanoid.HealthChanged:Connect(updateESP)
+    local conn2 = RunService.Heartbeat:Connect(updateESP)
+    
+    -- Clean up when character is removed
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            conn1:Disconnect()
+            conn2:Disconnect()
+            if highlight then highlight:Destroy() end
+            if billboard then billboard:Destroy() end
+        end
+    end)
+end
+
+-- Initialize ESP for existing players
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= localPlayer then
+        randomColors[player] = generateRandomColor(player)
+        if player.Character then
+            createESP(player)
+        end
+        player.CharacterAdded:Connect(function(character)
+            createESP(player)
+        end)
+    end
+end
+
+-- Handle new players
+Players.PlayerAdded:Connect(function(player)
+    randomColors[player] = generateRandomColor(player)
+    player.CharacterAdded:Connect(function(character)
+        createESP(player)
+    end)
+end)
+
+-- Part 2 of 2
+
+-- Handle player removal
+Players.PlayerRemoving:Connect(function(player)
+    randomColors[player] = nil
+    if player.Character then
+        local esp = player.Character:FindFirstChild(player.Name .. "_ESP")
+        local info = player.Character:FindFirstChild(player.Name .. "_Info")
+        
+        if esp then esp:Destroy() end
+        if info then info:Destroy() end
+    end
+end)
+
+-- Optimize performance by reducing update frequency
+local lastUpdate = 0
+local updateDelay = 0.1 -- seconds
+
+-- Main update loop for better performance
+spawn(function()
+    while wait(updateDelay) do
+        local currentTime = tick()
+        if currentTime - lastUpdate >= updateDelay then
+            lastUpdate = currentTime
+            for _, player in ipairs(Players:GetPlayers()) do
+                if player ~= localPlayer and player.Character then
+                    local highlight = player.Character:FindFirstChild(player.Name .. "_ESP")
+                    if highlight and randomColors[player] then
+                        highlight.FillColor = randomColors[player]
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- Infinite distance ESP by preventing distance checks
+local camera = workspace.CurrentCamera
+local function updatePositions()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            local billboard = player.Character:FindFirstChild(player.Name .. "_Info")
+            
+            if rootPart and billboard then
+                -- Force the BillboardGui to always be visible regardless of distance
+                billboard.Enabled = true
+                
+                -- Optional: Scale text based on distance (commented out for infinite distance)
+                -- local distance = (camera.CFrame.Position - rootPart.Position).Magnitude
+                -- local scale = math.clamp(1 / (distance * 0.1), 0.5, 2)
+                -- billboard.Size = UDim2.new(0, 200 * scale, 0, 50 * scale)
+            end
+        end
+    end
+end
+
+-- Run position updates
+RunService.Heartbeat:Connect(updatePositions)
+
+-- Cleanup when script is terminated
+local function cleanup()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local esp = player.Character:FindFirstChild(player.Name .. "_ESP")
+            local info = player.Character:FindFirstChild(player.Name .. "_Info")
+            
+            if esp then esp:Destroy() end
+            if info then info:Destroy() end
+        end
+    end
+    randomColors = {}
+end
+
+-- Connect cleanup to script termination
+game:GetService("UserInputService").WindowFocusReleased:Connect(function()
+    cleanup()
+end)
+
+-- Final initialization message
+print("Full Body ESP loaded successfully!")
+print("Features:")
+print("- Random color every 2 seconds (per player)")
+print("- Infinite distance ESP")
+print("- Health and name display")
+print("- 'Bro_broa' always in red")
