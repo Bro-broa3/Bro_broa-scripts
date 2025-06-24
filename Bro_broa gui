@@ -436,48 +436,101 @@ end)
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 
-local currentSpeed = 16
-local textboxRef = nil -- We'll store the textbox reference
+-- Enhanced Walk Speed Controller
+local WalkSpeedController = {
+    currentSpeed = nil,        -- Currently applied speed
+    gameDefaultSpeed = nil,    -- Game's native walk speed
+    usingCustomSpeed = false,  -- Whether we're overriding default
+    lastSpeedCheck = 0,        -- Last time we checked default speed
+    checkInterval = 1,         -- How often to verify default speed (seconds)
+    speedInput = nil           -- Reference to the input box
+}
 
--- Safe speed setter
-local function setSpeed(speed)
+-- Safely gets the game's current default walk speed
+local function updateDefaultSpeed()
     pcall(function()
-        local char = Players.LocalPlayer.Character
-        if char and char:FindFirstChildOfClass("Humanoid") then
-            char.Humanoid.WalkSpeed = speed
+        local character = Players.LocalPlayer.Character
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            WalkSpeedController.gameDefaultSpeed = character.Humanoid.WalkSpeed
+            WalkSpeedController.lastSpeedCheck = os.time()
+            
+            -- Update placeholder to show current default
+            if WalkSpeedController.speedInput then
+                WalkSpeedController.speedInput:SetAttribute("PlaceholderText", 
+                    "Default: "..WalkSpeedController.gameDefaultSpeed.." (0-∞)")
+            end
         end
     end)
 end
 
--- Create the textbox
-textboxRef = PlayerTab:CreateInput({
-    Name = "∞ WalkSpeed",
-    PlaceholderText = "0-∞ studs/s",
-    ClearTextOnFocus = true, -- Auto-clear when clicked
+-- Safely applies the appropriate speed
+local function applyWalkSpeed()
+    local speedToApply = WalkSpeedController.usingCustomSpeed 
+        and WalkSpeedController.currentSpeed 
+        or WalkSpeedController.gameDefaultSpeed
+    
+    pcall(function()
+        local character = Players.LocalPlayer.Character
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            character.Humanoid.WalkSpeed = speedToApply
+        end
+    end)
+end
+
+-- Create the speed input control
+WalkSpeedController.speedInput = PlayerTab:CreateInput({
+    Name = "∞ WalkSpeed control",
+    PlaceholderText = "Default: "..(WalkSpeedController.gameDefaultSpeed or "16").." (0-∞)studs/s",
+    ClearTextOnFocus = true,
     Numeric = true,
     Callback = function(input)
-        currentSpeed = tonumber(input) or 0 -- Accepts any number
-        setSpeed(currentSpeed)
+        if input == "" then
+            -- Empty input means use game default
+            WalkSpeedController.usingCustomSpeed = false
+            WalkSpeedController.speedInput:Set("") -- Clear input
+            updateDefaultSpeed() -- Refresh default immediately
+        else
+            -- Numeric input means use custom speed
+            WalkSpeedController.usingCustomSpeed = true
+            WalkSpeedController.currentSpeed = tonumber(input) or WalkSpeedController.gameDefaultSpeed
+        end
+        applyWalkSpeed()
     end
 })
 
--- Hyper-speed loop (120FPS)
+-- Background speed maintenance loop (120FPS)
 task.spawn(function()
     while true do
-        setSpeed(currentSpeed)
-        task.wait(1/120) -- 120FPS enforcement
+        -- Periodically check if game changed default speed
+        if not WalkSpeedController.usingCustomSpeed and 
+           os.time() - WalkSpeedController.lastSpeedCheck > WalkSpeedController.checkInterval then
+            updateDefaultSpeed()
+        end
+        
+        applyWalkSpeed()
+        task.wait(1/120) -- 120FPS
     end
 end)
 
--- Bonus: Keyboard number pad support
+-- Handle character respawns
+Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    character:WaitForChildOfClass("Humanoid")
+    updateDefaultSpeed() -- Get fresh default speed
+    applyWalkSpeed()     -- Reapply our settings
+end)
+
+-- Number pad support for quick input
 UserInputService.InputBegan:Connect(function(input)
-    if textboxRef and input.UserInputType == Enum.UserInputType.Keyboard then
+    if WalkSpeedController.speedInput and input.UserInputType == Enum.UserInputType.Keyboard then
         local key = input.KeyCode.Value
         if key >= 48 and key <= 57 then -- Number keys 0-9
-            textboxRef:CaptureFocus() -- Auto-focus textbox when typing numbers
+            WalkSpeedController.speedInput:CaptureFocus()
         end
     end
 end)
+
+-- Initial setup
+updateDefaultSpeed()
 
 -- Jump Power Control with safety checks
 PlayerTab:CreateSlider({
