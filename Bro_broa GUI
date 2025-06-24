@@ -433,104 +433,102 @@ player.CharacterAdded:Connect(function()
     end)
 end)
 
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-
--- Enhanced Walk Speed Controller
-local WalkSpeedController = {
-    currentSpeed = nil,        -- Currently applied speed
-    gameDefaultSpeed = nil,    -- Game's native walk speed
-    usingCustomSpeed = false,  -- Whether we're overriding default
-    lastSpeedCheck = 0,        -- Last time we checked default speed
-    checkInterval = 1,         -- How often to verify default speed (seconds)
-    speedInput = nil           -- Reference to the input box
+-- Ultimate Speed Controller (Auto-Adaptive)
+local SpeedController = {
+    CustomSpeed = 16,
+    GameDefault = 16,
+    UseCustom = false,
+    IsLocked = true, -- Default locked state
+    InputElement = nil,
+    HumanoidRef = nil,
+    EventHandlers = {}
 }
 
--- Safely gets the game's current default walk speed
-local function updateDefaultSpeed()
+-- Safely updates humanoid reference
+local function RefreshHumanoid()
     pcall(function()
         local character = Players.LocalPlayer.Character
-        if character and character:FindFirstChildOfClass("Humanoid") then
-            WalkSpeedController.gameDefaultSpeed = character.Humanoid.WalkSpeed
-            WalkSpeedController.lastSpeedCheck = os.time()
-            
-            -- Update placeholder to show current default
-            if WalkSpeedController.speedInput then
-                WalkSpeedController.speedInput:SetAttribute("PlaceholderText", 
-                    "Default: "..WalkSpeedController.gameDefaultSpeed.." (0-∞)")
-            end
+        SpeedController.HumanoidRef = character and character:FindFirstChildOfClass("Humanoid")
+        if SpeedController.HumanoidRef and not SpeedController.UseCustom then
+            SpeedController.GameDefault = SpeedController.HumanoidRef.WalkSpeed
         end
     end)
 end
 
--- Safely applies the appropriate speed
-local function applyWalkSpeed()
-    local speedToApply = WalkSpeedController.usingCustomSpeed 
-        and WalkSpeedController.currentSpeed 
-        or WalkSpeedController.gameDefaultSpeed
-    
+-- Smart speed application with auto-correction
+local function EnforceSpeed()
     pcall(function()
-        local character = Players.LocalPlayer.Character
-        if character and character:FindFirstChildOfClass("Humanoid") then
-            character.Humanoid.WalkSpeed = speedToApply
+        if not SpeedController.HumanoidRef or not SpeedController.HumanoidRef.Parent then
+            RefreshHumanoid()
+            if not SpeedController.HumanoidRef then return end
         end
+        
+        -- Apply speed based on current mode
+        SpeedController.HumanoidRef.WalkSpeed = 
+            SpeedController.UseCustom and SpeedController.CustomSpeed 
+            or SpeedController.GameDefault
     end)
 end
 
--- Create the speed input control
-WalkSpeedController.speedInput = PlayerTab:CreateInput({
-    Name = "∞ WalkSpeed control",
-    PlaceholderText = "Default: "..(WalkSpeedController.gameDefaultSpeed or "16").." (0-∞)studs/s",
+-- Create UI with live feedback
+SpeedController.InputElement = PlayerTab:CreateInput({
+    Name = "Speed Control",
+    PlaceholderText = "Default: "..SpeedController.GameDefault,
     ClearTextOnFocus = true,
     Numeric = true,
     Callback = function(input)
-        if input == "" then
-            -- Empty input means use game default
-            WalkSpeedController.usingCustomSpeed = false
-            WalkSpeedController.speedInput:Set("") -- Clear input
-            updateDefaultSpeed() -- Refresh default immediately
-        else
-            -- Numeric input means use custom speed
-            WalkSpeedController.usingCustomSpeed = true
-            WalkSpeedController.currentSpeed = tonumber(input) or WalkSpeedController.gameDefaultSpeed
-        end
-        applyWalkSpeed()
+        SpeedController.UseCustom = input ~= ""
+        SpeedController.CustomSpeed = tonumber(input) or SpeedController.GameDefault
+        
+        -- Update UI display
+        SpeedController.InputElement:Update({
+            PlaceholderText = SpeedController.UseCustom 
+                and "Custom: "..SpeedController.CustomSpeed
+                or "Default: "..SpeedController.GameDefault
+        })
+        EnforceSpeed()
     end
 })
 
--- Background speed maintenance loop (120FPS)
+-- Real-time default speed monitoring
+SpeedController.EventHandlers.SpeedWatcher = RunService.Heartbeat:Connect(function()
+    if SpeedController.HumanoidRef and not SpeedController.UseCustom then
+        -- Detect game default speed changes
+        if SpeedController.HumanoidRef.WalkSpeed ~= SpeedController.GameDefault then
+            SpeedController.GameDefault = SpeedController.HumanoidRef.WalkSpeed
+            SpeedController.InputElement:Update({
+                PlaceholderText = "Default: "..SpeedController.GameDefault
+            })
+        end
+    end
+    EnforceSpeed() -- Continuous enforcement
+end)
+
+-- Character respawn handler
+SpeedController.EventHandlers.CharAdded = Players.LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.3) -- Allow full character load
+    RefreshHumanoid()
+    EnforceSpeed()
+end)
+
+-- Initialization
 task.spawn(function()
-    while true do
-        -- Periodically check if game changed default speed
-        if not WalkSpeedController.usingCustomSpeed and 
-           os.time() - WalkSpeedController.lastSpeedCheck > WalkSpeedController.checkInterval then
-            updateDefaultSpeed()
-        end
-        
-        applyWalkSpeed()
-        task.wait(1/120) -- 120FPS
+    task.wait(1) -- Wait for game initialization
+    RefreshHumanoid()
+    EnforceSpeed()
+end)
+
+-- Cleanup function
+function SpeedController.Destroy()
+    for _, handler in pairs(SpeedController.EventHandlers) do
+        handler:Disconnect()
     end
-end)
-
--- Handle character respawns
-Players.LocalPlayer.CharacterAdded:Connect(function(character)
-    character:WaitForChildOfClass("Humanoid")
-    updateDefaultSpeed() -- Get fresh default speed
-    applyWalkSpeed()     -- Reapply our settings
-end)
-
--- Number pad support for quick input
-UserInputService.InputBegan:Connect(function(input)
-    if WalkSpeedController.speedInput and input.UserInputType == Enum.UserInputType.Keyboard then
-        local key = input.KeyCode.Value
-        if key >= 48 and key <= 57 then -- Number keys 0-9
-            WalkSpeedController.speedInput:CaptureFocus()
+    pcall(function()
+        if SpeedController.HumanoidRef then
+            SpeedController.HumanoidRef.WalkSpeed = SpeedController.GameDefault
         end
-    end
-end)
-
--- Initial setup
-updateDefaultSpeed()
+    end)
+end
 
 -- Jump Power Control with safety checks
 PlayerTab:CreateSlider({
