@@ -798,11 +798,11 @@ SettingsTab:CreateDropdown({
 
 -- Bro_broa GUI
 Bro_broaguiTab:CreateButton({
-   Name = "Bro_broa GUI 0.75",
+   Name = "Bro_broa GUI 0.8",
    Callback = function()
       local loadNotify = Rayfield:Notify({
          Title = "Loading",
-         Content = "Initializing Bro_broa GUI 0.75...",
+         Content = "Initializing Bro_broa GUI 0.8...",
          Duration = math.huge,
          Image = 4483362458
       })
@@ -816,7 +816,7 @@ Bro_broaguiTab:CreateButton({
       if success then
          Rayfield:Notify({
             Title = "Success",
-            Content = "Bro_broa GUI 0.75 loaded!",
+            Content = "Bro_broa GUI 0.8 loaded!",
             Duration = 3,
             Image = 4483362458
          })
