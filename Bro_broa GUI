@@ -212,6 +212,41 @@ MainTab:CreateButton({
    end
 })
 
+-- Enhanced SUS Button
+MainTab:CreateButton({
+   Name = "Secret",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Secret...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://pastebin.com/raw/0nj0SL1u", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Secret loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
 -- Enhanced Fly Gui Button
 PlayerTab:CreateButton({
    Name = "Fly Gui",
@@ -233,6 +268,41 @@ PlayerTab:CreateButton({
          Rayfield:Notify({
             Title = "Success",
             Content = "Fly Gui loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Playerlist Gui Button
+PlayerTab:CreateButton({
+   Name = "Playerlist Gui",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Playerlist Gui...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Playerlist", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Playerlist Gui loaded!",
             Duration = 3,
             Image = 4483362458
          })
