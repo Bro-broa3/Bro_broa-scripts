@@ -1,0 +1,490 @@
+-- Enhanced Player List with Hide/Show Functionality
+local Players = game:GetService("Players")
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+
+-- Clean up old UI
+if playerGui:FindFirstChild("PlayerListGUI") then
+    playerGui.PlayerListGUI:Destroy()
+end
+
+-- Player tracking system
+local playerEntries = {}
+local playerIdsProcessed = {}
+local playerCache = {}
+
+-- Main GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PlayerListGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Create show button (separate GUI)
+local showButtonGui = Instance.new("ScreenGui")
+showButtonGui.Name = "PlayerListShowButton"
+showButtonGui.ResetOnSpawn = false
+showButtonGui.Parent = playerGui
+
+local showButton = Instance.new("TextButton")
+showButton.Size = UDim2.new(0, 150, 0, 40)
+showButton.Position = UDim2.new(1, -160, 0, 10)  -- Top-right corner
+showButton.AnchorPoint = Vector2.new(1, 0)  -- Anchor to top-right
+showButton.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+showButton.TextColor3 = Color3.new(1, 1, 1)
+showButton.Font = Enum.Font.GothamBold
+showButton.TextSize = 14
+showButton.Text = "Show Player List"
+showButton.Visible = false  -- Start hidden
+showButton.Parent = showButtonGui
+
+-- Round corners for show button
+local showCorner = Instance.new("UICorner", showButton)
+showCorner.CornerRadius = UDim.new(0, 6)
+
+-- Main window
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 400, 0, 550)
+mainFrame.Position = UDim2.new(0.5, -200, 0.5, -275)
+mainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+mainFrame.BorderSizePixel = 0
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+-- Rounded corners
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Title bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 40)
+titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(0.7, 0, 1, 0)
+title.Position = UDim2.new(0.15, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Player List"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = titleBar
+
+-- Player verification toggle
+local verifyToggle = Instance.new("TextButton")
+verifyToggle.Size = UDim2.new(0, 120, 0, 30)
+verifyToggle.Position = UDim2.new(0.05, 0, 0, 45)
+verifyToggle.BackgroundColor3 = Color3.fromRGB(60, 150, 80)
+verifyToggle.TextColor3 = Color3.new(1, 1, 1)
+verifyToggle.Font = Enum.Font.Gotham
+verifyToggle.TextSize = 14
+verifyToggle.Text = "Verify Players: ON"
+verifyToggle.Parent = mainFrame
+Instance.new("UICorner", verifyToggle).CornerRadius = UDim.new(0, 6)
+
+-- Hide button
+local hideButton = Instance.new("TextButton")
+hideButton.Size = UDim2.new(0, 30, 0, 30)
+hideButton.Position = UDim2.new(1, -70, 0.5, -15)
+hideButton.BackgroundColor3 = Color3.fromRGB(80, 80, 180)
+hideButton.Text = "_"
+hideButton.TextColor3 = Color3.new(1, 1, 1)
+hideButton.Font = Enum.Font.GothamBold
+hideButton.TextSize = 20
+hideButton.Parent = titleBar
+
+local hideCorner = Instance.new("UICorner")
+hideCorner.CornerRadius = UDim.new(0, 6)
+hideCorner.Parent = hideButton
+
+-- Close button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0.5, -15)
+closeButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.new(1, 1, 1)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 14
+closeButton.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeButton
+
+-- Search box
+local searchBox = Instance.new("TextBox")
+searchBox.Size = UDim2.new(0.9, 0, 0, 35)
+searchBox.Position = UDim2.new(0.05, 0, 0, 85)
+searchBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+searchBox.PlaceholderText = "Search players..."
+searchBox.Text = ""
+searchBox.TextColor3 = Color3.new(1, 1, 1)
+searchBox.Font = Enum.Font.Gotham
+searchBox.TextSize = 14
+searchBox.Parent = mainFrame
+
+local searchCorner = Instance.new("UICorner")
+searchCorner.CornerRadius = UDim.new(0, 6)
+searchCorner.Parent = searchBox
+
+-- Player count
+local playerCount = Instance.new("TextLabel")
+playerCount.Size = UDim2.new(0.3, 0, 0, 20)
+playerCount.Position = UDim2.new(0.05, 0, 0, 125)
+playerCount.BackgroundTransparency = 1
+playerCount.Text = "Players Online: 0"
+playerCount.TextColor3 = Color3.fromRGB(200, 200, 200)
+playerCount.Font = Enum.Font.Gotham
+playerCount.TextSize = 14
+playerCount.TextXAlignment = Enum.TextXAlignment.Left
+playerCount.Parent = mainFrame
+
+-- Player list container
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(0.95, 0, 0.75, 0)
+scrollFrame.Position = UDim2.new(0.025, 0, 0, 150)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 120)
+scrollFrame.ClipsDescendants = true
+scrollFrame.Parent = mainFrame
+
+local layout = Instance.new("UIListLayout", scrollFrame)
+layout.Padding = UDim.new(0, 8)
+
+-- Connect canvas size to layout
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y)
+end)
+
+-- Player verification settings
+local verifyPlayers = true
+local playerValidity = {}
+
+-- Unique player tracking
+local function isPlayerUnique(player)
+    return not playerIdsProcessed[player.UserId]
+end
+
+-- Real player detection
+local function isRealPlayer(player)
+    -- Check if already verified
+    if playerValidity[player.UserId] ~= nil then
+        return playerValidity[player.UserId]
+    end
+    
+    -- Method 1: Check if character exists and has humanoid
+    if player.Character then
+        local humanoid = player.Character:FindFirstChild("Humanoid")
+        if humanoid and humanoid.Health > 0 then
+            playerValidity[player.UserId] = true
+            return true
+        end
+    end
+    
+    -- Method 2: Check account age (fake accounts are often new)
+    if player.AccountAge > 7 then -- 7+ days old
+        playerValidity[player.UserId] = true
+        return true
+    end
+    
+    -- Method 3: Verify through Roblox API
+    local success, result = pcall(function()
+        local response = game:HttpGet("https://users.roblox.com/v1/users/"..player.UserId)
+        return HttpService:JSONDecode(response)
+    end)
+    
+    if success and result and result.description and #result.description > 5 then
+        playerValidity[player.UserId] = true
+        return true
+    end
+    
+    playerValidity[player.UserId] = false
+    return false
+end
+
+-- Function to toggle GUI visibility
+local function toggleGui(visible)
+    screenGui.Enabled = visible
+    showButton.Visible = not visible
+end
+
+-- UI toggle functionality
+closeButton.MouseButton1Click:Connect(function()
+    toggleGui(false)
+end)
+
+-- Hide button functionality
+hideButton.MouseButton1Click:Connect(function()
+    toggleGui(false)
+end)
+
+-- Show button functionality
+showButton.MouseButton1Click:Connect(function()
+    toggleGui(true)
+end)
+
+-- Toggle player verification
+verifyToggle.MouseButton1Click:Connect(function()
+    verifyPlayers = not verifyPlayers
+    verifyToggle.Text = "Verify Players: " .. (verifyPlayers and "ON" or "OFF")
+    verifyToggle.BackgroundColor3 = verifyPlayers and 
+        Color3.fromRGB(60, 150, 80) or 
+        Color3.fromRGB(150, 60, 60)
+    updatePlayerList()
+end)
+
+-- Create player entry
+local function createPlayerEntry(player)
+    -- Check if player is unique
+    if not isPlayerUnique(player) then return end
+    
+    -- Mark player as processed
+    playerIdsProcessed[player.UserId] = true
+    
+    local entry = Instance.new("Frame")
+    entry.Size = UDim2.new(1, 0, 0, 60)
+    entry.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+    entry.BorderSizePixel = 0
+    entry.Parent = scrollFrame
+    
+    local entryCorner = Instance.new("UICorner")
+    entryCorner.CornerRadius = UDim.new(0, 6)
+    entryCorner.Parent = entry
+    
+    -- Check if player is real
+    local isReal = true
+    if verifyPlayers then
+        isReal = isRealPlayer(player)
+    end
+    
+    -- Player thumbnail
+    local thumb = playerCache[player.UserId] or "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    
+    -- Load thumbnail if not cached
+    if not playerCache[player.UserId] then
+        task.spawn(function()
+            local success, result = pcall(function()
+                return Players:GetUserThumbnailAsync(
+                    player.UserId, 
+                    Enum.ThumbnailType.HeadShot, 
+                    Enum.ThumbnailSize.Size48x48
+                )
+            end)
+            
+            if success then
+                playerCache[player.UserId] = result
+                -- Update thumbnail if entry still exists
+                if entry and entry.Parent then
+                    local img = entry:FindFirstChild("Thumbnail")
+                    if img then
+                        img.Image = result
+                    end
+                end
+            end
+        end)
+    end
+    
+    local img = Instance.new("ImageLabel")
+    img.Name = "Thumbnail"
+    img.Size = UDim2.new(0, 48, 0, 48)
+    img.Position = UDim2.new(0, 5, 0.5, -24)
+    img.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    img.Image = thumb
+    img.Parent = entry
+    
+    local imgCorner = Instance.new("UICorner")
+    imgCorner.CornerRadius = UDim.new(1, 0)
+    imgCorner.Parent = img
+    
+    -- Player name
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Size = UDim2.new(0.6, -60, 0.5, 0)
+    nameLabel.Position = UDim2.new(0, 58, 0, 5)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextColor3 = isReal and Color3.new(1, 1, 1) or Color3.fromRGB(150, 150, 150)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextSize = 16
+    nameLabel.Text = player.DisplayName
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    nameLabel.Parent = entry
+    
+    -- Player username
+    local userLabel = Instance.new("TextLabel")
+    userLabel.Size = UDim2.new(0.6, -60, 0.5, 0)
+    userLabel.Position = UDim2.new(0, 58, 0.5, 0)
+    userLabel.BackgroundTransparency = 1
+    userLabel.TextColor3 = isReal and Color3.fromRGB(180, 180, 180) or Color3.fromRGB(120, 120, 120)
+    userLabel.Font = Enum.Font.Gotham
+    userLabel.TextSize = 14
+    userLabel.Text = "@" .. player.Name
+    userLabel.TextXAlignment = Enum.TextXAlignment.Left
+    userLabel.TextTruncate = Enum.TextTruncate.AtEnd
+    userLabel.Parent = entry
+    
+    -- Player validity indicator
+    local statusDot = Instance.new("Frame")
+    statusDot.Size = UDim2.new(0, 8, 0, 8)
+    statusDot.Position = UDim2.new(0, 40, 0, 5)
+    statusDot.BackgroundColor3 = isReal and Color3.fromRGB(0, 200, 0) or Color3.fromRGB(200, 0, 0)
+    statusDot.BorderSizePixel = 0
+    statusDot.Parent = entry
+    Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
+    
+    -- GoTo button
+    local gotoButton = Instance.new("TextButton")
+    gotoButton.Size = UDim2.new(0, 60, 0, 30)
+    gotoButton.Position = UDim2.new(0.8, 10, 0.5, -15)
+    gotoButton.BackgroundColor3 = isReal and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(100, 100, 120)
+    gotoButton.TextColor3 = Color3.new(1, 1, 1)
+    gotoButton.Font = Enum.Font.GothamBold
+    gotoButton.TextSize = 14
+    gotoButton.Text = "GoTo"
+    gotoButton.AutoButtonColor = isReal
+    gotoButton.Parent = entry
+    
+    local gotoCorner = Instance.new("UICorner")
+    gotoCorner.CornerRadius = UDim.new(0, 4)
+    gotoCorner.Parent = gotoButton
+    
+    -- Teleport functionality
+    if isReal then
+        gotoButton.MouseButton1Click:Connect(function()
+            local character = localPlayer.Character
+            local targetCharacter = player.Character
+            
+            if character and targetCharacter then
+                local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+                local targetRoot = targetCharacter:FindFirstChild("HumanoidRootPart")
+                
+                if humanoidRootPart and targetRoot then
+                    -- Instant teleport (no animation)
+                    humanoidRootPart.CFrame = CFrame.new(targetRoot.Position + Vector3.new(2, 0, 0))
+                end
+            end
+        end)
+    end
+    
+    playerEntries[player] = entry
+    return entry
+end
+
+-- Update player list with duplicate prevention
+local function updatePlayerList()
+    local searchTerm = string.lower(searchBox.Text)
+    local currentPlayers = Players:GetPlayers()
+    local visibleCount = 0
+    local realCount = 0
+    
+    -- Clear processed IDs for this update
+    local currentPlayerIds = {}
+    
+    -- Process current players
+    for _, player in ipairs(currentPlayers) do
+        if player ~= localPlayer then
+            -- Track current player IDs
+            currentPlayerIds[player.UserId] = true
+            
+            local matchesSearch = searchTerm == "" or
+                string.find(string.lower(player.Name), searchTerm) or
+                string.find(string.lower(player.DisplayName), searchTerm)
+            
+            if matchesSearch then
+                -- Create entry only if player is unique in this session
+                if isPlayerUnique(player) then
+                    createPlayerEntry(player)
+                end
+                
+                -- Ensure entry is visible
+                if playerEntries[player] then
+                    playerEntries[player].Visible = true
+                    visibleCount = visibleCount + 1
+                    
+                    if not verifyPlayers or playerValidity[player.UserId] then
+                        realCount = realCount + 1
+                    end
+                end
+            elseif playerEntries[player] then
+                -- Hide if doesn't match search
+                playerEntries[player].Visible = false
+            end
+        end
+    end
+    
+    -- Remove players that left
+    for player, entry in pairs(playerEntries) do
+        if not currentPlayerIds[player.UserId] then
+            entry:Destroy()
+            playerEntries[player] = nil
+            playerValidity[player.UserId] = nil
+            playerIdsProcessed[player.UserId] = nil
+        end
+    end
+    
+    -- Update player count
+    local countText = "Players Online: " .. visibleCount
+    if verifyPlayers then
+        countText = countText .. " (Real: " .. realCount .. ")"
+    end
+    playerCount.Text = countText
+end
+
+-- Optimized player tracking
+Players.PlayerAdded:Connect(function(player)
+    -- Delay creation to allow player to fully join
+    task.wait(0.5)
+    updatePlayerList()
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+    if playerEntries[player] then
+        playerEntries[player]:Destroy()
+        playerEntries[player] = nil
+        playerValidity[player.UserId] = nil
+        playerIdsProcessed[player.UserId] = nil
+    end
+    updatePlayerList()
+end)
+
+-- Search functionality
+searchBox:GetPropertyChangedSignal("Text"):Connect(updatePlayerList)
+
+-- Initial player list
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= localPlayer then
+        createPlayerEntry(player)
+    end
+end
+updatePlayerList()
+
+-- Fast refresh using RunService
+local refreshRate = 0.5 -- Update every 0.5 seconds
+local lastRefresh = os.clock()
+
+RunService.Heartbeat:Connect(function()
+    if os.clock() - lastRefresh >= refreshRate then
+        updatePlayerList()
+        lastRefresh = os.clock()
+    end
+end)
+
+-- Keybind to toggle UI
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.P then
+        toggleGui(not screenGui.Enabled)
+    end
+end)
