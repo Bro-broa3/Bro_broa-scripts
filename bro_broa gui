@@ -247,6 +247,43 @@ MainTab:CreateButton({
    end
 })
 
+-- Enhanced hint function with pcall error handling
+local function ShowHint(message)
+    local success, err = pcall(function()
+        local hint = Instance.new("Hint")
+        hint.Text = tostring(message)
+        hint.Parent = workspace
+        
+        -- Safely destroy hint after delay
+        task.delay(3, function()
+            pcall(function()
+                if hint and hint.Parent then
+                    hint:Destroy()
+                end
+            end)
+        end)
+    end)
+    
+    if not success then
+        warn(tostring(err))
+    end
+end
+
+-- Create text input box with your specifications
+local success, input = pcall(function()
+    return MainTab:CreateInput({
+        Name = "Enter Message(hint)",
+        PlaceholderText = "Type message and press Enter...",
+        RemoveTextAfterFocusLost = false,
+        MaxLength = 100000000,  -- Very high limit as requested
+        Callback = function(InputText)
+            if InputText ~= "" then
+                ShowHint(InputText)  -- Directly show input text as hint
+            end
+        end,
+    })
+end)
+
 -- Enhanced Fly Gui Button
 PlayerTab:CreateButton({
    Name = "Fly Gui",
@@ -782,11 +819,11 @@ SettingsTab:CreateButton({
 
 -- Enhanced Rejoin game Button
 SettingsTab:CreateButton({
-   Name = "Rejoin game",
+   Name = "Rejoin game+sevrhop game",
    Callback = function()
       local loadNotify = Rayfield:Notify({
          Title = "Loading",
-         Content = "Initializing Rejoin game...",
+         Content = "Initializing Rejoin game+sevrhop game...",
          Duration = math.huge,
          Image = 4483362458
       })
@@ -800,7 +837,7 @@ SettingsTab:CreateButton({
       if success then
          Rayfield:Notify({
             Title = "Success",
-            Content = "Rejoin game loaded!",
+            Content = "Rejoin game+sevrhop game loaded!",
             Duration = 3,
             Image = 4483362458
          })
