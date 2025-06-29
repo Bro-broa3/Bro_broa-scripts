@@ -1,4 +1,4 @@
--- Enhanced Player List with Hide/Show Functionality
+-- Enhanced Player List with Hide/Show Functionality and View/Unview
 local Players = game:GetService("Players")
 local localPlayer = Players.LocalPlayer
 local playerGui = localPlayer:WaitForChild("PlayerGui")
@@ -11,11 +11,15 @@ local HttpService = game:GetService("HttpService")
 if playerGui:FindFirstChild("PlayerListGUI") then
     playerGui.PlayerListGUI:Destroy()
 end
+if playerGui:FindFirstChild("PlayerListShowButton") then
+    playerGui.PlayerListShowButton:Destroy()
+end
 
 -- Player tracking system
 local playerEntries = {}
 local playerIdsProcessed = {}
 local playerCache = {}
+local currentViewedPlayer = nil  -- Track currently viewed player
 
 -- Main GUI
 local screenGui = Instance.new("ScreenGui")
@@ -216,6 +220,59 @@ local function isRealPlayer(player)
     return false
 end
 
+-- View player functionality
+local function viewPlayer(player)
+    if currentViewedPlayer == player then return end
+    
+    -- Reset previous view
+    if currentViewedPlayer and playerEntries[currentViewedPlayer] then
+        local prevEntry = playerEntries[currentViewedPlayer]
+        local prevViewBtn = prevEntry:FindFirstChild("ViewButton")
+        local prevUnviewBtn = prevEntry:FindFirstChild("UnviewButton")
+        if prevViewBtn and prevUnviewBtn then
+            prevViewBtn.Visible = true
+            prevUnviewBtn.Visible = false
+        end
+    end
+    
+    -- Set camera to target player
+    local targetCharacter = player.Character
+    if targetCharacter then
+        local humanoid = targetCharacter:FindFirstChild("Humanoid")
+        if humanoid then
+            game.Workspace.CurrentCamera.CameraSubject = humanoid
+            currentViewedPlayer = player
+        end
+    end
+end
+
+-- Unview player functionality
+local function unviewPlayer()
+    if not currentViewedPlayer then return end
+    
+    -- Reset camera to local player
+    local localCharacter = localPlayer.Character
+    if localCharacter then
+        local humanoid = localCharacter:FindFirstChild("Humanoid")
+        if humanoid then
+            game.Workspace.CurrentCamera.CameraSubject = humanoid
+        end
+    end
+    
+    -- Update buttons
+    if playerEntries[currentViewedPlayer] then
+        local entry = playerEntries[currentViewedPlayer]
+        local viewBtn = entry:FindFirstChild("ViewButton")
+        local unviewBtn = entry:FindFirstChild("UnviewButton")
+        if viewBtn and unviewBtn then
+            viewBtn.Visible = true
+            unviewBtn.Visible = false
+        end
+    end
+    
+    currentViewedPlayer = nil
+end
+
 -- Function to toggle GUI visibility
 local function toggleGui(visible)
     screenGui.Enabled = visible
@@ -345,14 +402,64 @@ local function createPlayerEntry(player)
     statusDot.Parent = entry
     Instance.new("UICorner", statusDot).CornerRadius = UDim.new(1, 0)
     
+    -- View/Unview buttons
+    local viewButton = Instance.new("TextButton")
+    viewButton.Name = "ViewButton"
+    viewButton.Size = UDim2.new(0, 60, 0, 25)
+    viewButton.Position = UDim2.new(0.7, 0, 0.5, -12.5)
+    viewButton.BackgroundColor3 = Color3.fromRGB(80, 150, 200)
+    viewButton.TextColor3 = Color3.new(1, 1, 1)
+    viewButton.Font = Enum.Font.GothamBold
+    viewButton.TextSize = 12
+    viewButton.Text = "View"
+    viewButton.AutoButtonColor = isReal
+    viewButton.Visible = true
+    viewButton.Parent = entry
+    
+    local unviewButton = Instance.new("TextButton")
+    unviewButton.Name = "UnviewButton"
+    unviewButton.Size = UDim2.new(0, 60, 0, 25)
+    unviewButton.Position = UDim2.new(0.7, 0, 0.5, -12.5)
+    unviewButton.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+    unviewButton.TextColor3 = Color3.new(1, 1, 1)
+    unviewButton.Font = Enum.Font.GothamBold
+    unviewButton.TextSize = 12
+    unviewButton.Text = "Unview"
+    unviewButton.Visible = false
+    unviewButton.Parent = entry
+    
+    -- Button styling
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 4)
+    btnCorner.Parent = viewButton
+    
+    local btnCorner2 = Instance.new("UICorner")
+    btnCorner2.CornerRadius = UDim.new(0, 4)
+    btnCorner2.Parent = unviewButton
+    
+    -- View button functionality
+    viewButton.MouseButton1Click:Connect(function()
+        if not isReal then return end
+        viewPlayer(player)
+        viewButton.Visible = false
+        unviewButton.Visible = true
+    end)
+    
+    -- Unview button functionality
+    unviewButton.MouseButton1Click:Connect(function()
+        if currentViewedPlayer == player then
+            unviewPlayer()
+        end
+    end)
+    
     -- GoTo button
     local gotoButton = Instance.new("TextButton")
-    gotoButton.Size = UDim2.new(0, 60, 0, 30)
-    gotoButton.Position = UDim2.new(0.8, 10, 0.5, -15)
+    gotoButton.Size = UDim2.new(0, 60, 0, 25)
+    gotoButton.Position = UDim2.new(0.85, 0, 0.5, -12.5)
     gotoButton.BackgroundColor3 = isReal and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(100, 100, 120)
     gotoButton.TextColor3 = Color3.new(1, 1, 1)
     gotoButton.Font = Enum.Font.GothamBold
-    gotoButton.TextSize = 14
+    gotoButton.TextSize = 12
     gotoButton.Text = "GoTo"
     gotoButton.AutoButtonColor = isReal
     gotoButton.Parent = entry
@@ -428,6 +535,11 @@ local function updatePlayerList()
     -- Remove players that left
     for player, entry in pairs(playerEntries) do
         if not currentPlayerIds[player.UserId] then
+            -- Reset view if leaving player is being viewed
+            if player == currentViewedPlayer then
+                unviewPlayer()
+            end
+            
             entry:Destroy()
             playerEntries[player] = nil
             playerValidity[player.UserId] = nil
@@ -451,6 +563,11 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+    -- Reset view if leaving player is being viewed
+    if player == currentViewedPlayer then
+        unviewPlayer()
+    end
+    
     if playerEntries[player] then
         playerEntries[player]:Destroy()
         playerEntries[player] = nil
