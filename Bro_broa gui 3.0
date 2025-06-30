@@ -747,7 +747,7 @@ SettingsTab:CreateButton({
    end
 })
 
--- Enhanced antidisconnectButton
+-- Enhanced antidisconnect Button
 SettingsTab:CreateButton({
    Name = "antidisconnect",
    Callback = function()
@@ -803,6 +803,41 @@ SettingsTab:CreateButton({
          Rayfield:Notify({
             Title = "Success",
             Content = "Shiftlock loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced safechat Button
+SettingsTab:CreateButton({
+   Name = "safechat",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing safechat...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/safechat", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "safechat loaded!",
             Duration = 3,
             Image = 4483362458
          })
