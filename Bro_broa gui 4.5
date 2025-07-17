@@ -30,12 +30,12 @@ local Window = Rayfield:CreateWindow({
 })
 
 -- Tabs
-local MainTab = Window:CreateTab("Main Features", "home")
+local MainTab = Window:CreateTab("Main", "home")
 local PlayerTab = Window:CreateTab("Player Settings", "user")
 local SettingsTab = Window:CreateTab("System Settings", "settings")
 local Bro_broaguiTab = Window:CreateTab("Bro_broa GUI", "flag")
-local FeTab = Window:CreateTab("FE changes", "flag")
-local TSBtab = Window:CreateTab("TSB Features", "flag")
+local FeTab = Window:CreateTab("FE", "flag")
+local TSBtab = Window:CreateTab("TSB", "flag")
 local VLTab = Window:CreateTab("Volleyball Legends", "flag")
 
 -- Enhanced Infinite Yield Button with error handling
@@ -665,7 +665,42 @@ MainTab:CreateButton({
    end
 })
 
--- Enhanced SUS Button
+-- Enhanced music play Button
+MainTab:CreateButton({
+   Name = "music play",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing music play...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Play%20music", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "music play loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Secret Button
 MainTab:CreateButton({
    Name = "Secret",
    Callback = function()
@@ -1203,41 +1238,6 @@ SettingsTab:CreateButton({
    end
 })
 
--- Enhanced FPS boost Button
-SettingsTab:CreateButton({
-   Name = "FPS BOOST",
-   Callback = function()
-      local loadNotify = Rayfield:Notify({
-         Title = "Loading",
-         Content = "Initializing FPS boost...",
-         Duration = math.huge,
-         Image = 4483362458
-      })
-      
-      local success, err = pcall(function()
-         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FPS%20boost", true))()
-      end)
-      
-      loadNotify:Destroy()
-      
-      if success then
-         Rayfield:Notify({
-            Title = "Success",
-            Content = "FPS boost loaded!",
-            Duration = 3,
-            Image = 4483362458
-         })
-      else
-         Rayfield:Notify({
-            Title = "Error",
-            Content = "Failed: "..err,
-            Duration = 5,
-            Image = 4483362458
-         })
-      end
-   end
-})
-
 -- Enhanced antidisconnect Button
 SettingsTab:CreateButton({
    Name = "antidisconnect",
@@ -1259,6 +1259,76 @@ SettingsTab:CreateButton({
          Rayfield:Notify({
             Title = "Success",
             Content = "antidisconnect loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Antiafk Button
+SettingsTab:CreateButton({
+   Name = "antiafk",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing antiafk...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antiafk", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "antiafk loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced FPS boost Button
+SettingsTab:CreateButton({
+   Name = "FPS BOOST",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing FPS boost...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FPS%20boost", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "FPS boost loaded!",
             Duration = 3,
             Image = 4483362458
          })
@@ -1569,6 +1639,41 @@ FeTab:CreateButton({
    end
 })
 
+-- FE changes
+FeTab:CreateButton({
+   Name = "FE dance hub(maybe only music)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing FE dance hub...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FE%20dance%20hub", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "FE dance hub loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
 -- TSB Features
 TSBtab:CreateButton({
    Name = "Phantasm TSB",
@@ -1625,6 +1730,41 @@ TSBtab:CreateButton({
          Rayfield:Notify({
             Title = "Success",
             Content = "TSB loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- TSB Features
+TSBtab:CreateButton({
+   Name = "trash man",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing trash man...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/yes1nt/yes/refs/heads/main/Trashcan%20Man", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "trash man loaded!",
             Duration = 3,
             Image = 4483362458
          })
