@@ -57,7 +57,7 @@ local icon = Instance.new("ImageLabel")
 icon.Name = "Icon"
 icon.Size = UDim2.new(0, 30, 0, 30)
 icon.Position = UDim2.new(0, 10, 0, 5)
-icon.Image = "rbxassetid://121445381467948"
+icon.Image = "rbxassetid://119526989765479"
 icon.BackgroundTransparency = 1
 icon.Parent = frame
 
