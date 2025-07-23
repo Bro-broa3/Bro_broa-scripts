@@ -1,0 +1,137 @@
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PerformanceDisplay"
+screenGui.Parent = game.CoreGui
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.BackgroundColor3 = Color3.new(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Size = UDim2.new(0, 180, 0, 36)
+mainFrame.Position = UDim2.new(1, -5, 0, 5)
+mainFrame.AnchorPoint = Vector2.new(1, 0)
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.3, 0)
+corner.Parent = mainFrame
+
+local border = Instance.new("UIStroke")
+border.Name = "Border"
+border.Color = Color3.new(0, 1, 0)
+border.Thickness = 1 
+border.Parent = mainFrame
+
+local displayLabel = Instance.new("TextLabel")
+displayLabel.Name = "DisplayLabel"
+displayLabel.Text = "FPS: 0 | PING: 0ms"
+displayLabel.TextColor3 = Color3.new(0, 1, 0)
+displayLabel.BackgroundTransparency = 1
+displayLabel.Font = Enum.Font.Code
+displayLabel.TextSize = 16
+displayLabel.Size = UDim2.new(1, 0, 1, 0)
+displayLabel.Position = UDim2.new(0, 0, 0, 0)
+displayLabel.TextXAlignment = Enum.TextXAlignment.Center
+displayLabel.TextYAlignment = Enum.TextYAlignment.Center
+displayLabel.Parent = mainFrame
+
+local fps = 0
+local frameCount = 0
+local lastFpsUpdate = time()
+local ping = 0
+
+local function getPing()
+    local success, result = pcall(function()
+        return math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+    end)
+    return success and result or 0
+end
+
+local function updateDisplay()
+    frameCount += 1
+    local currentTime = time()
+    
+    if currentTime - lastFpsUpdate >= 0.5 then
+        fps = math.floor(frameCount / (currentTime - lastFpsUpdate))
+        frameCount = 0
+        lastFpsUpdate = currentTime
+        ping = getPing()
+        displayLabel.Text = string.format("FPS: %d | PING: %dms", fps, ping)
+    end
+end
+
+RunService.Heartbeat:Connect(updateDisplay)
+
+local dragging = false
+local dragStart, frameStart
+
+local function resetPosition()
+    mainFrame.Position = UDim2.new(1, -5, 0, 5)
+end
+
+mainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        frameStart = mainFrame.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        local delta = input.Position - dragStart
+        mainFrame.Position = UDim2.new(
+            frameStart.X.Scale, 
+            frameStart.X.Offset + delta.X, 
+            frameStart.Y.Scale, 
+            frameStart.Y.Offset + delta.Y
+        )
+    end
+end)
+
+mainFrame.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
+        task.wait(0.5)
+        if not dragging then
+            resetPosition()
+        end
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.R then
+        resetPosition()
+    end
+end)
+
+local hintLabel = Instance.new("TextLabel")
+hintLabel.Name = "HintLabel"
+hintLabel.Text = "Drag or press R to reset"
+hintLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7)
+hintLabel.BackgroundTransparency = 1
+hintLabel.Font = Enum.Font.Code
+hintLabel.TextSize = 12
+hintLabel.Size = UDim2.new(0, 180, 0, 16)
+hintLabel.Position = UDim2.new(1, -5, 0, 42)
+hintLabel.AnchorPoint = Vector2.new(1, 0)
+hintLabel.TextXAlignment = Enum.TextXAlignment.Center
+hintLabel.Parent = screenGui
+
+task.delay(5, function()
+    local fadeOut = TweenService:Create(
+        hintLabel,
+        TweenInfo.new(1.5, Enum.EasingStyle.Quad),
+        {TextTransparency = 1}
+    )
+    fadeOut:Play()
+    fadeOut.Completed:Wait()
+    hintLabel:Destroy()
+end)
