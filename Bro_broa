@@ -6,12 +6,12 @@ local SoundService = game:GetService("SoundService")
 
 -- Cambiar cielo
 local sky = Instance.new("Sky", Lighting)
-sky.SkyboxBk = "rbxassetid://158118263"
-sky.SkyboxDn = "rbxassetid://158118263"
-sky.SkyboxFt = "rbxassetid://158118263"
-sky.SkyboxLf = "rbxassetid://158118263"
-sky.SkyboxRt = "rbxassetid://158118263"
-sky.SkyboxUp = "rbxassetid://158118263"
+sky.SkyboxBk = "rbxassetid://93279111008161"
+sky.SkyboxDn = "rbxassetid://93279111008161"
+sky.SkyboxFt = "rbxassetid://93279111008161"
+sky.SkyboxLf = "rbxassetid://93279111008161"
+sky.SkyboxRt = "rbxassetid://93279111008161"
+sky.SkyboxUp = "rbxassetid://93279111008161"
 
 -- Añadir partículas a todos los jugadores
 for _, player in pairs(Players:GetPlayers()) do
@@ -20,7 +20,7 @@ for _, player in pairs(Players:GetPlayers()) do
         if rootPart then
             local attachment = Instance.new("Attachment", rootPart)
             local particle = Instance.new("ParticleEmitter", attachment)
-            particle.Texture = "rbxassetid://158118263"
+            particle.Texture = "rbxassetid://93279111008161"
             particle.Rate = 25
             particle.Lifetime = NumberRange.new(2)
             particle.Speed = NumberRange.new(1, 2)
@@ -41,7 +41,7 @@ end
 
 -- Mensaje tipo hint
 local hint = Instance.new("Hint", workspace)
-hint.Text = "Team c00lkidd! Join today!"
+hint.Text = "Team bro_broa! Join today!"
 
 -- Música con pitch
 local music = Instance.new("Sound", SoundService)
@@ -54,10 +54,10 @@ music:Play()
 -- Spam de notificaciones cada 2 segundos
 while true do
     StarterGui:SetCore("SendNotification", {
-        Title = "Team c00lkidd attacks the game!",
-        Text = "TEAM C00LKIDD JOIN TODAY!",
+        Title = "Team bro_broa attacks the game!",
+        Text = "TEAM bro_broa JOIN TODAY!",
         Duration = 2,
-        Icon = "rbxassetid://158118263"
+        Icon = "rbxassetid://93279111008161"
     })
     wait(2)
 end
