@@ -135,7 +135,7 @@ end
 local function SetupAutoReload()
     local reloadScript = [[
         wait(2)
-        loadstring(game:HttpGet("https://pastebin.com/raw/P2aSLLCs", true))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Test", true))()
     ]]
     
     if queue_on_teleport then
@@ -223,7 +223,7 @@ local function CreateGUI()
             })
             
             task.wait(3)
-            loadstring(game:HttpGet("https://pastebin.com/raw/P2aSLLCs", true))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Test", true))()
         end
     })
     
