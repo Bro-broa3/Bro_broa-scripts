@@ -31,8 +31,8 @@ local Window = Rayfield:CreateWindow({
 
 -- Tabs
 local MainTab = Window:CreateTab("Main", "home")
-local PlayerTab = Window:CreateTab("Player Settings", "user")
-local SettingsTab = Window:CreateTab("System Settings", "settings")
+local PlayerTab = Window:CreateTab("Player", "user")
+local SettingsTab = Window:CreateTab("Settings", "settings")
 local Bro_broaguiTab = Window:CreateTab("Bro_broa GUI", "flag")
 local FeTab = Window:CreateTab("FE", "flag")
 local TSBtab = Window:CreateTab("TSB", "flag")
@@ -73,455 +73,73 @@ MainTab:CreateButton({
    end
 })
 
--- Add this function to your script
-local function OpenServerHopper()
-    -- SERVICES & PLAYER
-    local TS = game:GetService("TeleportService")
-    local Players = game:GetService("Players")
-    local UIS = game:GetService("UserInputService")
-    local RS = game:GetService("RunService")
-    local HttpService = game:GetService("HttpService")
-    local plr = Players.LocalPlayer
-    local guiParent = plr:WaitForChild("PlayerGui")
-
-    -- Clean up old instance
-    local existing = guiParent:FindFirstChild("JoinGui")
-    if existing then existing:Destroy() end
-
-    -- STYLE CONFIG
-    local PANEL_WIDTH = 800
-    local PANEL_HEIGHT = 500
-    local INFO_WIDTH = 320
-    local LIST_WIDTH = 450
-    local BOX_HEIGHT = 38
-    
-    -- COLORS
-    local CLR_BACKGROUND = Color3.fromRGB(30, 32, 36)
-    local CLR_SURFACE = Color3.fromRGB(44, 46, 51)
-    local CLR_PRIMARY = Color3.fromRGB(0, 122, 255)
-    local CLR_SUCCESS = Color3.fromRGB(40, 167, 69)
-    local CLR_DANGER = Color3.fromRGB(237, 66, 69)
-    local CLR_TEXT = Color3.fromRGB(235, 235, 235)
-    local CLR_TEXT_MUTED = Color3.fromRGB(170, 170, 170)
-    local CLR_ACCENT = Color3.fromRGB(130, 180, 255)
-    local CLR_HOVER = Color3.fromRGB(200, 220, 255)
-
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "JoinGui"
-    gui.ResetOnSpawn = false
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Parent = guiParent
-
-    local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT)
-    frame.Position = UDim2.new(.5, -PANEL_WIDTH/2, .5, -PANEL_HEIGHT/2)
-    frame.BackgroundColor3 = CLR_BACKGROUND
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-    Instance.new("UIStroke", frame).Color = Color3.fromRGB(80,80,80)
-
-    -- CLOSE BUTTON
-    local CLOSE_SIZE = 28
-    local closeBtn = Instance.new("TextButton", frame)
-    closeBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    closeBtn.Position = UDim2.new(1, -(CLOSE_SIZE + 8), 0, 8)
-    closeBtn.BackgroundColor3 = CLR_SURFACE
-    closeBtn.Text = "X"
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextSize = 16
-    closeBtn.TextColor3 = CLR_TEXT_MUTED
-    closeBtn.AutoButtonColor = false
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
-
-    closeBtn.MouseEnter:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_DANGER
-        closeBtn.TextColor3 = Color3.new(1,1,1)
-    end)
-    
-    closeBtn.MouseLeave:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_SURFACE
-        closeBtn.TextColor3 = CLR_TEXT_MUTED
-    end)
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
-    end)
-
-    -- TITLE
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -(CLOSE_SIZE + 20), 0, 44)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBold
-    title.TextColor3 = CLR_TEXT
-    title.TextSize = 22
-    title.Text = "Server Hopper"
-    Instance.new("UIPadding", title).PaddingLeft = UDim.new(0, 16)
-
-    -- LEFT PANEL (INFO)
-    local info = Instance.new("Frame", frame)
-    info.Size = UDim2.fromOffset(INFO_WIDTH, PANEL_HEIGHT - 58)
-    info.Position = UDim2.new(0, 12, 0, 46)
-    info.BackgroundColor3 = CLR_SURFACE
-    info.BorderSizePixel = 0
-    Instance.new("UICorner", info).CornerRadius = UDim.new(0, 8)
-    
-    local infoList = Instance.new("UIListLayout", info)
-    infoList.FillDirection = Enum.FillDirection.Vertical
-    infoList.SortOrder = Enum.SortOrder.LayoutOrder
-    infoList.Padding = UDim.new(0, 8)
-    
-    local infoPad = Instance.new("UIPadding", info)
-    infoPad.PaddingLeft = UDim.new(0, 12)
-    infoPad.PaddingRight = UDim.new(0, 12)
-    infoPad.PaddingTop = UDim.new(0, 12)
-    infoPad.PaddingBottom = UDim.new(0, 12)
-
-    -- MANUAL HOP SECTION
-    local manualTitle = Instance.new("TextLabel", info)
-    manualTitle.Size = UDim2.new(1, 0, 0, 24)
-    manualTitle.BackgroundTransparency = 1
-    manualTitle.Font = Enum.Font.GothamBold
-    manualTitle.TextColor3 = CLR_ACCENT
-    manualTitle.TextSize = 16
-    manualTitle.Text = "MANUAL HOP"
-    manualTitle.LayoutOrder = 1
-
-    -- Place ID input
-    local placeBox = Instance.new("TextBox", info)
-    placeBox.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    placeBox.BackgroundColor3 = CLR_BACKGROUND
-    placeBox.PlaceholderText = "Place ID"
-    placeBox.Text = tostring(game.PlaceId)
-    placeBox.TextColor3 = CLR_TEXT
-    placeBox.ClearTextOnFocus = false
-    placeBox.LayoutOrder = 2
-    Instance.new("UICorner", placeBox).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIPadding", placeBox).PaddingLeft = UDim.new(0, 10)
-    
-    -- Job ID input
-    local jobBox = Instance.new("TextBox", info)
-    jobBox.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    jobBox.BackgroundColor3 = CLR_BACKGROUND
-    jobBox.PlaceholderText = "Job ID (optional)"
-    jobBox.Text = ""
-    jobBox.TextColor3 = CLR_TEXT
-    jobBox.ClearTextOnFocus = false
-    jobBox.LayoutOrder = 3
-    Instance.new("UICorner", jobBox).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIPadding", jobBox).PaddingLeft = UDim.new(0, 10)
-
-    -- Hop button
-    local joinBtn = Instance.new("TextButton", info)
-    joinBtn.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    joinBtn.BackgroundColor3 = CLR_PRIMARY
-    joinBtn.Text = "Hop"
-    joinBtn.Font = Enum.Font.GothamBold
-    joinBtn.TextColor3 = Color3.new(1, 1, 1)
-    joinBtn.TextSize = 14
-    joinBtn.LayoutOrder = 4
-    Instance.new("UICorner", joinBtn).CornerRadius = UDim.new(0, 6)
-
-    -- REJOIN BUTTON (ADDED)
-    local rejoinBtn = Instance.new("TextButton", info)
-    rejoinBtn.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    rejoinBtn.BackgroundColor3 = CLR_SUCCESS
-    rejoinBtn.Text = "Rejoin Server"
-    rejoinBtn.Font = Enum.Font.GothamBold
-    rejoinBtn.TextColor3 = Color3.new(1, 1, 1)
-    rejoinBtn.TextSize = 14
-    rejoinBtn.LayoutOrder = 5
-    Instance.new("UICorner", rejoinBtn).CornerRadius = UDim.new(0, 6)
-
-    -- SERVER INFO SECTION
-    local infoTitle = Instance.new("TextLabel", info)
-    infoTitle.Size = UDim2.new(1, 0, 0, 24)
-    infoTitle.BackgroundTransparency = 1
-    infoTitle.Font = Enum.Font.GothamBold
-    infoTitle.TextColor3 = CLR_ACCENT
-    infoTitle.TextSize = 16
-    infoTitle.Text = "SERVER INFO"
-    infoTitle.LayoutOrder = 6
-
-    -- Create info labels
-    local function createInfoLabel(parent, label, value, color, copyable)
-        local container = Instance.new("Frame", parent)
-        container.Size = UDim2.new(1, 0, 0, 20)
-        container.BackgroundTransparency = 1
-        
-        local labelObj = Instance.new("TextLabel", container)
-        labelObj.Size = UDim2.new(1, 0, 1, 0)
-        labelObj.BackgroundTransparency = 1
-        labelObj.Font = Enum.Font.GothamMedium
-        labelObj.TextSize = 12
-        labelObj.Text = label .. ": " .. value
-        labelObj.TextColor3 = color
-        labelObj.TextXAlignment = Enum.TextXAlignment.Left
-        
-        if copyable then
-            local btn = Instance.new("TextButton", container)
-            btn.Size = UDim2.new(1, 0, 1, 0)
-            btn.BackgroundTransparency = 1
-            btn.Text = ""
-            
-            btn.MouseButton1Click:Connect(function()
-                if setclipboard then
-                    setclipboard(value)
-                end
-            end)
-        end
-        
-        return container
-    end
-
-    -- UPTIME LABEL (ADDED)
-    local uptimeLabel = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
-    uptimeLabel.LayoutOrder = 7
-    
-    -- Version label
-    local verLabel = createInfoLabel(info, "Version", tostring(game.PlaceVersion), CLR_TEXT, false)
-    verLabel.LayoutOrder = 8
-    
-    -- Players label
-    local playersLabel = createInfoLabel(info, "Players", 
-        tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers), 
-        CLR_TEXT, false)
-    playersLabel.LayoutOrder = 9
-    
-    -- Place ID label
-    local placeLabel = createInfoLabel(info, "Place ID", tostring(game.PlaceId), CLR_ACCENT, true)
-    placeLabel.LayoutOrder = 10
-    
-    -- Server ID label
-    local jobLabel = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
-    jobLabel.LayoutOrder = 11
-
-    -- UPTIME FUNCTIONALITY (ADDED)
-    local startTime = tick()
-    local uptimeConnection = RS.Heartbeat:Connect(function()
-        local elapsed = tick() - startTime
-        local hours = math.floor(elapsed / 3600)
-        local minutes = math.floor((elapsed % 3600) / 60)
-        local seconds = math.floor(elapsed % 60)
-        
-        uptimeLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Uptime: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
-    end)
-
-    -- BUTTON FUNCTIONALITY
-    joinBtn.MouseButton1Click:Connect(function()
-        local placeNum = tonumber(placeBox.Text) or game.PlaceId
-        local jobId = jobBox.Text:gsub("%s", "")
-        
-        if jobId ~= "" then
-            TS:TeleportToPlaceInstance(placeNum, jobId, plr)
-        else
-            TS:Teleport(placeNum, plr)
-        end
-    end)
-
-    -- REJOIN FUNCTIONALITY (ADDED)
-    rejoinBtn.MouseButton1Click:Connect(function()
-        TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, plr)
-    end)
-
-    -- Update players count
-    Players.PlayerAdded:Connect(function()
-        playersLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
-    end)
-    
-    Players.PlayerRemoving:Connect(function()
-        playersLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
-    end)
-
-    -- RIGHT PANEL (SERVER LIST)
-    local serverList = Instance.new("Frame", frame)
-    serverList.Size = UDim2.fromOffset(LIST_WIDTH, PANEL_HEIGHT - 58)
-    serverList.Position = UDim2.new(0, INFO_WIDTH + 24, 0, 46)
-    serverList.BackgroundColor3 = CLR_SURFACE
-    serverList.BorderSizePixel = 0
-    Instance.new("UICorner", serverList).CornerRadius = UDim.new(0, 8)
-    
-    -- Server list header
-    local listHeader = Instance.new("Frame", serverList)
-    listHeader.Size = UDim2.new(1, 0, 0, 50)
-    listHeader.BackgroundTransparency = 1
-
-    local listTitle = Instance.new("TextLabel", listHeader)
-    listTitle.Size = UDim2.new(0.4, 0, 1, 0)
-    listTitle.Position = UDim2.new(0, 12, 0, 0)
-    listTitle.BackgroundTransparency = 1
-    listTitle.Font = Enum.Font.GothamBold
-    listTitle.TextColor3 = CLR_ACCENT
-    listTitle.TextSize = 16
-    listTitle.TextXAlignment = Enum.TextXAlignment.Left
-    listTitle.Text = "SERVER LIST"
-
-    -- Filter button
-    local filterBtn = Instance.new("TextButton", listHeader)
-    filterBtn.Size = UDim2.new(0.3, 0, 0, 24)
-    filterBtn.Position = UDim2.new(0.4, 0, 0.5, -12)
-    filterBtn.BackgroundColor3 = CLR_PRIMARY
-    filterBtn.Text = "Filter: High Players"
-    filterBtn.Font = Enum.Font.GothamMedium
-    filterBtn.TextColor3 = CLR_TEXT
-    filterBtn.TextSize = 12
-    filterBtn.AutoButtonColor = false
-    Instance.new("UICorner", filterBtn).CornerRadius = UDim.new(0, 4)
-
-    -- Refresh button
-    local refreshBtn = Instance.new("TextButton", listHeader)
-    refreshBtn.Size = UDim2.new(0.2, 0, 0, 24)
-    refreshBtn.Position = UDim2.new(0.8, 0, 0.5, -12)
-    refreshBtn.BackgroundColor3 = CLR_SUCCESS
-    refreshBtn.Text = "Refresh"
-    refreshBtn.Font = Enum.Font.GothamMedium
-    refreshBtn.TextColor3 = Color3.new(1, 1, 1)
-    refreshBtn.TextSize = 12
-    refreshBtn.AutoButtonColor = false
-    Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
-
-    -- Server list scroll area
-    local scrollFrame = Instance.new("ScrollingFrame", serverList)
-    scrollFrame.Size = UDim2.new(1, -12, 1, -62)
-    scrollFrame.Position = UDim2.new(0, 6, 0, 56)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    
-    local scrollLayout = Instance.new("UIListLayout", scrollFrame)
-    scrollLayout.Padding = UDim.new(0, 5)
-    
-    -- Function to get servers
-    local function GetServers(placeId)
-        local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100"
-        local success, response = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url))
-        end)
-        
-        if success and response.data then
-            return response.data
-        end
-        return {}
-    end
-    
-    -- Create server entry
-    local function CreateServerEntry(server, index)
-        local entry = Instance.new("Frame", scrollFrame)
-        entry.Size = UDim2.new(1, 0, 0, 60)
-        entry.BackgroundColor3 = CLR_BACKGROUND
-        entry.LayoutOrder = index
-        Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
-        
-        local playersLabel = Instance.new("TextLabel", entry)
-        playersLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
-        playersLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        playersLabel.BackgroundTransparency = 1
-        playersLabel.Font = Enum.Font.GothamMedium
-        playersLabel.TextColor3 = CLR_TEXT
-        playersLabel.TextSize = 14
-        playersLabel.Text = "Players: " .. server.playing .. "/" .. server.maxPlayers
-        playersLabel.TextXAlignment = Enum.TextXAlignment.Left
-        
-        local idLabel = Instance.new("TextLabel", entry)
-        idLabel.Size = UDim2.new(0.9, 0, 0.5, 0)
-        idLabel.Position = UDim2.new(0.05, 0, 0.5, 0)
-        idLabel.BackgroundTransparency = 1
-        idLabel.Font = Enum.Font.Gotham
-        idLabel.TextSize = 12
-        idLabel.TextColor3 = CLR_TEXT_MUTED
-        idLabel.Text = "ID: " .. (server.id or "N/A")
-        idLabel.TextXAlignment = Enum.TextXAlignment.Left
-        idLabel.TextTruncate = Enum.TextTruncate.AtEnd
-        
-        local joinBtn = Instance.new("TextButton", entry)
-        joinBtn.Size = UDim2.new(0.25, 0, 0.6, 0)
-        joinBtn.Position = UDim2.new(0.7, 0, 0.2, 0)
-        joinBtn.BackgroundColor3 = CLR_PRIMARY
-        joinBtn.Text = "Join"
-        joinBtn.Font = Enum.Font.GothamMedium
-        joinBtn.TextColor3 = Color3.new(1, 1, 1)
-        joinBtn.TextSize = 14
-        Instance.new("UICorner", joinBtn).CornerRadius = UDim.new(0, 6)
-        
-        joinBtn.MouseButton1Click:Connect(function()
-            TS:TeleportToPlaceInstance(game.PlaceId, server.id, plr)
-        end)
-        
-        return entry
-    end
-    
-    -- Refresh server list
-    local function RefreshServerList()
-        for _, child in ipairs(scrollFrame:GetChildren()) do
-            if child:IsA("Frame") then
-                child:Destroy()
-            end
-        end
-        
-        local servers = GetServers(game.PlaceId)
-        for i, server in ipairs(servers) do
-            CreateServerEntry(server, i)
-        end
-    end
-    
-    -- Sort functionality
-    local sortAscending = false
-    filterBtn.MouseButton1Click:Connect(function()
-        sortAscending = not sortAscending
-        filterBtn.Text = sortAscending and "Filter: Low Players" or "Filter: High Players"
-        -- Actual sort implementation would go here
-    end)
-    
-    -- Refresh button functionality
-    refreshBtn.MouseButton1Click:Connect(RefreshServerList)
-    
-    -- Initial load
-    RefreshServerList()
-    
-    -- Drag functionality
-    local dragging, dragStart, startPos
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-        end
-    end)
-    
-    frame.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-    
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
-    
-    -- Cleanup
-    gui.Destroying:Connect(function()
-        if uptimeConnection then
-            uptimeConnection:Disconnect()
-        end
-    end)
-end
-
--- Add this button to your MainTab:
+-- Enhanced Server hopper Button
 MainTab:CreateButton({
-   Name = "Server Hopper",
+   Name = "Server hopper",
    Callback = function()
-      OpenServerHopper()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Server hopper...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Server%20Hopper", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Server hopper loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Ping+FPS shower Button
+MainTab:CreateButton({
+   Name = "Ping+FPS shower",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Ping+FPS shower...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Ping%2BFPS%20shower", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Ping+FPS shower loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
    end
 })
 
@@ -686,41 +304,6 @@ MainTab:CreateButton({
          Rayfield:Notify({
             Title = "Success",
             Content = "music play loaded!",
-            Duration = 3,
-            Image = 4483362458
-         })
-      else
-         Rayfield:Notify({
-            Title = "Error",
-            Content = "Failed: "..err,
-            Duration = 5,
-            Image = 4483362458
-         })
-      end
-   end
-})
-
--- Enhanced Secret Button
-MainTab:CreateButton({
-   Name = "Secret",
-   Callback = function()
-      local loadNotify = Rayfield:Notify({
-         Title = "Loading",
-         Content = "Initializing Secret...",
-         Duration = math.huge,
-         Image = 4483362458
-      })
-      
-      local success, err = pcall(function()
-         loadstring(game:HttpGet("https://pastebin.com/raw/0nj0SL1u", true))()
-      end)
-      
-      loadNotify:Destroy()
-      
-      if success then
-         Rayfield:Notify({
-            Title = "Success",
-            Content = "Secret loaded!",
             Duration = 3,
             Image = 4483362458
          })
@@ -1501,17 +1084,17 @@ SettingsTab:CreateDropdown({
 
 -- Bro_broa GUI
 Bro_broaguiTab:CreateButton({
-   Name = "Bro_broa GUI 0.8",
+   Name = "Bro_broa GUI 1.75(bro_broa)",
    Callback = function()
       local loadNotify = Rayfield:Notify({
          Title = "Loading",
-         Content = "Initializing Bro_broa GUI 0.8...",
+         Content = "Initializing Bro_broa GUI 1.75(bro_broa)...",
          Duration = math.huge,
          Image = 4483362458
       })
       
       local success, err = pcall(function()
-         loadstring(game:HttpGet("https://pastebin.com/raw/qY2qVU8W", true))()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa", true))()
       end)
       
       loadNotify:Destroy()
@@ -1519,42 +1102,7 @@ Bro_broaguiTab:CreateButton({
       if success then
          Rayfield:Notify({
             Title = "Success",
-            Content = "Bro_broa GUI 0.8 loaded!",
-            Duration = 3,
-            Image = 4483362458
-         })
-      else
-         Rayfield:Notify({
-            Title = "Error",
-            Content = "Failed: "..err,
-            Duration = 5,
-            Image = 4483362458
-         })
-      end
-   end
-})
-
--- Bro_broa GUI
-Bro_broaguiTab:CreateButton({
-   Name = "Bro_broa GUI 1.5(coolkidd)",
-   Callback = function()
-      local loadNotify = Rayfield:Notify({
-         Title = "Loading",
-         Content = "Initializing Bro_broa GUI 1.5(coolkidd)...",
-         Duration = math.huge,
-         Image = 4483362458
-      })
-      
-      local success, err = pcall(function()
-         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Coolkidd", true))()
-      end)
-      
-      loadNotify:Destroy()
-      
-      if success then
-         Rayfield:Notify({
-            Title = "Success",
-            Content = "Bro_broa GUI 1.5(coolkidd) loaded!",
+            Content = "Bro_broa GUI 1.75(bro_broa) loaded!",
             Duration = 3,
             Image = 4483362458
          })
