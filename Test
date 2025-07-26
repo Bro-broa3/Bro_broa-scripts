@@ -1,0 +1,317 @@
+-- Bro_broa Hub v5.0
+local teleportService = game:GetService("TeleportService")
+local players = game:GetService("Players")
+local httpService = game:GetService("HttpService")
+local player = players.LocalPlayer
+local runService = game:GetService("RunService")
+
+-- Global state management
+if not _G.Bro_broaHub then
+    _G.Bro_broaHub = {
+        Version = "5.0",
+        LastTeleport = 0,
+        DebugInfo = {},
+        TeleportSetupDone = false
+    }
+end
+
+-- Simple notification system
+local function ShowNotification(title, content, duration)
+    duration = duration or 5
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = title,
+        Text = content,
+        Duration = duration
+    })
+end
+
+-- Error logging
+local function LogDebug(event, details)
+    table.insert(_G.Bro_broaHub.DebugInfo, os.date("%X").." - "..event..": "..tostring(details))
+    print("[Bro_broa Debug]", event, details)
+end
+
+-- Fixed Rayfield loader
+local function LoadRayfield()
+    -- Try loading from Sirius first
+    local success, rayfield = pcall(function()
+        return loadstring(game:HttpGet('https://sirius.menu/rayfield', true))()
+    end)
+    
+    if success and rayfield then
+        LogDebug("Rayfield Loaded", "From Sirius")
+        return rayfield
+    end
+end
+
+-- Create main window
+local function CreateWindow(rayfield)
+    local success, window = pcall(function()
+        return rayfield:CreateWindow({
+            Name = "Bro_broa Hub ".._G.Bro_broaHub.Version,
+            LoadingTitle = "Loading Bro_broa Hub...",
+            LoadingSubtitle = "by Bro_broa Team",
+            Theme = "DarkBlue",
+            ToggleUIKeybind = Enum.KeyCode.K,
+            ConfigurationSaving = {
+               Enabled = true,
+               FolderName = "Bro_broaConfig",
+               FileName = "Bro_broaSettings"
+            },
+            Discord = {
+               Enabled = true,
+               Invite = "Arftune3Ab",
+               RememberJoins = true
+            },
+            KeySystem = true,
+            KeySettings = {
+               Title = "Bro_broa Hub",
+               Subtitle = "Get key from Discord",
+               Note = "Join our Discord for key: https://discord.gg/Arftune3Ab",
+               FileName = "Bro_broaKey",
+               SaveKey = true,
+               GrabKeyFromSite = false,
+               Key = {"team bro_broa Join today!"}
+            }
+         })
+    end)
+    
+    if success and window then
+        return window
+    end
+    
+    LogDebug("Window Creation Failed", tostring(window))
+    return nil
+end
+
+-- Get available servers for hopping
+local function GetAvailableServers()
+    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+    local success, response = pcall(function()
+        return httpService:JSONDecode(game:HttpGet(url))
+    end)
+    
+    if success and response and response.data then
+        local servers = {}
+        local currentPlayers = #players:GetPlayers()
+        
+        for _, server in ipairs(response.data) do
+            if server.id ~= game.JobId and server.playing < server.maxPlayers then
+                table.insert(servers, server)
+            end
+        end
+        
+        -- Sort by player count similarity
+        table.sort(servers, function(a, b)
+            local diffA = math.abs(a.playing - currentPlayers)
+            local diffB = math.abs(b.playing - currentPlayers)
+            return diffA < diffB
+        end)
+        
+        return servers
+    end
+    return {}
+end
+
+-- Server hop function
+local function ServerHop()
+    if os.time() - _G.Bro_broaHub.LastTeleport < 10 then
+        return "Please wait 10 seconds between hops"
+    end
+    
+    local servers = GetAvailableServers()
+    if #servers == 0 then
+        return "No available servers found"
+    end
+    
+    local targetServer = servers[math.random(1, math.min(5, #servers))]
+    _G.Bro_broaHub.LastTeleport = os.time()
+    
+    teleportService:TeleportToPlaceInstance(game.PlaceId, targetServer.id, player)
+    return "Hopping to server: "..targetServer.id
+end
+
+-- Universal reload function
+local function SetupAutoReload()
+    local reloadScript = [[
+        wait(2)
+        loadstring(game:HttpGet("https://pastebin.com/raw/P2aSLLCs", true))()
+    ]]
+    
+    if queue_on_teleport then
+        queue_on_teleport(reloadScript)
+        LogDebug("Auto-Reload", "Queued for next teleport")
+        return true
+    else
+        LogDebug("Auto-Reload", "queue_on_teleport not available")
+        return false
+    end
+end
+
+-- Continuous reload setup
+local function MaintainAutoReload()
+    while true do
+        -- Ensure reload is always queued
+        if not _G.Bro_broaHub.TeleportSetupDone then
+            if SetupAutoReload() then
+                _G.Bro_broaHub.TeleportSetupDone = true
+            end
+        end
+        
+        -- Check every 30 seconds
+        task.wait(30)
+    end
+end
+
+-- Create the main GUI
+local function CreateGUI()
+    local rayfield = LoadRayfield()
+    if not rayfield then
+        ShowNotification("Rayfield Error", "Failed to load UI library", 10)
+        return nil
+    end
+    
+    local window = CreateWindow(rayfield)
+    if not window then
+        ShowNotification("GUI Error", "Failed to create window", 10)
+        return nil
+    end
+    
+    -- Tab
+    local MainTab = window:CreateTab("Main", "home")
+    local SettingsTab = window:CreateTab("Settings", "settings")    
+
+    MainTab:CreateButton({
+        Name = "Server Hop",
+        Description = "Find a new server",
+        Callback = function()
+            local result = ServerHop()
+            rayfield:Notify({
+                Title = "Server Hop",
+                Content = result,
+                Duration = 5
+            })
+        end
+    })
+    
+    MainTab:CreateButton({
+        Name = "Rejoin Server",
+        Description = "Reconnect to current server",
+        Callback = function()
+            teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+        end
+    })
+    
+    MainTab:CreateButton({
+        Name = "Test Button",
+        Callback = function()
+            rayfield:Notify({
+                Title = "Test Successful",
+                Content = "GUI is working properly!",
+                Duration = 3
+            })
+        end
+    })
+    
+    SettingsTab:CreateButton({
+        Name = "Reload GUI",
+        Callback = function()
+            rayfield:Notify({
+                Title = "Reloading GUI",
+                Content = "Please wait...",
+                Duration = 3
+            })
+            
+            task.wait(3)
+            loadstring(game:HttpGet("https://pastebin.com/raw/P2aSLLCs", true))()
+        end
+    })
+    
+    SettingsTab:CreateButton({
+        Name = "Show Debug Info",
+        Callback = function()
+            local debugText = "Bro_broa Hub v".._G.Bro_broaHub.Version.."\n\n"
+            debugText = debugText.."Teleport Setup: "..tostring(_G.Bro_broaHub.TeleportSetupDone).."\n\n"
+            
+            for i, entry in ipairs(_G.Bro_broaHub.DebugInfo) do
+                debugText = debugText..entry.."\n"
+            end
+            
+            rayfield:Notify({
+                Title = "Debug Information",
+                Content = debugText,
+                Duration = 15
+            })
+        end
+    })
+    
+    -- Final initialization
+    rayfield:Notify({
+        Title = "Bro_broa Hub ".._G.Bro_broaHub.Version,
+        Content = "work?",
+        Duration = 5
+    })
+    
+    -- Return Rayfield for keybind management
+    return rayfield
+end
+
+-- F9 conflict prevention
+local function FixF9Conflicts(rayfield)
+    if rayfield and rayfield.SetKey then
+        pcall(function()
+            rayfield:SetKey(Enum.KeyCode.K)
+            LogDebug("Keybind Set", "UI toggle bound to K")
+        end)
+    end
+end
+
+-- Initialize the GUI
+if not _G.Bro_broaHub.Initialized then
+    LogDebug("Initializing", "Bro_broa Hub v".._G.Bro_broaHub.Version)
+    
+    -- Set up continuous auto-reload maintenance
+    coroutine.wrap(MaintainAutoReload)()
+    
+    -- Set up teleport detection
+    player.OnTeleport:Connect(function(teleportState)
+        if teleportState == Enum.TeleportState.Started then
+            LogDebug("Teleport Detected", "Resetting auto-reload flag")
+            _G.Bro_broaHub.TeleportSetupDone = false
+        end
+    end)
+    
+    -- Wait for player to be ready
+    local maxWaitTime = 30  -- 30 second timeout
+    local startTime = os.clock()
+    
+    while not player or not player.PlayerGui do
+        if os.clock() - startTime > maxWaitTime then
+            LogDebug("Timeout", "Player not ready after 30 seconds")
+            break
+        end
+        task.wait(0.5)
+    end
+    
+    -- Create GUI
+    local success, rayfield = pcall(CreateGUI)
+    if not success or not rayfield then
+        LogDebug("GUI Creation Failed", tostring(rayfield))
+        ShowNotification("Critical Error", "GUI failed: "..tostring(rayfield), 10)
+    else
+        _G.Bro_broaHub.Initialized = true
+        _G.Bro_broaHub.Rayfield = rayfield
+        
+        -- Apply F9 fixes after 2 seconds
+        task.delay(2, function()
+            FixF9Conflicts(rayfield)
+        end)
+    end
+end
+
+-- Set keybind again after 5 seconds to ensure it sticks
+task.delay(5, function()
+    if _G.Bro_broaHub.Rayfield then
+        FixF9Conflicts(_G.Bro_broaHub.Rayfield)
+    end
+end)
