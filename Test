@@ -179,9 +179,972 @@ local function CreateGUI()
     
     -- Tab
     local MainTab = window:CreateTab("Main", "home")
+    local PlayerTab = Window:CreateTab("Player", "user")
     local SettingsTab = window:CreateTab("Settings", "settings")    
+    local Bro_broaguiTab = Window:CreateTab("Bro_broa GUI", "flag")
+    local FeTab = Window:CreateTab("FE", "flag")
+    local TSBtab = Window:CreateTab("TSB", "flag")
+    local VLTab = Window:CreateTab("Volleyball Legends", "flag")
 
-    MainTab:CreateButton({
+    -- Enhanced Infinite Yield Button with error handling
+MainTab:CreateButton({
+   Name = "Infinite Yield FE",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Infinite Yield...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source', true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Infinite Yield loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Server hopper Button
+MainTab:CreateButton({
+   Name = "Server hopper",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Server hopper...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Server%20Hopper", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Server hopper loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Ping+FPS shower Button
+MainTab:CreateButton({
+   Name = "Ping+FPS shower",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Ping+FPS shower...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Ping%2BFPS%20shower", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Ping+FPS shower loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Use All Tools Button
+MainTab:CreateButton({
+   Name = "Use All Tools",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Use All Tools...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Use%20all%20tool", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Use All Tools loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Click to TP Tool Button
+MainTab:CreateButton({
+   Name = "Click to TP Tool(need backpack)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Click to TP Tool(need backpack)...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Click%20to%20tp%20tool", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Click to TP Tool(need backpack) loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Fling All Button
+MainTab:CreateButton({
+   Name = "Fling All (Need Hitbox)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Fling All...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Fling%20all", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Fling All loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced SUS Button
+MainTab:CreateButton({
+   Name = "SUS Script",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing SUS Script...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/SUS%20script", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "SUS Script loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced music play Button
+MainTab:CreateButton({
+   Name = "music play",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing music play...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Play%20music", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "music play loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced hint function with pcall error handling
+local function ShowHint(message)
+    local success, err = pcall(function()
+        local hint = Instance.new("Hint")
+        hint.Text = tostring(message)
+        hint.Parent = workspace
+        
+        -- Safely destroy hint after delay
+        task.delay(3, function()
+            pcall(function()
+                if hint and hint.Parent then
+                    hint:Destroy()
+                end
+            end)
+        end)
+    end)
+    
+    if not success then
+        warn(tostring(err))
+    end
+end
+
+-- Create text input box with your specifications
+local success, input = pcall(function()
+    return MainTab:CreateInput({
+        Name = "Enter Message(hint)",
+        PlaceholderText = "Type message and press Enter...",
+        RemoveTextAfterFocusLost = false,
+        MaxLength = 100000000,  -- Very high limit as requested
+        Callback = function(InputText)
+            if InputText ~= "" then
+                ShowHint(InputText)  -- Directly show input text as hint
+            end
+        end,
+    })
+end)
+
+-- Enhanced Fly Gui Button
+PlayerTab:CreateButton({
+   Name = "Fly Gui",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Fly Gui...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Fly%20gui", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Fly Gui loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Playerlist Gui Button
+PlayerTab:CreateButton({
+   Name = "Playerlist Gui",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Playerlist Gui...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Playerlist", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Playerlist Gui loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Walkfling Gui Button
+PlayerTab:CreateButton({
+   Name = "walkfling gui(need Hitbox)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing walkfling gui(need Hitbox)...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-TOUCH-FLING-30401", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "walkfling gui(need Hitbox)loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced esp players Button
+PlayerTab:CreateButton({
+   Name = "esp players",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing esp players...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Esp%20players", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "esp players loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced unesp players Button
+PlayerTab:CreateButton({
+   Name = "unesp players",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing unesp players...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/unesp", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "unesp players loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local noclipConnection = nil
+local currentNoclipState = false
+
+-- Safe collision update with pcall
+local function updateCollision(state)
+    pcall(function()
+        if not player or not player.Character then return end
+        
+        for _, part in ipairs(player.Character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                -- Backup original collision
+                if not part:FindFirstChild("OriginalCollision") then
+                    local backup = Instance.new("BoolValue")
+                    backup.Name = "OriginalCollision"
+                    backup.Value = part.CanCollide
+                    backup.Parent = part
+                end
+                
+                -- Apply new state
+                part.CanCollide = not state
+            end
+        end
+    end)
+end
+
+-- Protected noclip loop
+local function startNoclip()
+    pcall(function()
+        if noclipConnection then 
+            noclipConnection:Disconnect() 
+        end
+        
+        noclipConnection = RunService.Stepped:Connect(function()
+            if currentNoclipState then
+                updateCollision(true)
+            end
+        end)
+    end)
+end
+
+-- Create protected toggle
+local success, errorMsg = pcall(function()
+    local NoclipToggle = PlayerTab:CreateToggle({
+        Name = "Noclip",
+        CurrentValue = false,
+        Callback = function(value)
+            pcall(function()
+                currentNoclipState = value
+                if value then
+                    startNoclip()
+                    updateCollision(true)
+                else
+                    if noclipConnection then
+                        noclipConnection:Disconnect()
+                    end
+                    updateCollision(false)
+                end
+            end)
+        end
+    })
+end)
+
+if not success then
+    warn("Noclip toggle creation failed:", errorMsg)
+end
+
+-- Auto-reconnect with protection
+player.CharacterAdded:Connect(function()
+    pcall(function()
+        if currentNoclipState then
+            task.wait(1) -- Wait for character load
+            updateCollision(true)
+            startNoclip()
+        end
+    end)
+end)
+
+-- Ultimate Speed Controller (Auto-Adaptive)
+local SpeedController = {
+    CustomSpeed = 16,
+    GameDefault = 16,
+    UseCustom = false,
+    IsLocked = true, -- Default locked state
+    InputElement = nil,
+    HumanoidRef = nil,
+    EventHandlers = {}
+}
+
+-- Safely updates humanoid reference
+local function RefreshHumanoid()
+    pcall(function()
+        local character = Players.LocalPlayer.Character
+        SpeedController.HumanoidRef = character and character:FindFirstChildOfClass("Humanoid")
+        if SpeedController.HumanoidRef and not SpeedController.UseCustom then
+            SpeedController.GameDefault = SpeedController.HumanoidRef.WalkSpeed
+        end
+    end)
+end
+
+-- Smart speed application with auto-correction
+local function EnforceSpeed()
+    pcall(function()
+        if not SpeedController.HumanoidRef or not SpeedController.HumanoidRef.Parent then
+            RefreshHumanoid()
+            if not SpeedController.HumanoidRef then return end
+        end
+        
+        -- Apply speed based on current mode
+        SpeedController.HumanoidRef.WalkSpeed = 
+            SpeedController.UseCustom and SpeedController.CustomSpeed 
+            or SpeedController.GameDefault
+    end)
+end
+
+-- Create UI with live feedback
+SpeedController.InputElement = PlayerTab:CreateInput({
+    Name = "Speed Control",
+    PlaceholderText = "Default: "..SpeedController.GameDefault,
+    ClearTextOnFocus = true,
+    Numeric = true,
+    Callback = function(input)
+        SpeedController.UseCustom = input ~= ""
+        SpeedController.CustomSpeed = tonumber(input) or SpeedController.GameDefault
+        
+        -- Update UI display
+        SpeedController.InputElement:Update({
+            PlaceholderText = SpeedController.UseCustom 
+                and "Custom: "..SpeedController.CustomSpeed
+                or "Default: "..SpeedController.GameDefault
+        })
+        EnforceSpeed()
+    end
+})
+
+-- Real-time default speed monitoring
+SpeedController.EventHandlers.SpeedWatcher = RunService.Heartbeat:Connect(function()
+    if SpeedController.HumanoidRef and not SpeedController.UseCustom then
+        -- Detect game default speed changes
+        if SpeedController.HumanoidRef.WalkSpeed ~= SpeedController.GameDefault then
+            SpeedController.GameDefault = SpeedController.HumanoidRef.WalkSpeed
+            SpeedController.InputElement:Update({
+                PlaceholderText = "Default: "..SpeedController.GameDefault
+            })
+        end
+    end
+    EnforceSpeed() -- Continuous enforcement
+end)
+
+-- Character respawn handler
+SpeedController.EventHandlers.CharAdded = Players.LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.3) -- Allow full character load
+    RefreshHumanoid()
+    EnforceSpeed()
+end)
+
+-- Initialization
+task.spawn(function()
+    task.wait(1) -- Wait for game initialization
+    RefreshHumanoid()
+    EnforceSpeed()
+end)
+
+-- Cleanup function
+function SpeedController.Destroy()
+    for _, handler in pairs(SpeedController.EventHandlers) do
+        handler:Disconnect()
+    end
+    pcall(function()
+        if SpeedController.HumanoidRef then
+            SpeedController.HumanoidRef.WalkSpeed = SpeedController.GameDefault
+        end
+    end)
+end
+
+-- add infjump functions
+local InfJumpEnabled = false
+
+-- use pcall make infjump function safe
+local function SafeInfJump()
+    pcall(function()
+        game:GetService("UserInputService").JumpRequest:Connect(function()
+            if InfJumpEnabled and game.Players.LocalPlayer.Character then
+                local Humanoid = game.Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if Humanoid and Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                    Humanoid:ChangeState("Jumping")
+                end
+            end
+        end)
+    end)
+end
+
+-- restart infjump function
+SafeInfJump()
+
+-- create infjump toggle（use p all make more safe）
+PlayerTab:CreateToggle({
+    Name = "infjump",
+    CurrentValue = false,
+    Flag = "InfJumpToggle",
+    Callback = function(Value)
+        pcall(function()
+            InfJumpEnabled = Value
+            Rayfield:Notify({
+                Title = "infjump " .. (Value and "open" or "close"),
+                Content = Value and "Already open" or "Already close",
+                Duration = 1.5,
+                Image = 4483362458,
+            })
+        end)
+    end,
+})
+
+-- Jump Power Control with safety checks
+PlayerTab:CreateSlider({
+   Name = "Jump Power",
+   Range = {50, 500},
+   Increment = 5,
+   Suffix = "power",
+   CurrentValue = 50,
+   Callback = function(Value)
+      pcall(function()
+         local character = game:GetService("Players").LocalPlayer.Character
+         if character and character:FindFirstChildOfClass("Humanoid") then
+            character.Humanoid.JumpPower = Value
+         end
+      end)
+   end
+})
+
+-- Key System Button
+SettingsTab:CreateButton({
+   Name = "Get Key Info",
+   Callback = function()
+      Rayfield:Notify({
+         Title = "Bro_broa Hub Key",
+         Content = "Join our Discord: discord.gg/Arftune3Ab",
+         Duration = 5,
+         Image = 4483362458
+      })
+   end
+})
+
+-- Complete Antistopgame Button
+SettingsTab:CreateButton({
+   Name = "Antistopgame Protection",
+   CurrentValue = false,
+   Callback = function(Value)
+      if Value then
+         local loadNotify = Rayfield:Notify({
+            Title = "Loading",
+            Content = "Enabling Antistopgame...",
+            Duration = math.huge,
+            Image = 4483362458
+         })
+         
+         local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antistopgame", true))()
+         end)
+         
+         loadNotify:Destroy()
+         
+         if success then
+            Rayfield:Notify({
+               Title = "Enabled",
+               Content = "Antistopgame protection active!",
+               Duration = 3,
+               Image = 4483362458
+            })
+         else
+            Rayfield:Notify({
+               Title = "Error",
+               Content = "Failed: "..err,
+               Duration = 5,
+               Image = 4483362458
+            })
+         end
+      else
+         Rayfield:Notify({
+            Title = "Disabled",
+            Content = "Antistopgame protection done",
+            Duration = 2,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced antidisconnect Button
+SettingsTab:CreateButton({
+   Name = "antidisconnect",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing antidisconnect...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antidisconnect", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "antidisconnect loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Antiafk Button
+SettingsTab:CreateButton({
+   Name = "antiafk",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing antiafk...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antiafk", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "antiafk loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced FPS boost Button
+SettingsTab:CreateButton({
+   Name = "FPS BOOST",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing FPS boost...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FPS%20boost", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "FPS boost loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced Shiftlock Button
+SettingsTab:CreateButton({
+   Name = "Shiftlock",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Shiftlock...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Shiftlock-For-Mobile-Script-36530", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Shiftlock loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced safechat Button
+SettingsTab:CreateButton({
+   Name = "safechat",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing safechat...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/safechat", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "safechat loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+    SettingsTab:CreateButton({
         Name = "Server Hop",
         Description = "Find a new server",
         Callback = function()
@@ -194,36 +1157,11 @@ local function CreateGUI()
         end
     })
     
-    MainTab:CreateButton({
+    SettingsTab:CreateButton({
         Name = "Rejoin Server",
         Description = "Reconnect to current server",
         Callback = function()
             teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
-        end
-    })
-    
-    MainTab:CreateButton({
-        Name = "Test Button",
-        Callback = function()
-            rayfield:Notify({
-                Title = "Test Successful",
-                Content = "GUI is working properly!",
-                Duration = 3
-            })
-        end
-    })
-    
-    SettingsTab:CreateButton({
-        Name = "Reload GUI",
-        Callback = function()
-            rayfield:Notify({
-                Title = "Reloading GUI",
-                Content = "Please wait...",
-                Duration = 3
-            })
-            
-            task.wait(3)
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Test", true))()
         end
     })
     
@@ -244,11 +1182,412 @@ local function CreateGUI()
             })
         end
     })
-    
+
+    -- Enhanced leave game Button
+SettingsTab:CreateButton({
+   Name = "leave game",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing leave game...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+        game:shutdown()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "leave game loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- UI Customization
+SettingsTab:CreateDropdown({
+   Name = "UI Theme Selector",
+   Options = {"Default", "Dark", "Light", "Ocean", "Amethyst"},
+   CurrentOption = "DarkBlue",
+   Callback = function(Option)
+      Window:SetTheme(Option)
+      Rayfield:Notify({
+         Title = "Theme Changed",
+         Content = "UI theme set to: "..Option,
+         Duration = 2,
+         Image = 4483362458
+      })
+   end
+})
+
+-- Bro_broa GUI
+Bro_broaguiTab:CreateButton({
+   Name = "Bro_broa GUI 1.75(bro_broa)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Bro_broa GUI 1.75(bro_broa)...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Bro_broa GUI 1.75(bro_broa) loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Bro_broa GUI
+Bro_broaguiTab:CreateButton({
+   Name = "Bro_broa GUI executor",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Bro_broa GUI executor...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Bro_broa GUI executor loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- FE changes
+FeTab:CreateButton({
+   Name = "FE saitama",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing FE saitama...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FE%20saitama", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "FE saitama loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- FE changes
+FeTab:CreateButton({
+   Name = "FE dance hub(maybe only music)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing FE dance hub...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FE%20dance%20hub", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "FE dance hub loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- TSB Features
+TSBtab:CreateButton({
+   Name = "Phantasm TSB",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Phantasm...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/secretisadev/Phantasm/refs/heads/main/Games/TSB.lua", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Phantasm loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- TSB Features
+TSBtab:CreateButton({
+   Name = "TSB",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing TSB...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/yes1nt/yes/refs/heads/main/Void%20Reaper%20Obfuscated.txt", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "TSB loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- TSB Features
+TSBtab:CreateButton({
+   Name = "trash man",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing trash man...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/yes1nt/yes/refs/heads/main/Trashcan%20Man", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "trash man loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- TSB Features
+TSBtab:CreateButton({
+   Name = "Show death contour",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Show death contour...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://raw.githubusercontent.com/louismich4el/ItsLouisPlayz-Scripts/main/TSB%20Death%20Counter%20Identifier.lua", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Show death contour loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced VL Button with error handling
+VLTab:CreateButton({
+   Name = "Sigma hub",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Sigma hub...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://rawscripts.net/raw/Volleyball-Legends-SigmaHub-Get-Any-Style-Inf-Spin*box-Changer-Auto-Play-OP-34977", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Sigma hub loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
+-- Enhanced VL Button with error handling
+VLTab:CreateButton({
+   Name = "Xenith hub(need key)",
+   Callback = function()
+      local loadNotify = Rayfield:Notify({
+         Title = "Loading",
+         Content = "Initializing Xenith hub(need key)...",
+         Duration = math.huge,
+         Image = 4483362458
+      })
+      
+      local success, err = pcall(function()
+         loadstring(game:HttpGet("https://rawscripts.net/raw/UPD-Volleyball-Legends-Polaris-Hub-20-More-Features-42345", true))()
+      end)
+      
+      loadNotify:Destroy()
+      
+      if success then
+         Rayfield:Notify({
+            Title = "Success",
+            Content = "Xenith hub(need key) loaded!",
+            Duration = 3,
+            Image = 4483362458
+         })
+      else
+         Rayfield:Notify({
+            Title = "Error",
+            Content = "Failed: "..err,
+            Duration = 5,
+            Image = 4483362458
+         })
+      end
+   end
+})
+
     -- Final initialization
     rayfield:Notify({
         Title = "Bro_broa Hub ".._G.Bro_broaHub.Version,
-        Content = "work?",
+        Content = "Done",
         Duration = 5
     })
     
