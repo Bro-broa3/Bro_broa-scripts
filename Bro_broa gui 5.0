@@ -1080,7 +1080,7 @@ local function CreateGUI()
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-Shiftlock-For-Mobile-Script-36530", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Shiftlock", true))()
             end)
             
             loadNotify:Destroy()
