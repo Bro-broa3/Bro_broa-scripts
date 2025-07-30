@@ -1581,7 +1581,7 @@ local function CreateGUI()
     -- Final initialization
     Rayfield:Notify({
         Title = "Bro_broa Hub ".._G.Bro_broaHub.Version,
-        Content = "Done",
+        Content = "Creator by bro_broa3",
         Duration = 5
     })
     
