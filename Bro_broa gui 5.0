@@ -134,7 +134,7 @@ end
 -- Universal reload function
 local function SetupAutoReload()
     local reloadScript = [[
-        wait(2)
+        wait(0.01)
         loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.0", true))()
     ]]
     
