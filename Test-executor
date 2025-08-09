@@ -1,4 +1,4 @@
--- Creator: bro_broa3
+-- Creator: bro_broa
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BroBroaGUI"
 ScreenGui.Parent = game.CoreGui
@@ -52,7 +52,7 @@ local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Size = UDim2.new(0.7, 0, 1, 0)
 Title.BackgroundTransparency = 1
-Title.Text = "Bro_broa GUI 6.0"
+Title.Text = "Bro_broa executor 2.0"
 Title.TextColor3 = Color3.fromRGB(220, 220, 220)
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Position = UDim2.new(0, 15, 0, 0)
@@ -501,7 +501,7 @@ MainFrame.Parent = ScreenGui
 
 -- Script Library
 local ScriptLibrary = {
-    ["Bro_broa GUI"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.0"))()',
+    ["Bro_broa GUI 5.0"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.0"))()',
     ["Infinite Yield"] = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()'
 }
 
