@@ -317,7 +317,7 @@ TemplateBorder.Parent = Template
 
 local ScriptName = Instance.new("TextLabel")
 ScriptName.Name = "ScriptName"
-ScriptName.Size = UDim2.new(0.5, 0, 1, 0)
+ScriptName.Size = UDim2.new(0.4, 0, 1, 0) -- Adjusted to make room for buttons
 ScriptName.BackgroundTransparency = 1
 ScriptName.Text = "Script Name"
 ScriptName.TextColor3 = Color3.new(0.8, 0.8, 0.8)
@@ -325,10 +325,25 @@ ScriptName.TextXAlignment = Enum.TextXAlignment.Left
 ScriptName.Position = UDim2.new(0, 15, 0, 0)
 ScriptName.Font = Enum.Font.Gotham
 
+-- ADDED: Rename button for script entries
+local RenameButton = Instance.new("TextButton")
+RenameButton.Name = "RenameButton"
+RenameButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+RenameButton.Position = UDim2.new(0.4, 5, 0.15, 0)
+RenameButton.BackgroundColor3 = Color3.fromRGB(150, 150, 100)
+RenameButton.Text = "Rename"
+RenameButton.TextColor3 = Color3.new(1, 1, 1)
+RenameButton.Font = Enum.Font.Gotham
+RenameButton.TextSize = 12
+
+local RenameCorner = Instance.new("UICorner")
+RenameCorner.CornerRadius = UDim.new(0, 6)
+RenameCorner.Parent = RenameButton
+
 local CopyButton = Instance.new("TextButton")
 CopyButton.Name = "CopyButton"
-CopyButton.Size = UDim2.new(0.15, 0, 0.7, 0)
-CopyButton.Position = UDim2.new(0.5, 5, 0.15, 0)
+CopyButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+CopyButton.Position = UDim2.new(0.51, 5, 0.15, 0)
 CopyButton.BackgroundColor3 = Color3.fromRGB(120, 120, 200)
 CopyButton.Text = "Copy"
 CopyButton.TextColor3 = Color3.new(1, 1, 1)
@@ -341,8 +356,8 @@ CopyCorner.Parent = CopyButton
 
 local LoadButton = Instance.new("TextButton")
 LoadButton.Name = "LoadButton"
-LoadButton.Size = UDim2.new(0.15, 0, 0.7, 0)
-LoadButton.Position = UDim2.new(0.67, 5, 0.15, 0)
+LoadButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+LoadButton.Position = UDim2.new(0.62, 5, 0.15, 0)
 LoadButton.BackgroundColor3 = Color3.fromRGB(70, 150, 220)
 LoadButton.Text = "Load"
 LoadButton.TextColor3 = Color3.new(1, 1, 1)
@@ -355,8 +370,8 @@ LoadCorner.Parent = LoadButton
 
 local DeleteButton = Instance.new("TextButton")
 DeleteButton.Name = "DeleteButton"
-DeleteButton.Size = UDim2.new(0.15, 0, 0.7, 0)
-DeleteButton.Position = UDim2.new(0.84, 5, 0.15, 0)
+DeleteButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+DeleteButton.Position = UDim2.new(0.73, 5, 0.15, 0)
 DeleteButton.BackgroundColor3 = Color3.fromRGB(180, 70, 70)
 DeleteButton.Text = "Delete"
 DeleteButton.TextColor3 = Color3.new(1, 1, 1)
@@ -466,6 +481,7 @@ MinimizedBorder.Parent = MinimizedFrame
 MinimizedFrame.Parent = ScreenGui
 Template.Parent = ScreenGui
 ScriptName.Parent = Template
+RenameButton.Parent = Template
 CopyButton.Parent = Template
 LoadButton.Parent = Template
 DeleteButton.Parent = Template
@@ -501,7 +517,7 @@ MainFrame.Parent = ScreenGui
 
 -- Script Library
 local ScriptLibrary = {
-    ["Bro_broa GUI 5.0"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.0"))()',
+    ["Bro_broa GUI 5.0"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.1"))()',
     ["Infinite Yield"] = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()'
 }
 
@@ -558,6 +574,84 @@ local function CreateScriptEntry(name, content)
         newEntry.CopyButton.Text = "Copied!"
         task.wait(1)
         newEntry.CopyButton.Text = "Copy"
+    end)
+    
+    -- ADDED: Rename button functionality
+    newEntry.RenameButton.MouseButton1Click:Connect(function()
+        local oldName = newEntry.Name
+        local textBox = Instance.new("TextBox")
+        textBox.Size = newEntry.ScriptName.Size
+        textBox.Position = newEntry.ScriptName.Position
+        textBox.BackgroundTransparency = 1
+        textBox.Text = oldName
+        textBox.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+        textBox.Font = newEntry.ScriptName.Font
+        textBox.TextSize = newEntry.ScriptName.TextSize
+        textBox.TextXAlignment = Enum.TextXAlignment.Left
+        textBox.Parent = newEntry
+        newEntry.ScriptName:Destroy()
+        
+        textBox:CaptureFocus()
+        
+        local function rename()
+            local newName = textBox.Text
+            if newName ~= "" and newName ~= oldName then
+                -- Update script library
+                ScriptLibrary[newName] = ScriptLibrary[oldName]
+                ScriptLibrary[oldName] = nil
+                
+                -- Update UI
+                newEntry.Name = newName
+                local label = Instance.new("TextLabel")
+                label.Name = "ScriptName"
+                label.Size = textBox.Size
+                label.Position = textBox.Position
+                label.BackgroundTransparency = 1
+                label.Text = newName
+                label.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Font = textBox.Font
+                label.TextSize = textBox.TextSize
+                label.Parent = newEntry
+                textBox:Destroy()
+                
+                SaveLibrary()
+            else
+                -- Restore original name label
+                local label = Instance.new("TextLabel")
+                label.Name = "ScriptName"
+                label.Size = textBox.Size
+                label.Position = textBox.Position
+                label.BackgroundTransparency = 1
+                label.Text = oldName
+                label.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Font = textBox.Font
+                label.TextSize = textBox.TextSize
+                label.Parent = newEntry
+                textBox:Destroy()
+            end
+        end
+        
+        textBox.FocusLost:Connect(function(enterPressed)
+            if enterPressed then
+                rename()
+            else
+                -- If clicked away, cancel rename
+                local label = Instance.new("TextLabel")
+                label.Name = "ScriptName"
+                label.Size = textBox.Size
+                label.Position = textBox.Position
+                label.BackgroundTransparency = 1
+                label.Text = oldName
+                label.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+                label.TextXAlignment = Enum.TextXAlignment.Left
+                label.Font = textBox.Font
+                label.TextSize = textBox.TextSize
+                label.Parent = newEntry
+                textBox:Destroy()
+            end
+        end)
     end)
     
     newEntry.DeleteButton.MouseButton1Click:Connect(function()
