@@ -1,4 +1,4 @@
--- Bro_broa Hub v5.0
+-- Bro_broa Hub v5.1
 local teleportService = game:GetService("TeleportService")
 local players = game:GetService("Players")
 local httpService = game:GetService("HttpService")
@@ -8,7 +8,7 @@ local runService = game:GetService("RunService")
 -- Global state management
 if not _G.Bro_broaHub then
     _G.Bro_broaHub = {
-        Version = "5.0",
+        Version = "5.1",
         LastTeleport = 0,
         DebugInfo = {},
         TeleportSetupDone = false
@@ -1265,17 +1265,17 @@ local function CreateGUI()
 
     -- Bro_broa GUI
     Bro_broaguiTab:CreateButton({
-        Name = "Bro_broa GUI executor",
+        Name = "Bro_broa executor2.0",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
-                Content = "Initializing Bro_broa GUI executor...",
+                Content = "Initializing Bro_broa executor2.0...",
                 Duration = math.huge,
                 Image = 4483362458
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.0", true))()
             end)
             
             loadNotify:Destroy()
@@ -1283,7 +1283,7 @@ local function CreateGUI()
             if success then
                 Rayfield:Notify({
                     Title = "Success",
-                    Content = "Bro_broa GUI executor loaded!",
+                    Content = "Bro_broa executor2.0 loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
