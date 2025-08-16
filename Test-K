@@ -1,4 +1,4 @@
--- Bro_broa Hub v5.1
+-- Bro_broa Hub v6.0
 local teleportService = game:GetService("TeleportService")
 local players = game:GetService("Players")
 local httpService = game:GetService("HttpService")
@@ -8,7 +8,7 @@ local runService = game:GetService("RunService")
 -- Global state management
 if not _G.Bro_broaHub then
     _G.Bro_broaHub = {
-        Version = "5.1",
+        Version = "6.0",
         LastTeleport = 0,
         DebugInfo = {},
         TeleportSetupDone = false
@@ -135,7 +135,7 @@ end
 local function SetupAutoReload()
     local reloadScript = [[
         wait(0.01)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.1", true))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%206.0", true))()
     ]]
     
     if queue_on_teleport then
@@ -242,6 +242,41 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "Server hopper loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    -- Enhanced PrivateServerJoiner Button
+    MainTab:CreateButton({
+        Name = "PrivateServerJoiner",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing PrivateServerJoiner...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/PrivateServerJoiner", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "PrivateServerJoiner loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
