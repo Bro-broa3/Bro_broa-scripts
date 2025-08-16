@@ -1,0 +1,183 @@
+-- Roblox Private Server Joiner GUI (Fixed Teleport)
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+
+-- GUI Creation
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PrivateServerJoiner"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 450, 0, 220)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -110)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TitleBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(0, 200, 1, 0)
+Title.Position = UDim2.new(0, 10, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Private Server Joiner"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Font = Enum.Font.GothamMedium
+Title.TextSize = 14
+Title.Parent = TitleBar
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 30, 1, 0)
+CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+CloseButton.Text = "X"
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 14
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Parent = TitleBar
+
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0, 30, 1, 0)
+MinimizeButton.Position = UDim2.new(1, -60, 0, 0)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+MinimizeButton.Text = "-"
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 14
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Parent = TitleBar
+
+local InputFrame = Instance.new("Frame")
+InputFrame.Name = "InputFrame"
+InputFrame.Size = UDim2.new(1, -40, 0, 40)
+InputFrame.Position = UDim2.new(0, 20, 0, 50)
+InputFrame.BackgroundTransparency = 1
+InputFrame.Parent = MainFrame
+
+local TextBoxContainer = Instance.new("Frame")
+TextBoxContainer.Name = "TextBoxContainer"
+TextBoxContainer.Size = UDim2.new(1, 0, 1, 0)
+TextBoxContainer.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TextBoxContainer.Parent = InputFrame
+
+local TextBox = Instance.new("TextBox")
+TextBox.Name = "URLBox"
+TextBox.Size = UDim2.new(1, -20, 1, -10)
+TextBox.Position = UDim2.new(0, 10, 0, 5)
+TextBox.BackgroundTransparency = 1
+TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TextBox.PlaceholderText = "Enter private server link to join"
+TextBox.Text = ""
+TextBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
+TextBox.ClearTextOnFocus = false
+TextBox.Font = Enum.Font.Gotham
+TextBox.TextSize = 14
+TextBox.TextXAlignment = Enum.TextXAlignment.Left
+TextBox.TextYAlignment = Enum.TextYAlignment.Center
+TextBox.TextWrapped = false
+TextBox.Parent = TextBoxContainer
+
+local JoinButton = Instance.new("TextButton")
+JoinButton.Name = "JoinButton"
+JoinButton.Size = UDim2.new(0, 120, 0, 40)
+JoinButton.Position = UDim2.new(0.5, -60, 0, 140)
+JoinButton.BackgroundColor3 = Color3.fromRGB(80, 160, 80)
+JoinButton.Text = "JOIN SERVER"
+JoinButton.Font = Enum.Font.GothamBold
+JoinButton.TextSize = 14
+JoinButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+JoinButton.Parent = MainFrame
+
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, -40, 0, 20)
+StatusLabel.Position = UDim2.new(0, 20, 0, 100)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Enter a private server URL above"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 12
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
+StatusLabel.Parent = MainFrame
+
+-- GUI Functionality
+local minimized = false
+local originalSize = MainFrame.Size
+
+local function CloseGUI()
+    ScreenGui:Destroy()
+end
+
+local function ToggleMinimize()
+    minimized = not minimized
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad)
+    
+    if minimized then
+        TweenService:Create(MainFrame, tweenInfo, {Size = UDim2.new(0, 450, 0, 30)}):Play()
+        MinimizeButton.Text = "+"
+    else
+        TweenService:Create(MainFrame, tweenInfo, {Size = originalSize}):Play()
+        MinimizeButton.Text = "-"
+    end
+end
+
+-- FIXED TELEPORT FUNCTION
+local function JoinPrivateServer()
+    local url = TextBox.Text:gsub("%s+", "")
+    StatusLabel.Text = "Processing..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    
+    -- FIXED URL PATTERN
+    local pattern = "https?://www%.roblox%.com/games/(%d+)/?[^?]*%?privateServerLinkCode=([%w_-]+)"
+    local placeId, serverCode = url:match(pattern)
+    
+    if placeId and serverCode then
+        StatusLabel.Text = "Joining server..."
+        StatusLabel.TextColor3 = Color3.fromRGB(0, 200, 255)
+        
+        -- USE THIS TELEPORT METHOD
+        local teleportData = {
+            reservedServerAccessCode = serverCode
+        }
+        
+        local success, errorMsg = pcall(function()
+            TeleportService:Teleport(
+                tonumber(placeId),
+                Players.LocalPlayer,
+                teleportData
+            )
+        end)
+        
+        if not success then
+            StatusLabel.Text = "Error: " .. tostring(errorMsg)
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            warn("[TELEPORT ERROR] " .. tostring(errorMsg))
+        end
+    else
+        StatusLabel.Text = "Invalid private server URL"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        warn("[ERROR] Invalid private server URL format")
+    end
+end
+
+-- Connect events
+CloseButton.MouseButton1Click:Connect(CloseGUI)
+MinimizeButton.MouseButton1Click:Connect(ToggleMinimize)
+JoinButton.MouseButton1Click:Connect(JoinPrivateServer)
+
+-- Add GUI
+ScreenGui.Parent = game:GetService("CoreGui")
+MainFrame.Parent = ScreenGui
+
+TextBox:CaptureFocus()
