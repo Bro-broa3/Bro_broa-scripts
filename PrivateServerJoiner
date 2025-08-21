@@ -132,15 +132,30 @@ local function ToggleMinimize()
     end
 end
 
--- FIXED TELEPORT FUNCTION
+-- FIXED TELEPORT FUNCTION WITH ENHANCED URL PATTERNS
 local function JoinPrivateServer()
     local url = TextBox.Text:gsub("%s+", "")
     StatusLabel.Text = "Processing..."
     StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
     
-    -- FIXED URL PATTERN
-    local pattern = "https?://www%.roblox%.com/games/(%d+)/?[^?]*%?privateServerLinkCode=([%w_-]+)"
-    local placeId, serverCode = url:match(pattern)
+    -- ENHANCED URL PATTERNS (INCLUDING SHARE LINK SUPPORT)
+    local patterns = {
+        -- Standard private server link
+        "https?://www%.roblox%.com/games/(%d+)/?[^?]*%?privateServerLinkCode=([%w_-]+)",
+        -- Share link format (added based on user request)
+        "https?://www%.roblox%.com/share?code=([%w]+)&type=Server.*gameId=(%d+)",
+        "https?://www%.roblox%.com/share?code=([%w]+).*gameId=(%d+)",
+        -- Mobile/alternative formats
+        "https?://roblox%.com/games/(%d+)/?.*%?privateServerLinkCode=([%w_-]+)",
+        "privateServerLinkCode=([%w_-]+).*games/(%d+)"
+    }
+    
+    local placeId, serverCode
+    
+    for _, pattern in ipairs(patterns) do
+        placeId, serverCode = url:match(pattern)
+        if placeId and serverCode then break end
+    end
     
     if placeId and serverCode then
         StatusLabel.Text = "Joining server..."
@@ -160,7 +175,7 @@ local function JoinPrivateServer()
         end)
         
         if not success then
-            StatusLabel.Text = "Error: " .. tostring(errorMsg)
+            StatusLabel.Text = "Error: " .. tostring(errorMsg):sub(1, 50)
             StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
             warn("[TELEPORT ERROR] " .. tostring(errorMsg))
         end
