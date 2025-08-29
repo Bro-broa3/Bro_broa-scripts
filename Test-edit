@@ -1,159 +1,466 @@
--- Rayfield UI Setup
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Mobile Controls: prevent touchpad from rotating camera while still allowing camera when not dragging
+-- Features:
+--  - Two approaches: Camera lock (Scriptable) or Input-filtering (keep Custom camera)
+--  - Jump with grounded check + coyote time + cooldown
+--  - Proper reset on death/respawn
+--  - Complete, self-contained LocalScript
 
-local Window = Rayfield:CreateWindow({
-    Name = "volleyball legendary",
-    LoadingTitle = "script",
-    LoadingSubtitle = "by bro_broa",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "BallHitboxMod",
-        FileName = "Config"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "noinvitelink",
-        RememberJoins = true
-    },
-    KeySystem = false,
-})
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
--- Create the main tab
-local MainTab = Window:CreateTab("Main", 4483362458) -- You can change the icon ID if needed
+local player = Players.LocalPlayer
 
--- Variables
-local hitboxEnabled = false
-local targetSize = 100
-local originalSizes = {}
-local activeConnections = {}
+-- CONFIG
+local USE_CAMERA_LOCK = false
+-- If USE_CAMERA_LOCK = true: script will temporarily set CameraType = Scriptable while dragging touchpad.
+-- If USE_CAMERA_LOCK = false: script will keep CameraType as Custom and instead filter input so touchpad drags do not control the camera.
 
--- Main function to modify ball hitboxes
-local function modifyBallHitboxes()
-    -- Clear previous connections
-    for _, connection in pairs(activeConnections) do
-        connection:Disconnect()
-    end
-    activeConnections = {}
-    
-    if not hitboxEnabled then
-        -- Restore original sizes if disabling
-        for part, originalSize in pairs(originalSizes) do
-            if part and part.Parent then
-                pcall(function()
-                    part.Size = originalSize
-                    part.Transparency = 0
-                    part.Color = Color3.fromRGB(255, 255, 255)
-                    part.Material = Enum.Material.Plastic
-                end)
-            end
-        end
-        originalSizes = {}
+-- UI creation (same as earlier)
+local function createGui()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "MobileControls"
+    screenGui.Parent = player:WaitForChild("PlayerGui")
+    screenGui.ResetOnSpawn = false
+
+    local controlFrame = Instance.new("Frame")
+    controlFrame.Name = "ControlFrame"
+    controlFrame.Size = UDim2.new(1,0,1,0)
+    controlFrame.BackgroundTransparency = 1
+    controlFrame.Parent = screenGui
+
+    local touchpad = Instance.new("Frame")
+    touchpad.Name = "Touchpad"
+    touchpad.Size = UDim2.new(0.3,0,0.3,0)
+    touchpad.Position = UDim2.new(0,20,0.7,-20)
+    touchpad.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    touchpad.BackgroundTransparency = 0.5
+    touchpad.BorderSizePixel = 0
+    touchpad.Parent = controlFrame
+
+    local touchpadCorner = Instance.new("UICorner")
+    touchpadCorner.CornerRadius = UDim.new(0.5,0)
+    touchpadCorner.Parent = touchpad
+
+    local thumb = Instance.new("Frame")
+    thumb.Name = "Thumb"
+    thumb.Size = UDim2.new(0.3,0,0.3,0)
+    thumb.Position = UDim2.new(0.35,0,0.35,0)
+    thumb.BackgroundColor3 = Color3.fromRGB(100,100,100)
+    thumb.BackgroundTransparency = 0.7
+    thumb.BorderSizePixel = 0
+    thumb.Visible = false
+    thumb.Parent = touchpad
+
+    local thumbCorner = Instance.new("UICorner")
+    thumbCorner.CornerRadius = UDim.new(0.5,0)
+    thumbCorner.Parent = thumb
+
+    local jumpButton = Instance.new("TextButton")
+    jumpButton.Name = "JumpButton"
+    jumpButton.Size = UDim2.new(0.15,0,0.15,0)
+    jumpButton.Position = UDim2.new(0.85,-20,0.85,-20)
+    jumpButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    jumpButton.BackgroundTransparency = 0.5
+    jumpButton.Text = "Jump"
+    jumpButton.TextColor3 = Color3.fromRGB(255,255,255)
+    jumpButton.TextScaled = true
+    jumpButton.BorderSizePixel = 0
+    jumpButton.Parent = controlFrame
+
+    local jbCorner = Instance.new("UICorner")
+    jbCorner.CornerRadius = UDim.new(0.5,0)
+    jbCorner.Parent = jumpButton
+
+    return screenGui, controlFrame, touchpad, thumb, jumpButton
+end
+
+local screenGui, controlFrame, touchpad, thumb, jumpButton = createGui()
+
+-- Character references
+local function getCharacterRefs()
+    local char = player.Character
+    if not char then return nil end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    return char, hum, root
+end
+
+local character, humanoid, rootPart = getCharacterRefs()
+if not (character and humanoid and rootPart) then
+    character = player.Character or player.CharacterAdded:Wait()
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+end
+
+-- State variables
+local moveDirection = Vector2.new(0,0)
+local isMoving = false
+local currentTouch = nil -- InputObject controlling the touchpad
+local touchStartPosition = nil
+local isControllingCamera = true -- when true, external input is controlling camera (right mouse, touch outside)
+local originalCameraType = nil
+
+-- If using input filtering (not camera lock), we need to track which input should be ignored by the camera
+-- We'll store a set of pointer ids / mouse buttons that are "owned" by touchpad drag.
+local ownedPointerIds = {} -- key = input.UserInputType + input.UserInputState + input.Position? use InputObject as key
+
+-- Jump variables
+local lastGroundedTime = 0
+local COYOTE_TIME = 0.15
+local JUMP_COOLDOWN = 0.1
+local lastJumpTime = 0
+
+-- Utility clamp
+local function clamp(x,a,b) if x<a then return a end if x>b then return b end return x end
+
+-- Grounded check (state + raycast)
+local function updateGrounded()
+    if not humanoid or not rootPart then return end
+    local state = humanoid:GetState()
+    local now = tick()
+    if state == Enum.HumanoidStateType.Running
+    or state == Enum.HumanoidStateType.RunningNoPhysics
+    or state == Enum.HumanoidStateType.Landed
+    or state == Enum.HumanoidStateType.GettingUp
+    then
+        lastGroundedTime = now
         return
     end
-    
-    -- Function to process a ball part
-    local function processPart(part)
-        if not originalSizes[part] then
-            originalSizes[part] = part.Size
-        end
-        
-        pcall(function()
-            part.Size = Vector3.new(targetSize, targetSize, targetSize)
-            part.Transparency = 0.5
-            part.Color = Color3.fromRGB(255, 0, 0)
-            part.Material = Enum.Material.Neon
-            part.CanCollide = false
-        end)
+    -- raycast fallback
+    local origin = rootPart.Position
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {character}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.IgnoreWater = true
+    local ray = workspace:Raycast(origin, Vector3.new(0,-2.5,0), params)
+    if ray and ray.Instance then
+        lastGroundedTime = now
     end
-    
-    -- Function to process a ball model
-    local function processBall(ball)
-        for _, descendant in pairs(ball:GetDescendants()) do
-            if descendant:IsA("BasePart") then
-                processPart(descendant)
+end
+
+local function isAllowedToJump()
+    local now = tick()
+    return (now - lastGroundedTime) <= COYOTE_TIME and (now - lastJumpTime) >= JUMP_COOLDOWN
+end
+
+-- Movement reset
+local function resetMovementState()
+    moveDirection = Vector2.new(0,0)
+    isMoving = false
+    currentTouch = nil
+    touchStartPosition = nil
+    thumb.Position = UDim2.new(0.35,0,0.35,0)
+    thumb.Visible = false
+    ownedPointerIds = {}
+end
+
+-- Camera helpers
+local function getCamera() return workspace.CurrentCamera end
+
+local function lockCamera()
+    local cam = getCamera()
+    if not cam then return end
+    if originalCameraType == nil then originalCameraType = cam.CameraType end
+    cam.CameraType = Enum.CameraType.Scriptable
+end
+
+local function restoreCamera()
+    local cam = getCamera()
+    if not cam then return end
+    if originalCameraType then
+        cam.CameraType = originalCameraType
+    else
+        cam.CameraType = Enum.CameraType.Custom
+    end
+end
+
+-- Input ownership helpers (for input-filtering approach)
+local function ownInput(input)
+    -- Use input as key (InputObject references are stable for the duration of that input)
+    ownedPointerIds[input] = true
+end
+
+local function releaseInput(input)
+    ownedPointerIds[input] = nil
+end
+
+local function isInputOwned(input)
+    return ownedPointerIds[input] == true
+end
+
+-- Movement calculation
+local function handleMovement(inputPosition)
+    if isControllingCamera then
+        resetMovementState()
+        return
+    end
+
+    local absPos = touchpad.AbsolutePosition
+    local absSize = touchpad.AbsoluteSize
+    local center = absPos + absSize/2
+    local relative = inputPosition - center
+    local maxDist = math.min(absSize.X, absSize.Y)/2
+    local dir = relative / maxDist
+    dir = Vector2.new(clamp(dir.X,-1,1), clamp(dir.Y,-1,1))
+    moveDirection = dir
+    isMoving = true
+    local thumbOffset = Vector2.new(dir.X * 0.35, dir.Y * 0.35)
+    thumb.Position = UDim2.new(0.35 + thumbOffset.X, 0, 0.35 + thumbOffset.Y, 0)
+end
+
+-- Detect camera control from other inputs (right mouse or touch outside controls)
+local function pointInRect(p, pos, size)
+    return p.X >= pos.X and p.X <= pos.X + size.X and p.Y >= pos.Y and p.Y <= pos.Y + size.Y
+end
+
+local function checkCameraControlStart(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        isControllingCamera = true
+        resetMovementState()
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local tpPos, tpSize = touchpad.AbsolutePosition, touchpad.AbsoluteSize
+        local jbPos, jbSize = jumpButton.AbsolutePosition, jumpButton.AbsoluteSize
+        local touchPos = Vector2.new(input.Position.X, input.Position.Y)
+        if not pointInRect(touchPos, tpPos, tpSize) and not pointInRect(touchPos, jbPos, jbSize) then
+            isControllingCamera = true
+            resetMovementState()
+        end
+    end
+end
+
+local function checkCameraControlEnd(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        isControllingCamera = false
+        return
+    end
+    if input.UserInputType == Enum.UserInputType.Touch then
+        isControllingCamera = false
+    end
+end
+
+-- Global input handling
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    checkCameraControlStart(input)
+
+    -- If not using camera lock and the input began on touchpad, we should "own" it so camera ignores it
+    if not USE_CAMERA_LOCK then
+        -- if input is touch or left mouse, check whether it starts on touchpad
+        if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and touchpad then
+            local p = Vector2.new(input.Position.X, input.Position.Y)
+            local tpPos, tpSize = touchpad.AbsolutePosition, touchpad.AbsoluteSize
+            if pointInRect(p, tpPos, tpSize) then
+                ownInput(input)
             end
         end
     end
-    
-    -- Process existing balls
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj.Name:find("CLIENT_BALL_") and obj:IsA("Model") then
-            processBall(obj)
+
+    -- Keyboard jump
+    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
+        pcall(updateGrounded)
+        if isAllowedToJump() then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+            lastJumpTime = tick()
         end
     end
-    
-    -- Set up listeners for new balls
-    local childAddedConnection = workspace.ChildAdded:Connect(function(child)
-        if child.Name:find("CLIENT_BALL_") and child:IsA("Model") then
-            processBall(child)
-            
-            -- Listen for new parts in this ball
-            local descendantConnection = child.DescendantAdded:Connect(function(descendant)
-                if descendant:IsA("BasePart") then
-                    processPart(descendant)
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    checkCameraControlEnd(input)
+    if not USE_CAMERA_LOCK then
+        -- release ownership if we owned it
+        if isInputOwned(input) then
+            releaseInput(input)
+        end
+    end
+end)
+
+-- Touchpad events (starts/changes/ends)
+touchpad.InputBegan:Connect(function(input)
+    if not (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
+        return
+    end
+    if isControllingCamera then return end
+
+    currentTouch = input
+    touchStartPosition = Vector2.new(input.Position.X, input.Position.Y)
+    thumb.Visible = true
+
+    if USE_CAMERA_LOCK then
+        lockCamera()
+    else
+        -- Claim this input so global camera handlers can ignore it
+        ownInput(input)
+    end
+
+    handleMovement(touchStartPosition)
+end)
+
+touchpad.InputChanged:Connect(function(input)
+    if input ~= currentTouch then return end
+    if input.Position then
+        handleMovement(Vector2.new(input.Position.X, input.Position.Y))
+    end
+end)
+
+touchpad.InputEnded:Connect(function(input)
+    if input ~= currentTouch then return end
+    resetMovementState()
+
+    if USE_CAMERA_LOCK then
+        restoreCamera()
+    else
+        releaseInput(input)
+    end
+    isControllingCamera = false
+end)
+
+-- If using input-filtering approach, we must filter camera-rotation inputs.
+-- The simplest way is to intercept UserInputService's mouse/touch delta events that would rotate the camera.
+-- On PC, Roblox rotates the camera with MouseMovement (relative movement) when the right mouse is held.
+-- On mobile, camera rotation comes from touch move gestures. We will block camera rotation when the input is in ownedPointerIds.
+
+-- For CameraType.Custom, Roblox performs camera rotation internally — we can't directly intercept internal rotation easily,
+-- but we can try to ignore certain InputChanged events that would indicate camera drag (MouseMovement or Touch movements)
+-- and set isControllingCamera appropriately.
+
+-- Note: This approach is best-effort — CameraType lock is more reliable cross-platform.
+
+if not USE_CAMERA_LOCK then
+    -- When InputChanged for MouseMovement occurs, if it's owned by touchpad we silence camera-control by temporarily setting isControllingCamera.
+    UserInputService.InputChanged:Connect(function(input, gameProcessed)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            -- For mouse movement, if left mouse is down and owned by touchpad we should prevent camera rotation.
+            -- We can't directly cancel the internal camera rotation, but we can keep CameraType as Custom and try to prevent rotation by re-centering camera each frame if necessary.
+            -- Simpler: when left mouse is owned by touchpad, temporarily set CameraType to Scriptable for a single frame and immediately restore to Custom.
+            -- That avoids long freezes and allows other camera features to remain.
+            -- Find all owned mouse inputs (InputObject for MouseButton1). We'll check if any owned input is a MouseButton1 InputObject still active.
+            local ownedMouseActive = false
+            for inObj,_ in pairs(ownedPointerIds) do
+                if inObj.UserInputType == Enum.UserInputType.MouseButton1 then
+                    ownedMouseActive = true
+                    break
                 end
-            end)
-            
-            table.insert(activeConnections, descendantConnection)
+            end
+            if ownedMouseActive then
+                local cam = getCamera()
+                if cam then
+                    local prev = cam.CameraType
+                    cam.CameraType = Enum.CameraType.Scriptable
+                    -- restore on next frame
+                    RunService.Heartbeat:Wait()
+                    cam.CameraType = prev
+                end
+            end
+        elseif input.UserInputType == Enum.UserInputType.Touch then
+            -- If this touch movement belongs to an owned touch, prevent it from acting as camera input by
+            -- briefly setting camera Scriptable (single-frame) so the built-in camera doesn't respond.
+            if isInputOwned(input) then
+                local cam = getCamera()
+                if cam then
+                    local prev = cam.CameraType
+                    cam.CameraType = Enum.CameraType.Scriptable
+                    RunService.Heartbeat:Wait()
+                    cam.CameraType = prev
+                end
+            end
         end
     end)
-    
-    table.insert(activeConnections, childAddedConnection)
 end
 
--- Create UI elements in the Main tab
-local Toggle = MainTab:CreateToggle({
-    Name = "Change Ball Hitbox",
-    CurrentValue = false,
-    Flag = "HitboxToggle",
-    Callback = function(Value)
-        hitboxEnabled = Value
-        modifyBallHitboxes()
-        
-        -- Update toggle text based on state
-        if Toggle then
-            Toggle:Set(
-                ("Change Ball Hitbox: %s"):format(Value and "ON" or "OFF"),
-                Value
-            )
+-- Jump button handling
+jumpButton.MouseButton1Down:Connect(function()
+    pcall(updateGrounded)
+    if not isAllowedToJump() then return end
+    lastJumpTime = tick()
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TweenService:Create(jumpButton, tweenInfo, {BackgroundTransparency = 0.3}):Play()
+end)
+
+jumpButton.MouseButton1Up:Connect(function()
+    TweenService:Create(jumpButton, TweenInfo.new(0.1), {BackgroundTransparency = 0.5}):Play()
+end)
+
+jumpButton.TouchTap:Connect(function()
+    pcall(updateGrounded)
+    if not isAllowedToJump() then return end
+    lastJumpTime = tick()
+    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    TweenService:Create(jumpButton, tweenInfo, {BackgroundTransparency = 0.3}):Play()
+    wait(0.2)
+    TweenService:Create(jumpButton, tweenInfo, {BackgroundTransparency = 0.5}):Play()
+end)
+
+-- Movement application
+RunService.Heartbeat:Connect(function()
+    -- update grounded
+    pcall(updateGrounded)
+
+    if isMoving and moveDirection.Magnitude > 0 and humanoid and humanoid.Health > 0 then
+        local cam = getCamera()
+        local cf = cam and cam.CFrame or CFrame.new()
+        local forward = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
+        local right = Vector3.new(cf.RightVector.X, 0, cf.RightVector.Z)
+        if forward.Magnitude == 0 or right.Magnitude == 0 then
+            humanoid:Move(Vector3.new(0,0,0))
+            return
         end
-    end,
-})
+        forward = forward.Unit
+        right = right.Unit
+        local movement = (forward * -moveDirection.Y) + (right * moveDirection.X)
+        if movement.Magnitude > 0 then movement = movement.Unit end
+        humanoid:Move(movement)
+    else
+        if humanoid then humanoid:Move(Vector3.new(0,0,0)) end
+    end
+end)
 
-local Input = MainTab:CreateInput({
-    Name = "Ball Hitbox Size",
-    PlaceholderText = "enter number",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        local newSize = tonumber(Text)
-        if newSize and newSize > 0 then
-            targetSize = newSize
-            if hitboxEnabled then
-                modifyBallHitboxes()
-            end
-            Rayfield:Notify({
-                Title = "Size Updated",
-                Content = ("Hitbox size set to: %d"):format(newSize),
-                Duration = 2,
-                Image = 4483362458,
-            })
-        else
-            Rayfield:Notify({
-                Title = "Invalid Size",
-                Content = "Please enter a valid number greater than 0",
-                Duration = 3,
-                Image = 4483362458,
-            })
-        end
-    end,
-})
-
--- Set default value
-Input:Set("100")
-
--- Initialize if needed
-if hitboxEnabled then
-    modifyBallHitboxes()
+-- Death and respawn handling: reset and restore camera
+local function onDied()
+    resetMovementState()
+    isControllingCamera = false
+    -- restore camera on death so player can look around
+    restoreCamera()
 end
 
-Rayfield:LoadConfiguration()
+local function onCharacterAdded(newChar)
+    character = newChar
+    humanoid = character:WaitForChild("Humanoid")
+    rootPart = character:WaitForChild("HumanoidRootPart")
+    resetMovementState()
+    isControllingCamera = false
+    local cam = getCamera()
+    if cam then originalCameraType = cam.CameraType end
+    if humanoid then
+        humanoid.Died:Connect(onDied)
+    end
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+-- initial connect
+if player.Character then
+    local h = player.Character:FindFirstChildOfClass("Humanoid")
+    if h then h.Died:Connect(onDied) end
+end
+
+-- Clean up GUI removal
+screenGui.Destroying:Connect(function()
+    resetMovementState()
+    restoreCamera()
+end)
+
+-- If we use USE_CAMERA_LOCK, make sure initial camera type is recorded
+do
+    local cam = getCamera()
+    if cam then originalCameraType = cam.CameraType end
+end
+
+print("Mobile control script loaded. USE_CAMERA_LOCK =", USE_CAMERA_LOCK)
