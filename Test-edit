@@ -1,466 +1,890 @@
--- Mobile Controls: prevent touchpad from rotating camera while still allowing camera when not dragging
--- Features:
---  - Two approaches: Camera lock (Scriptable) or Input-filtering (keep Custom camera)
---  - Jump with grounded check + coyote time + cooldown
---  - Proper reset on death/respawn
---  - Complete, self-contained LocalScript
+-- Creator: bro_broa
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
 
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BroBroaGUI"
+ScreenGui.Parent = CoreGui
 
-local player = Players.LocalPlayer
+-- File system check
+local writefile = writefile or nil
+local readfile = readfile or nil
+local isfile = isfile or nil
+local makefolder = makefolder or nil
+local scriptLibraryPath = "BroBroaGUI/ScriptLibrary.json"
 
--- CONFIG
-local USE_CAMERA_LOCK = false
--- If USE_CAMERA_LOCK = true: script will temporarily set CameraType = Scriptable while dragging touchpad.
--- If USE_CAMERA_LOCK = false: script will keep CameraType as Custom and instead filter input so touchpad drags do not control the camera.
+-- Main GUI Colors
+local MainColor = Color3.fromRGB(60, 60, 80)
+local SecondaryColor = Color3.fromRGB(45, 45, 60)
+local AccentColor = Color3.fromRGB(100, 150, 255)
+local BorderColor = Color3.fromRGB(120, 160, 220)
 
--- UI creation (same as earlier)
-local function createGui()
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "MobileControls"
-    screenGui.Parent = player:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = false
+-- Main Frame with rounded corners and border
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 600, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
+MainFrame.BackgroundColor3 = MainColor
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
 
-    local controlFrame = Instance.new("Frame")
-    controlFrame.Name = "ControlFrame"
-    controlFrame.Size = UDim2.new(1,0,1,0)
-    controlFrame.BackgroundTransparency = 1
-    controlFrame.Parent = screenGui
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 12)
+MainCorner.Parent = MainFrame
 
-    local touchpad = Instance.new("Frame")
-    touchpad.Name = "Touchpad"
-    touchpad.Size = UDim2.new(0.3,0,0.3,0)
-    touchpad.Position = UDim2.new(0,20,0.7,-20)
-    touchpad.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    touchpad.BackgroundTransparency = 0.5
-    touchpad.BorderSizePixel = 0
-    touchpad.Parent = controlFrame
+local MainBorder = Instance.new("UIStroke")
+MainBorder.Thickness = 1.5
+MainBorder.Color = BorderColor
+MainBorder.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MainBorder.Parent = MainFrame
 
-    local touchpadCorner = Instance.new("UICorner")
-    touchpadCorner.CornerRadius = UDim.new(0.5,0)
-    touchpadCorner.Parent = touchpad
+-- Title Bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = SecondaryColor
+TitleBar.BorderSizePixel = 0
+TitleBar.Position = UDim2.new(0, 0, 0, 0)
+TitleBar.Parent = MainFrame
 
-    local thumb = Instance.new("Frame")
-    thumb.Name = "Thumb"
-    thumb.Size = UDim2.new(0.3,0,0.3,0)
-    thumb.Position = UDim2.new(0.35,0,0.35,0)
-    thumb.BackgroundColor3 = Color3.fromRGB(100,100,100)
-    thumb.BackgroundTransparency = 0.7
-    thumb.BorderSizePixel = 0
-    thumb.Visible = false
-    thumb.Parent = touchpad
+local TitleCorner = Instance.new("UICorner")
+TitleCorner.CornerRadius = UDim.new(0, 12)
+TitleCorner.Parent = TitleBar
 
-    local thumbCorner = Instance.new("UICorner")
-    thumbCorner.CornerRadius = UDim.new(0.5,0)
-    thumbCorner.Parent = thumb
+local Title = Instance.new("TextLabel")
+Title.Name = "Title"
+Title.Size = UDim2.new(0.7, 0, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "Bro_broa executor 2.0"
+Title.TextColor3 = Color3.fromRGB(220, 220, 220)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Position = UDim2.new(0, 15, 0, 0)
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 14
+Title.Parent = TitleBar
 
-    local jumpButton = Instance.new("TextButton")
-    jumpButton.Name = "JumpButton"
-    jumpButton.Size = UDim2.new(0.15,0,0.15,0)
-    jumpButton.Position = UDim2.new(0.85,-20,0.85,-20)
-    jumpButton.BackgroundColor3 = Color3.fromRGB(40,40,40)
-    jumpButton.BackgroundTransparency = 0.5
-    jumpButton.Text = "Jump"
-    jumpButton.TextColor3 = Color3.fromRGB(255,255,255)
-    jumpButton.TextScaled = true
-    jumpButton.BorderSizePixel = 0
-    jumpButton.Parent = controlFrame
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0, 30, 0, 30)
+MinimizeButton.Position = UDim2.new(1, -90, 0, 0)
+MinimizeButton.Text = "-"
+MinimizeButton.BackgroundTransparency = 1
+MinimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 20
+MinimizeButton.Parent = TitleBar
 
-    local jbCorner = Instance.new("UICorner")
-    jbCorner.CornerRadius = UDim.new(0.5,0)
-    jbCorner.Parent = jumpButton
+local LockButton = Instance.new("TextButton")
+LockButton.Name = "LockButton"
+LockButton.Size = UDim2.new(0, 30, 0, 30)
+LockButton.Position = UDim2.new(1, -60, 0, 0)
+LockButton.Text = "🔓"
+LockButton.BackgroundTransparency = 1
+LockButton.TextColor3 = Color3.fromRGB(150, 200, 255)
+LockButton.Parent = TitleBar
 
-    return screenGui, controlFrame, touchpad, thumb, jumpButton
-end
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 30, 0, 30)
+CloseButton.Position = UDim2.new(1, -30, 0, 0)
+CloseButton.Text = "X"
+CloseButton.BackgroundTransparency = 1
+CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = TitleBar
 
-local screenGui, controlFrame, touchpad, thumb, jumpButton = createGui()
+-- Tabs
+local Tabs = Instance.new("Frame")
+Tabs.Name = "Tabs"
+Tabs.Size = UDim2.new(1, 0, 0, 40)
+Tabs.Position = UDim2.new(0, 0, 0, 30)
+Tabs.BackgroundColor3 = SecondaryColor
+Tabs.Parent = MainFrame
 
--- Character references
-local function getCharacterRefs()
-    local char = player.Character
-    if not char then return nil end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    local root = char:FindFirstChild("HumanoidRootPart")
-    return char, hum, root
-end
+local TabsCorner = Instance.new("UICorner")
+TabsCorner.CornerRadius = UDim.new(0, 8)
+TabsCorner.Parent = Tabs
 
-local character, humanoid, rootPart = getCharacterRefs()
-if not (character and humanoid and rootPart) then
-    character = player.Character or player.CharacterAdded:Wait()
-    humanoid = character:WaitForChild("Humanoid")
-    rootPart = character:WaitForChild("HumanoidRootPart")
-end
+local ExecutorTab = Instance.new("TextButton")
+ExecutorTab.Name = "ExecutorTab"
+ExecutorTab.Size = UDim2.new(0.3, 0, 1, 0)
+ExecutorTab.BackgroundColor3 = AccentColor
+ExecutorTab.Text = "Executor"
+ExecutorTab.TextColor3 = Color3.new(1, 1, 1)
+ExecutorTab.Font = Enum.Font.Gotham
+ExecutorTab.Parent = Tabs
 
--- State variables
-local moveDirection = Vector2.new(0,0)
-local isMoving = false
-local currentTouch = nil -- InputObject controlling the touchpad
-local touchStartPosition = nil
-local isControllingCamera = true -- when true, external input is controlling camera (right mouse, touch outside)
-local originalCameraType = nil
+local LibraryTab = Instance.new("TextButton")
+LibraryTab.Name = "LibraryTab"
+LibraryTab.Size = UDim2.new(0.3, 0, 1, 0)
+LibraryTab.Position = UDim2.new(0.3, 0, 0, 0)
+LibraryTab.BackgroundColor3 = SecondaryColor
+LibraryTab.Text = "Library"
+LibraryTab.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+LibraryTab.Font = Enum.Font.Gotham
+LibraryTab.Parent = Tabs
 
--- If using input filtering (not camera lock), we need to track which input should be ignored by the camera
--- We'll store a set of pointer ids / mouse buttons that are "owned" by touchpad drag.
-local ownedPointerIds = {} -- key = input.UserInputType + input.UserInputState + input.Position? use InputObject as key
+local SettingsTab = Instance.new("TextButton")
+SettingsTab.Name = "SettingsTab"
+SettingsTab.Size = UDim2.new(0.3, 0, 1, 0)
+SettingsTab.Position = UDim2.new(0.6, 0, 0, 0)
+SettingsTab.BackgroundColor3 = SecondaryColor
+SettingsTab.Text = "Settings"
+SettingsTab.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+SettingsTab.Font = Enum.Font.Gotham
+SettingsTab.Parent = Tabs
 
--- Jump variables
-local lastGroundedTime = 0
-local COYOTE_TIME = 0.15
-local JUMP_COOLDOWN = 0.1
-local lastJumpTime = 0
+local Line = Instance.new("Frame")
+Line.Name = "Line"
+Line.Size = UDim2.new(1, 0, 0, 2)
+Line.Position = UDim2.new(0, 0, 0, 70)
+Line.BackgroundColor3 = AccentColor
+Line.BorderSizePixel = 0
+Line.Parent = MainFrame
 
--- Utility clamp
-local function clamp(x,a,b) if x<a then return a end if x>b then return b end return x end
+-- Executor Page
+local ExecutorPage = Instance.new("Frame")
+ExecutorPage.Name = "ExecutorPage"
+ExecutorPage.Size = UDim2.new(1, -20, 1, -80)
+ExecutorPage.Position = UDim2.new(0, 10, 0, 75)
+ExecutorPage.BackgroundTransparency = 1
+ExecutorPage.Visible = true
+ExecutorPage.Parent = MainFrame
 
--- Grounded check (state + raycast)
-local function updateGrounded()
-    if not humanoid or not rootPart then return end
-    local state = humanoid:GetState()
-    local now = tick()
-    if state == Enum.HumanoidStateType.Running
-    or state == Enum.HumanoidStateType.RunningNoPhysics
-    or state == Enum.HumanoidStateType.Landed
-    or state == Enum.HumanoidStateType.GettingUp
-    then
-        lastGroundedTime = now
-        return
-    end
-    -- raycast fallback
-    local origin = rootPart.Position
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {character}
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    params.IgnoreWater = true
-    local ray = workspace:Raycast(origin, Vector3.new(0,-2.5,0), params)
-    if ray and ray.Instance then
-        lastGroundedTime = now
-    end
-end
+-- Script Tabs Container
+local ScriptTabsContainer = Instance.new("Frame")
+ScriptTabsContainer.Name = "ScriptTabsContainer"
+ScriptTabsContainer.Size = UDim2.new(1, 0, 0, 30)
+ScriptTabsContainer.Position = UDim2.new(0, 0, 0, 0)
+ScriptTabsContainer.BackgroundTransparency = 1
+ScriptTabsContainer.Parent = ExecutorPage
 
-local function isAllowedToJump()
-    local now = tick()
-    return (now - lastGroundedTime) <= COYOTE_TIME and (now - lastJumpTime) >= JUMP_COOLDOWN
-end
+local ScriptTabsListLayout = Instance.new("UIListLayout")
+ScriptTabsListLayout.FillDirection = Enum.FillDirection.Horizontal
+ScriptTabsListLayout.Padding = UDim.new(0, 5)
+ScriptTabsListLayout.Parent = ScriptTabsContainer
 
--- Movement reset
-local function resetMovementState()
-    moveDirection = Vector2.new(0,0)
-    isMoving = false
-    currentTouch = nil
-    touchStartPosition = nil
-    thumb.Position = UDim2.new(0.35,0,0.35,0)
-    thumb.Visible = false
-    ownedPointerIds = {}
-end
+-- Add Tab Button
+local AddTabButton = Instance.new("TextButton")
+AddTabButton.Name = "AddTabButton"
+AddTabButton.Size = UDim2.new(0, 30, 0, 30)
+AddTabButton.BackgroundColor3 = SecondaryColor
+AddTabButton.Text = "+"
+AddTabButton.TextColor3 = Color3.new(1, 1, 1)
+AddTabButton.Font = Enum.Font.GothamBold
+AddTabButton.TextSize = 18
+AddTabButton.Parent = ScriptTabsContainer
 
--- Camera helpers
-local function getCamera() return workspace.CurrentCamera end
+local AddTabCorner = Instance.new("UICorner")
+AddTabCorner.CornerRadius = UDim.new(0, 6)
+AddTabCorner.Parent = AddTabButton
 
-local function lockCamera()
-    local cam = getCamera()
-    if not cam then return end
-    if originalCameraType == nil then originalCameraType = cam.CameraType end
-    cam.CameraType = Enum.CameraType.Scriptable
-end
+-- Script Container with Line Numbers (using ScrollingFrame for ScriptBox)
+local ScriptContainer = Instance.new("Frame")
+ScriptContainer.Name = "ScriptContainer"
+ScriptContainer.Size = UDim2.new(1, 0, 0.8, 0)
+ScriptContainer.Position = UDim2.new(0, 0, 0, 35)
+ScriptContainer.BackgroundTransparency = 1
+ScriptContainer.Parent = ExecutorPage
 
-local function restoreCamera()
-    local cam = getCamera()
-    if not cam then return end
-    if originalCameraType then
-        cam.CameraType = originalCameraType
-    else
-        cam.CameraType = Enum.CameraType.Custom
-    end
-end
+-- Line Numbers ScrollingFrame (left column)
+local LineNumbers = Instance.new("ScrollingFrame")
+LineNumbers.Name = "LineNumbers"
+LineNumbers.Size = UDim2.new(0, 40, 1, 0)
+LineNumbers.BackgroundTransparency = 1
+LineNumbers.ScrollBarThickness = 0
+LineNumbers.AutomaticCanvasSize = Enum.AutomaticSize.Y
+LineNumbers.CanvasSize = UDim2.new(0, 0, 0, 0)
+LineNumbers.ScrollingDirection = Enum.ScrollingDirection.Y
+LineNumbers.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+LineNumbers.ScrollingEnabled = true
+LineNumbers.Parent = ScriptContainer
 
--- Input ownership helpers (for input-filtering approach)
-local function ownInput(input)
-    -- Use input as key (InputObject references are stable for the duration of that input)
-    ownedPointerIds[input] = true
-end
+local LineNumbersLayout = Instance.new("UIListLayout")
+LineNumbersLayout.Padding = UDim.new(0, 0)
+LineNumbersLayout.SortOrder = Enum.SortOrder.LayoutOrder
+LineNumbersLayout.Parent = LineNumbers
 
-local function releaseInput(input)
-    ownedPointerIds[input] = nil
-end
+-- Script Box (now a ScrollingFrame) with TextBox inside
+local ScriptBox = Instance.new("ScrollingFrame")
+ScriptBox.Name = "ScriptBox"
+ScriptBox.Size = UDim2.new(1, -40, 1, 0)
+ScriptBox.Position = UDim2.new(0, 40, 0, 0)
+ScriptBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
+ScriptBox.BorderSizePixel = 0
+ScriptBox.ScrollBarThickness = 8
+ScriptBox.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScriptBox.CanvasSize = UDim2.new(0, 0, 0, 0)
+ScriptBox.ScrollingDirection = Enum.ScrollingDirection.Y
+ScriptBox.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+ScriptBox.Parent = ScriptContainer
 
-local function isInputOwned(input)
-    return ownedPointerIds[input] == true
-end
+local ScriptBoxCorner = Instance.new("UICorner")
+ScriptBoxCorner.CornerRadius = UDim.new(0, 6)
+ScriptBoxCorner.Parent = ScriptBox
 
--- Movement calculation
-local function handleMovement(inputPosition)
-    if isControllingCamera then
-        resetMovementState()
-        return
-    end
+local ScriptBoxBorder = Instance.new("UIStroke")
+ScriptBoxBorder.Thickness = 1
+ScriptBoxBorder.Color = Color3.fromRGB(80, 80, 100)
+ScriptBoxBorder.Parent = ScriptBox
 
-    local absPos = touchpad.AbsolutePosition
-    local absSize = touchpad.AbsoluteSize
-    local center = absPos + absSize/2
-    local relative = inputPosition - center
-    local maxDist = math.min(absSize.X, absSize.Y)/2
-    local dir = relative / maxDist
-    dir = Vector2.new(clamp(dir.X,-1,1), clamp(dir.Y,-1,1))
-    moveDirection = dir
-    isMoving = true
-    local thumbOffset = Vector2.new(dir.X * 0.35, dir.Y * 0.35)
-    thumb.Position = UDim2.new(0.35 + thumbOffset.X, 0, 0.35 + thumbOffset.Y, 0)
-end
+-- TextBox inside the ScrollingFrame (this is the actual editable area)
+local InputBox = Instance.new("TextBox")
+InputBox.Name = "InputBox"
+InputBox.Size = UDim2.new(1, -15, 0, 20) -- height will expand via CanvasSize update
+InputBox.Position = UDim2.new(0, 5, 0, 5)
+InputBox.BackgroundTransparency = 1
+InputBox.Text = ""
+InputBox.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+InputBox.TextSize = 14
+InputBox.TextXAlignment = Enum.TextXAlignment.Left
+InputBox.TextYAlignment = Enum.TextYAlignment.Top
+InputBox.Font = Enum.Font.RobotoMono
+InputBox.MultiLine = true
+InputBox.TextWrapped = false
+InputBox.ClearTextOnFocus = false
+InputBox.Parent = ScriptBox
 
--- Detect camera control from other inputs (right mouse or touch outside controls)
-local function pointInRect(p, pos, size)
-    return p.X >= pos.X and p.X <= pos.X + size.X and p.Y >= pos.Y and p.Y <= pos.Y + size.Y
-end
+-- Buttons
+local ExecuteButton = Instance.new("TextButton")
+ExecuteButton.Name = "ExecuteButton"
+ExecuteButton.Size = UDim2.new(0.3, -5, 0, 35)
+ExecuteButton.Position = UDim2.new(0, 5, 0.8, 10)
+ExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+ExecuteButton.Text = "Execute"
+ExecuteButton.TextColor3 = Color3.new(1, 1, 1)
+ExecuteButton.Font = Enum.Font.GothamBold
+ExecuteButton.Parent = ExecutorPage
 
-local function checkCameraControlStart(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        isControllingCamera = true
-        resetMovementState()
-        return
-    end
+local ExecuteCorner = Instance.new("UICorner")
+ExecuteCorner.CornerRadius = UDim.new(0, 6)
+ExecuteCorner.Parent = ExecuteButton
 
-    if input.UserInputType == Enum.UserInputType.Touch then
-        local tpPos, tpSize = touchpad.AbsolutePosition, touchpad.AbsoluteSize
-        local jbPos, jbSize = jumpButton.AbsolutePosition, jumpButton.AbsoluteSize
-        local touchPos = Vector2.new(input.Position.X, input.Position.Y)
-        if not pointInRect(touchPos, tpPos, tpSize) and not pointInRect(touchPos, jbPos, jbSize) then
-            isControllingCamera = true
-            resetMovementState()
-        end
-    end
-end
+local ClearButton = Instance.new("TextButton")
+ClearButton.Name = "ClearButton"
+ClearButton.Size = UDim2.new(0.3, -5, 0, 35)
+ClearButton.Position = UDim2.new(0.33, 0, 0.8, 10)
+ClearButton.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+ClearButton.Text = "Clear"
+ClearButton.TextColor3 = Color3.new(1, 1, 1)
+ClearButton.Font = Enum.Font.GothamBold
+ClearButton.TextSize = 14
+ClearButton.Parent = ExecutorPage
 
-local function checkCameraControlEnd(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton2 then
-        isControllingCamera = false
-        return
-    end
-    if input.UserInputType == Enum.UserInputType.Touch then
-        isControllingCamera = false
-    end
-end
+local ClearCorner = Instance.new("UICorner")
+ClearCorner.CornerRadius = UDim.new(0, 6)
+ClearCorner.Parent = ClearButton
 
--- Global input handling
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    checkCameraControlStart(input)
+local SaveButton = Instance.new("TextButton")
+SaveButton.Name = "SaveButton"
+SaveButton.Size = UDim2.new(0.3, -5, 0, 35)
+SaveButton.Position = UDim2.new(0.66, 0, 0.8, 10)
+SaveButton.BackgroundColor3 = Color3.fromRGB(80, 120, 200)
+SaveButton.Text = "Save to Library"
+SaveButton.TextColor3 = Color3.new(1, 1, 1)
+SaveButton.Font = Enum.Font.GothamBold
+SaveButton.TextSize = 14
+SaveButton.Parent = ExecutorPage
 
-    -- If not using camera lock and the input began on touchpad, we should "own" it so camera ignores it
-    if not USE_CAMERA_LOCK then
-        -- if input is touch or left mouse, check whether it starts on touchpad
-        if (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) and touchpad then
-            local p = Vector2.new(input.Position.X, input.Position.Y)
-            local tpPos, tpSize = touchpad.AbsolutePosition, touchpad.AbsoluteSize
-            if pointInRect(p, tpPos, tpSize) then
-                ownInput(input)
+local SaveCorner = Instance.new("UICorner")
+SaveCorner.CornerRadius = UDim.new(0, 6)
+SaveCorner.Parent = SaveButton
+
+-- Library Page
+local LibraryPage = Instance.new("Frame")
+LibraryPage.Name = "LibraryPage"
+LibraryPage.Size = UDim2.new(1, -20, 1, -80)
+LibraryPage.Position = UDim2.new(0, 10, 0, 75)
+LibraryPage.BackgroundTransparency = 1
+LibraryPage.Visible = false
+LibraryPage.Parent = MainFrame
+
+local ScriptsFrame = Instance.new("ScrollingFrame")
+ScriptsFrame.Name = "ScriptsFrame"
+ScriptsFrame.Size = UDim2.new(1, 0, 1, 0)
+ScriptsFrame.BackgroundTransparency = 1
+ScriptsFrame.ScrollBarThickness = 8
+ScriptsFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScriptsFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+ScriptsFrame.Parent = LibraryPage
+
+local UIListLayout = Instance.new("UIListLayout")
+UIListLayout.Padding = UDim.new(0, 10)
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = ScriptsFrame
+
+-- Template for script entries
+local Template = Instance.new("Frame")
+Template.Name = "Template"
+Template.Size = UDim2.new(1, 0, 0, 50)
+Template.BackgroundColor3 = SecondaryColor
+Template.Visible = false
+Template.Parent = ScreenGui
+
+local TemplateCorner = Instance.new("UICorner")
+TemplateCorner.CornerRadius = UDim.new(0, 8)
+TemplateCorner.Parent = Template
+
+local TemplateBorder = Instance.new("UIStroke")
+TemplateBorder.Thickness = 1
+TemplateBorder.Color = Color3.fromRGB(80, 100, 140)
+TemplateBorder.Parent = Template
+
+local ScriptName = Instance.new("TextLabel")
+ScriptName.Name = "ScriptName"
+ScriptName.Size = UDim2.new(0.4, 0, 1, 0)
+ScriptName.BackgroundTransparency = 1
+ScriptName.Text = "Script Name"
+ScriptName.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+ScriptName.TextXAlignment = Enum.TextXAlignment.Left
+ScriptName.Position = UDim2.new(0, 15, 0, 0)
+ScriptName.Font = Enum.Font.Gotham
+ScriptName.Parent = Template
+
+local RenameButton = Instance.new("TextButton")
+RenameButton.Name = "RenameButton"
+RenameButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+RenameButton.Position = UDim2.new(0.4, 5, 0.15, 0)
+RenameButton.BackgroundColor3 = Color3.fromRGB(150, 150, 100)
+RenameButton.Text = "Rename"
+RenameButton.TextColor3 = Color3.new(1, 1, 1)
+RenameButton.Font = Enum.Font.Gotham
+RenameButton.TextSize = 12
+RenameButton.Parent = Template
+
+local RenameCorner = Instance.new("UICorner")
+RenameCorner.CornerRadius = UDim.new(0, 6)
+RenameCorner.Parent = RenameButton
+
+local CopyButton = Instance.new("TextButton")
+CopyButton.Name = "CopyButton"
+CopyButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+CopyButton.Position = UDim2.new(0.51, 5, 0.15, 0)
+CopyButton.BackgroundColor3 = Color3.fromRGB(120, 120, 200)
+CopyButton.Text = "Copy"
+CopyButton.TextColor3 = Color3.new(1, 1, 1)
+CopyButton.Font = Enum.Font.Gotham
+CopyButton.TextSize = 12
+CopyButton.Parent = Template
+
+local CopyCorner = Instance.new("UICorner")
+CopyCorner.CornerRadius = UDim.new(0, 6)
+CopyCorner.Parent = CopyButton
+
+local LoadButton = Instance.new("TextButton")
+LoadButton.Name = "LoadButton"
+LoadButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+LoadButton.Position = UDim2.new(0.62, 5, 0.15, 0)
+LoadButton.BackgroundColor3 = Color3.fromRGB(70, 150, 220)
+LoadButton.Text = "Load"
+LoadButton.TextColor3 = Color3.new(1, 1, 1)
+LoadButton.Font = Enum.Font.Gotham
+LoadButton.TextSize = 12
+LoadButton.Parent = Template
+
+local LoadCorner = Instance.new("UICorner")
+LoadCorner.CornerRadius = UDim.new(0, 6)
+LoadCorner.Parent = LoadButton
+
+local DeleteButton = Instance.new("TextButton")
+DeleteButton.Name = "DeleteButton"
+DeleteButton.Size = UDim2.new(0.1, 0, 0.7, 0)
+DeleteButton.Position = UDim2.new(0.73, 5, 0.15, 0)
+DeleteButton.BackgroundColor3 = Color3.fromRGB(180, 70, 70)
+DeleteButton.Text = "Delete"
+DeleteButton.TextColor3 = Color3.new(1, 1, 1)
+DeleteButton.Font = Enum.Font.Gotham
+DeleteButton.TextSize = 12
+DeleteButton.Parent = Template
+
+local DeleteCorner = Instance.new("UICorner")
+DeleteCorner.CornerRadius = UDim.new(0, 6)
+DeleteCorner.Parent = DeleteButton
+
+-- Settings Page
+local SettingsPage = Instance.new("Frame")
+SettingsPage.Name = "SettingsPage"
+SettingsPage.Size = UDim2.new(1, -20, 1, -80)
+SettingsPage.Position = UDim2.new(0, 10, 0, 75)
+SettingsPage.BackgroundTransparency = 1
+SettingsPage.Visible = false
+SettingsPage.Parent = MainFrame
+
+local ColorLabel = Instance.new("TextLabel")
+ColorLabel.Name = "ColorLabel"
+ColorLabel.Size = UDim2.new(1, 0, 0, 30)
+ColorLabel.Position = UDim2.new(0, 0, 0, 20)
+ColorLabel.BackgroundTransparency = 1
+ColorLabel.Text = "Script Box Background Color (0-255):"
+ColorLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+ColorLabel.TextXAlignment = Enum.TextXAlignment.Left
+ColorLabel.Font = Enum.Font.Gotham
+ColorLabel.Parent = SettingsPage
+
+local RBox = Instance.new("TextBox")
+RBox.Name = "RBox"
+RBox.Size = UDim2.new(0.18, 0, 0, 35)
+RBox.Position = UDim2.new(0, 5, 0, 60)
+RBox.BackgroundColor3 = SecondaryColor
+RBox.PlaceholderText = "R"
+RBox.Text = "35"
+RBox.TextColor3 = Color3.new(1, 1, 1)
+RBox.Font = Enum.Font.Gotham
+RBox.Parent = SettingsPage
+
+local RBoxCorner = Instance.new("UICorner")
+RBoxCorner.CornerRadius = UDim.new(0, 6)
+RBoxCorner.Parent = RBox
+
+local GBox = Instance.new("TextBox")
+GBox.Name = "GBox"
+GBox.Size = UDim2.new(0.18, 0, 0, 35)
+GBox.Position = UDim2.new(0.2, 10, 0, 60)
+GBox.BackgroundColor3 = SecondaryColor
+GBox.PlaceholderText = "G"
+GBox.Text = "35"
+GBox.TextColor3 = Color3.new(1, 1, 1)
+GBox.Font = Enum.Font.Gotham
+GBox.Parent = SettingsPage
+
+local GBoxCorner = Instance.new("UICorner")
+GBoxCorner.CornerRadius = UDim.new(0, 6)
+GBoxCorner.Parent = GBox
+
+local BBox = Instance.new("TextBox")
+BBox.Name = "BBox"
+BBox.Size = UDim2.new(0.18, 0, 0, 35)
+BBox.Position = UDim2.new(0.4, 15, 0, 60)
+BBox.BackgroundColor3 = SecondaryColor
+BBox.PlaceholderText = "B"
+BBox.Text = "45"
+BBox.TextColor3 = Color3.new(1, 1, 1)
+BBox.Font = Enum.Font.Gotham
+BBox.Parent = SettingsPage
+
+local BBoxCorner = Instance.new("UICorner")
+BBoxCorner.CornerRadius = UDim.new(0, 6)
+BBoxCorner.Parent = BBox
+
+local ApplyButton = Instance.new("TextButton")
+ApplyButton.Name = "ApplyButton"
+ApplyButton.Size = UDim2.new(0.25, 0, 0, 35)
+ApplyButton.Position = UDim2.new(0.65, 10, 0, 60)
+ApplyButton.BackgroundColor3 = AccentColor
+ApplyButton.Text = "Apply Color"
+ApplyButton.TextColor3 = Color3.new(1, 1, 1)
+ApplyButton.Font = Enum.Font.GothamBold
+ApplyButton.TextSize = 13
+ApplyButton.Parent = SettingsPage
+
+local ApplyCorner = Instance.new("UICorner")
+ApplyCorner.CornerRadius = UDim.new(0, 6)
+ApplyCorner.Parent = ApplyButton
+
+-- Minimized Mode
+local MinimizedFrame = Instance.new("ImageButton")
+MinimizedFrame.Name = "MinimizedFrame"
+MinimizedFrame.Size = UDim2.new(0, 50, 0, 50)
+MinimizedFrame.Position = UDim2.new(0, 100, 0, 100)
+MinimizedFrame.Image = "http://www.roblox.com/asset/?id=119526989765479"
+MinimizedFrame.Visible = false
+MinimizedFrame.Active = true
+MinimizedFrame.Draggable = true
+MinimizedFrame.Parent = ScreenGui
+
+local MinimizedCorner = Instance.new("UICorner")
+MinimizedCorner.CornerRadius = UDim.new(1, 0)
+MinimizedCorner.Parent = MinimizedFrame
+
+local MinimizedBorder = Instance.new("UIStroke")
+MinimizedBorder.Thickness = 1.5
+MinimizedBorder.Color = BorderColor
+MinimizedBorder.Parent = MinimizedFrame
+
+-- Script Library
+local ScriptLibrary = {
+    ["Bro_broa GUI 6.0"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/main/Bro_broa%20gui%206.0"))()',
+    ["Infinite Yield"] = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()'
+}
+
+-- JSON File Handling Functions
+local function SaveLibrary()
+    if writefile and makefolder and readfile and isfile then
+        pcall(function()
+            if not isfile("BroBroaGUI") then
+                makefolder("BroBroaGUI")
             end
-        end
-    end
-
-    -- Keyboard jump
-    if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == Enum.KeyCode.Space then
-        pcall(updateGrounded)
-        if isAllowedToJump() then
-            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-            lastJumpTime = tick()
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    checkCameraControlEnd(input)
-    if not USE_CAMERA_LOCK then
-        -- release ownership if we owned it
-        if isInputOwned(input) then
-            releaseInput(input)
-        end
-    end
-end)
-
--- Touchpad events (starts/changes/ends)
-touchpad.InputBegan:Connect(function(input)
-    if not (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1) then
-        return
-    end
-    if isControllingCamera then return end
-
-    currentTouch = input
-    touchStartPosition = Vector2.new(input.Position.X, input.Position.Y)
-    thumb.Visible = true
-
-    if USE_CAMERA_LOCK then
-        lockCamera()
+            local json = HttpService:JSONEncode(ScriptLibrary)
+            writefile(scriptLibraryPath, json)
+            print("Script library saved successfully!")
+        end)
     else
-        -- Claim this input so global camera handlers can ignore it
-        ownInput(input)
+        warn("File operations not supported - using in-memory storage only")
     end
+end
 
-    handleMovement(touchStartPosition)
-end)
-
-touchpad.InputChanged:Connect(function(input)
-    if input ~= currentTouch then return end
-    if input.Position then
-        handleMovement(Vector2.new(input.Position.X, input.Position.Y))
-    end
-end)
-
-touchpad.InputEnded:Connect(function(input)
-    if input ~= currentTouch then return end
-    resetMovementState()
-
-    if USE_CAMERA_LOCK then
-        restoreCamera()
+local function LoadLibrary()
+    if readfile and isfile and isfile(scriptLibraryPath) then
+        pcall(function()
+            local data = readfile(scriptLibraryPath)
+            ScriptLibrary = HttpService:JSONDecode(data)
+            print("Script library loaded successfully!")
+        end)
     else
-        releaseInput(input)
+        print("No saved script library found - using default scripts")
     end
-    isControllingCamera = false
+end
+
+-- Robust split helper function
+local function splitLines(str)
+    if not str or str == "" then return {""} end
+    local t = {}
+    local function helper(line) table.insert(t, line) return "" end
+    helper((str:gsub("(.-)\r?\n", helper)))
+    return t
+end
+
+-- Fixed updateLineNumbers function
+local function updateLineNumbers()
+    local lines = splitLines(InputBox.Text)
+    local lineCount = #lines
+    if lineCount == 0 then lineCount = 1 end
+
+    -- Remove existing number labels
+    for _, child in ipairs(LineNumbers:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    -- Create new line numbers
+    local lineHeight = 20
+    for i = 1, lineCount do
+        local lineLabel = Instance.new("TextLabel")
+        lineLabel.Name = "Line_" .. i
+        lineLabel.Size = UDim2.new(1, -4, 0, lineHeight)
+        lineLabel.BackgroundTransparency = 1
+        lineLabel.Text = tostring(i)
+        lineLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        lineLabel.TextXAlignment = Enum.TextXAlignment.Right
+        lineLabel.Font = Enum.Font.RobotoMono
+        lineLabel.TextSize = 14
+        lineLabel.LayoutOrder = i
+        lineLabel.Parent = LineNumbers
+    end
+
+    local textHeight = lineCount * lineHeight
+    -- set CanvasSize for both scrolling frames
+    LineNumbers.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+    ScriptBox.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+
+    -- resize the textbox area so caret behavior and wrapping are predictable
+    InputBox.Size = UDim2.new(1, -15, 0, textHeight)
+end
+
+-- Function to sync scrolling
+ScriptBox:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+    LineNumbers.CanvasPosition = Vector2.new(0, ScriptBox.CanvasPosition.Y)
 end)
 
--- If using input-filtering approach, we must filter camera-rotation inputs.
--- The simplest way is to intercept UserInputService's mouse/touch delta events that would rotate the camera.
--- On PC, Roblox rotates the camera with MouseMovement (relative movement) when the right mouse is held.
--- On mobile, camera rotation comes from touch move gestures. We will block camera rotation when the input is in ownedPointerIds.
+-- Tab Management
+local scriptTabs = {}
+local currentTab = nil
 
--- For CameraType.Custom, Roblox performs camera rotation internally — we can't directly intercept internal rotation easily,
--- but we can try to ignore certain InputChanged events that would indicate camera drag (MouseMovement or Touch movements)
--- and set isControllingCamera appropriately.
+-- createNewTab function with always visible close button
+local function createNewTab(name, content)
+    -- ensure unique name
+    local baseName = name
+    local suffix = 1
+    while scriptTabs[name] do
+        name = baseName .. " (" .. suffix .. ")"
+        suffix = suffix + 1
+    end
 
--- Note: This approach is best-effort — CameraType lock is more reliable cross-platform.
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = name
+    tabButton.Size = UDim2.new(0, 100, 0, 30)
+    tabButton.BackgroundColor3 = SecondaryColor
+    tabButton.Text = name
+    tabButton.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    tabButton.Font = Enum.Font.Gotham
+    tabButton.TextSize = 12
 
-if not USE_CAMERA_LOCK then
-    -- When InputChanged for MouseMovement occurs, if it's owned by touchpad we silence camera-control by temporarily setting isControllingCamera.
-    UserInputService.InputChanged:Connect(function(input, gameProcessed)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            -- For mouse movement, if left mouse is down and owned by touchpad we should prevent camera rotation.
-            -- We can't directly cancel the internal camera rotation, but we can keep CameraType as Custom and try to prevent rotation by re-centering camera each frame if necessary.
-            -- Simpler: when left mouse is owned by touchpad, temporarily set CameraType to Scriptable for a single frame and immediately restore to Custom.
-            -- That avoids long freezes and allows other camera features to remain.
-            -- Find all owned mouse inputs (InputObject for MouseButton1). We'll check if any owned input is a MouseButton1 InputObject still active.
-            local ownedMouseActive = false
-            for inObj,_ in pairs(ownedPointerIds) do
-                if inObj.UserInputType == Enum.UserInputType.MouseButton1 then
-                    ownedMouseActive = true
-                    break
-                end
-            end
-            if ownedMouseActive then
-                local cam = getCamera()
-                if cam then
-                    local prev = cam.CameraType
-                    cam.CameraType = Enum.CameraType.Scriptable
-                    -- restore on next frame
-                    RunService.Heartbeat:Wait()
-                    cam.CameraType = prev
-                end
-            end
-        elseif input.UserInputType == Enum.UserInputType.Touch then
-            -- If this touch movement belongs to an owned touch, prevent it from acting as camera input by
-            -- briefly setting camera Scriptable (single-frame) so the built-in camera doesn't respond.
-            if isInputOwned(input) then
-                local cam = getCamera()
-                if cam then
-                    local prev = cam.CameraType
-                    cam.CameraType = Enum.CameraType.Scriptable
-                    RunService.Heartbeat:Wait()
-                    cam.CameraType = prev
-                end
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 6)
+    tabCorner.Parent = tabButton
+
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.new(0, 20, 0, 20)
+    closeButton.Position = UDim2.new(1, -24, 0.5, -10)
+    closeButton.BackgroundColor3 = Color3.fromRGB(180, 70, 70)
+    closeButton.Text = "X"
+    closeButton.TextColor3 = Color3.new(1, 1, 1)
+    closeButton.Font = Enum.Font.Gotham
+    closeButton.TextSize = 10
+    closeButton.Visible = true  -- Always visible
+    closeButton.Parent = tabButton
+
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 4)
+    closeCorner.Parent = closeButton
+
+    tabButton.Parent = ScriptTabsContainer
+
+    -- store tab
+    scriptTabs[name] = {
+        button = tabButton,
+        content = content or "",
+        closeButton = closeButton
+    }
+
+    -- select tab
+    tabButton.MouseButton1Click:Connect(function()
+        if currentTab and scriptTabs[currentTab] then
+            -- save current
+            scriptTabs[currentTab].content = InputBox.Text
+            scriptTabs[currentTab].button.BackgroundColor3 = SecondaryColor
+        end
+        currentTab = name
+        tabButton.BackgroundColor3 = AccentColor
+        InputBox.Text = scriptTabs[name].content or ""
+        updateLineNumbers()
+    end)
+
+    -- close tab action
+    closeButton.MouseButton1Click:Connect(function()
+        -- don't allow closing last tab
+        local tabCount = 0
+        for _ in pairs(scriptTabs) do tabCount = tabCount + 1 end
+        if tabCount <= 1 then return end
+
+        -- remove
+        scriptTabs[name] = nil
+        tabButton:Destroy()
+
+        -- if closed tab was the current, switch to another
+        if currentTab == name then
+            for tabName, tabData in pairs(scriptTabs) do
+                currentTab = tabName
+                tabData.button.BackgroundColor3 = AccentColor
+                InputBox.Text = tabData.content or ""
+                updateLineNumbers()
+                break
             end
         end
     end)
+
+    -- auto-select if first
+    if not currentTab then
+        currentTab = name
+        tabButton.BackgroundColor3 = AccentColor
+        InputBox.Text = content or ""
+        updateLineNumbers()
+    end
 end
 
--- Jump button handling
-jumpButton.MouseButton1Down:Connect(function()
-    pcall(updateGrounded)
-    if not isAllowedToJump() then return end
-    lastJumpTime = tick()
-    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    TweenService:Create(jumpButton, tweenInfo, {BackgroundTransparency = 0.3}):Play()
-end)
+-- Functions
+local function CreateScriptEntry(name, content)
+    local newEntry = Template:Clone()
+    newEntry.Name = name
+    newEntry.ScriptName.Text = name
+    newEntry.Visible = true
+    newEntry.LayoutOrder = #ScriptsFrame:GetChildren()
+    newEntry.Parent = ScriptsFrame
 
-jumpButton.MouseButton1Up:Connect(function()
-    TweenService:Create(jumpButton, TweenInfo.new(0.1), {BackgroundTransparency = 0.5}):Play()
-end)
+    newEntry.LoadButton.MouseButton1Click:Connect(function()
+        InputBox.Text = content
+        ExecutorPage.Visible = true
+        LibraryPage.Visible = false
+        SettingsPage.Visible = false
+        ExecutorTab.BackgroundColor3 = AccentColor
+        LibraryTab.BackgroundColor3 = SecondaryColor
+        SettingsTab.BackgroundColor3 = SecondaryColor
+        updateLineNumbers()
+    end)
 
-jumpButton.TouchTap:Connect(function()
-    pcall(updateGrounded)
-    if not isAllowedToJump() then return end
-    lastJumpTime = tick()
-    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    TweenService:Create(jumpButton, tweenInfo, {BackgroundTransparency = 0.3}):Play()
-    wait(0.2)
-    TweenService:Create(jumpButton, tweenInfo, {BackgroundTransparency = 0.5}):Play()
-end)
-
--- Movement application
-RunService.Heartbeat:Connect(function()
-    -- update grounded
-    pcall(updateGrounded)
-
-    if isMoving and moveDirection.Magnitude > 0 and humanoid and humanoid.Health > 0 then
-        local cam = getCamera()
-        local cf = cam and cam.CFrame or CFrame.new()
-        local forward = Vector3.new(cf.LookVector.X, 0, cf.LookVector.Z)
-        local right = Vector3.new(cf.RightVector.X, 0, cf.RightVector.Z)
-        if forward.Magnitude == 0 or right.Magnitude == 0 then
-            humanoid:Move(Vector3.new(0,0,0))
-            return
+    newEntry.CopyButton.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard(content)
+            newEntry.CopyButton.Text = "Copied!"
+            task.wait(1)
+            newEntry.CopyButton.Text = "Copy"
+        else
+            warn("No clipboard support")
         end
-        forward = forward.Unit
-        right = right.Unit
-        local movement = (forward * -moveDirection.Y) + (right * moveDirection.X)
-        if movement.Magnitude > 0 then movement = movement.Unit end
-        humanoid:Move(movement)
-    else
-        if humanoid then humanoid:Move(Vector3.new(0,0,0)) end
+    end)
+
+    -- rename logic
+    newEntry.RenameButton.MouseButton1Click:Connect(function()
+        local oldName = newEntry.Name
+        local textBox = Instance.new("TextBox")
+        textBox.Name = "RenameBox"
+        textBox.Size = newEntry.ScriptName.Size
+        textBox.Position = newEntry.ScriptName.Position
+        textBox.BackgroundTransparency = 0
+        textBox.BackgroundColor3 = SecondaryColor
+        textBox.Text = oldName
+        textBox.TextColor3 = Color3.new(0.9, 0.9, 0.9)
+        textBox.Font = newEntry.ScriptName.Font
+        textBox.TextSize = newEntry.ScriptName.TextSize
+        textBox.TextXAlignment = Enum.TextXAlignment.Left
+        textBox.Parent = newEntry
+
+        newEntry.ScriptName.Visible = false
+        textBox:CaptureFocus()
+
+        local function finishRename(confirm)
+            local newName = (textBox.Text ~= "" and textBox.Text) or oldName
+            textBox:Destroy()
+            newEntry.ScriptName.Text = newName
+            newEntry.ScriptName.Visible = true
+
+            if confirm and newName ~= oldName then
+                -- update library safely
+                if ScriptLibrary[oldName] then
+                    ScriptLibrary[newName] = ScriptLibrary[oldName]
+                    ScriptLibrary[oldName] = nil
+                else
+                    ScriptLibrary[newName] = ScriptLibrary[oldName] or ""
+                end
+                newEntry.Name = newName
+                SaveLibrary()
+                UpdateLibrary()
+            end
+        end
+
+        textBox.FocusLost:Connect(function(enterPressed)
+            finishRename(enterPressed)
+        end)
+    end)
+
+    newEntry.DeleteButton.MouseButton1Click:Connect(function()
+        ScriptLibrary[name] = nil
+        newEntry:Destroy()
+        SaveLibrary()
+    end)
+end
+
+local function UpdateLibrary()
+    for i, child in ipairs(ScriptsFrame:GetChildren()) do
+        if child:IsA("Frame") and child ~= Template then
+            child:Destroy()
+        end
+    end
+
+    for name, content in pairs(ScriptLibrary) do
+        CreateScriptEntry(name, content)
+    end
+end
+
+-- Initialization
+LoadLibrary()
+UpdateLibrary()
+updateLineNumbers()
+
+-- Create initial tab
+createNewTab("Script 1", "")
+
+-- Connect events after UI is built
+ScriptBox:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+    LineNumbers.CanvasPosition = Vector2.new(0, ScriptBox.CanvasPosition.Y)
+end)
+InputBox:GetPropertyChangedSignal("Text"):Connect(updateLineNumbers)
+
+-- Tab Switching
+ExecutorTab.MouseButton1Click:Connect(function()
+    ExecutorPage.Visible = true
+    LibraryPage.Visible = false
+    SettingsPage.Visible = false
+    ExecutorTab.BackgroundColor3 = AccentColor
+    LibraryTab.BackgroundColor3 = SecondaryColor
+    SettingsTab.BackgroundColor3 = SecondaryColor
+end)
+
+LibraryTab.MouseButton1Click:Connect(function()
+    ExecutorPage.Visible = false
+    LibraryPage.Visible = true
+    SettingsPage.Visible = false
+    LibraryTab.BackgroundColor3 = AccentColor
+    ExecutorTab.BackgroundColor3 = SecondaryColor
+    SettingsTab.BackgroundColor3 = SecondaryColor
+end)
+
+SettingsTab.MouseButton1Click:Connect(function()
+    ExecutorPage.Visible = false
+    LibraryPage.Visible = false
+    SettingsPage.Visible = true
+    SettingsTab.BackgroundColor3 = AccentColor
+    ExecutorTab.BackgroundColor3 = SecondaryColor
+    LibraryTab.BackgroundColor3 = SecondaryColor
+end)
+
+-- Button Functionality
+ExecuteButton.MouseButton1Click:Connect(function()
+    local success, err = pcall(function()
+        local f, lerr = loadstring(InputBox.Text)
+        if not f then
+            error(lerr)
+        else
+            f()
+        end
+    end)
+
+    if not success then
+        warn("Execution error: " .. tostring(err))
     end
 end)
 
--- Death and respawn handling: reset and restore camera
-local function onDied()
-    resetMovementState()
-    isControllingCamera = false
-    -- restore camera on death so player can look around
-    restoreCamera()
-end
-
-local function onCharacterAdded(newChar)
-    character = newChar
-    humanoid = character:WaitForChild("Humanoid")
-    rootPart = character:WaitForChild("HumanoidRootPart")
-    resetMovementState()
-    isControllingCamera = false
-    local cam = getCamera()
-    if cam then originalCameraType = cam.CameraType end
-    if humanoid then
-        humanoid.Died:Connect(onDied)
-    end
-end
-
-player.CharacterAdded:Connect(onCharacterAdded)
--- initial connect
-if player.Character then
-    local h = player.Character:FindFirstChildOfClass("Humanoid")
-    if h then h.Died:Connect(onDied) end
-end
-
--- Clean up GUI removal
-screenGui.Destroying:Connect(function()
-    resetMovementState()
-    restoreCamera()
+ClearButton.MouseButton1Click:Connect(function()
+    InputBox.Text = ""
+    updateLineNumbers()
 end)
 
--- If we use USE_CAMERA_LOCK, make sure initial camera type is recorded
-do
-    local cam = getCamera()
-    if cam then originalCameraType = cam.CameraType end
-end
+SaveButton.MouseButton1Click:Connect(function()
+    local name = "Script_" .. tostring(math.random(1000,9999))
+    ScriptLibrary[name] = InputBox.Text
+    UpdateLibrary()
+    SaveLibrary()
+end)
 
-print("Mobile control script loaded. USE_CAMERA_LOCK =", USE_CAMERA_LOCK)
+ApplyButton.MouseButton1Click:Connect(function()
+    local r = math.clamp(tonumber(RBox.Text) or 35, 0, 255)
+    local g = math.clamp(tonumber(GBox.Text) or 35, 0, 255)
+    local b = math.clamp(tonumber(BBox.Text) or 45, 0, 255)
+
+    RBox.Text = tostring(r)
+    GBox.Text = tostring(g)
+    BBox.Text = tostring(b)
+
+    ScriptBox.BackgroundColor3 = Color3.fromRGB(r, g, b)
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    MainFrame.Visible = false
+    MinimizedFrame.Visible = true
+end)
+
+MinimizedFrame.MouseButton1Click:Connect(function()
+    MinimizedFrame.Visible = false
+    MainFrame.Visible = true
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+LockButton.MouseButton1Click:Connect(function()
+    MainFrame.Draggable = not MainFrame.Draggable
+    LockButton.Text = MainFrame.Draggable and "🔓" or "🔒"
+end)
+
+-- Add Tab Button Functionality
+AddTabButton.MouseButton1Click:Connect(function()
+    local tabCount = 0
+    for _ in pairs(scriptTabs) do tabCount = tabCount + 1 end
+    local tabName = "Script " .. (tabCount + 1)
+    createNewTab(tabName, "")
+end)
