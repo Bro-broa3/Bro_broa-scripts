@@ -1,75 +1,988 @@
+-- Bro_broa Hub v6.0 (Discord Library Version)
 local DiscordLib = loadstring(game:HttpGet"https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Discord%20library")()
 
-local win = DiscordLib:Window("discord library")
+local teleportService = game:GetService("TeleportService")
+local players = game:GetService("Players")
+local httpService = game:GetService("HttpService")
+local player = players.LocalPlayer
+local runService = game:GetService("RunService")
 
-local serv = win:Server("Preview", "")
+-- Global state management
+if not _G.Bro_broaHub then
+    _G.Bro_broaHub = {
+        Version = "6.0",
+        LastTeleport = 0,
+        DebugInfo = {},
+        TeleportSetupDone = false
+    }
+end
 
-local btns = serv:Channel("Buttons")
+-- Simple notification system
+local function ShowNotification(title, content, duration)
+    duration = duration or 5
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = title,
+        Text = content,
+        Duration = duration
+    })
+end
 
-btns:Button("Kill all", function()
-DiscordLib:Notification("Notification", "Killed everyone!", "Okay!")
-end)
+-- Error logging
+local function LogDebug(event, details)
+    table.insert(_G.Bro_broaHub.DebugInfo, os.date("%X").." - "..event..": "..tostring(details))
+    print("[Bro_broa Debug]", event, details)
+end
 
-btns:Seperator()
+-- Get available servers for hopping
+local function GetAvailableServers()
+    local url = "https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100"
+    local success, response = pcall(function()
+        return httpService:JSONDecode(game:HttpGet(url))
+    end)
+    
+    if success and response and response.data then
+        local servers = {}
+        local currentPlayers = #players:GetPlayers()
+        
+        for _, server in ipairs(response.data) do
+            if server.id ~= game.JobId and server.playing < server.maxPlayers then
+                table.insert(servers, server)
+            end
+        end
+        
+        -- Sort by player count similarity
+        table.sort(servers, function(a, b)
+            local diffA = math.abs(a.playing - currentPlayers)
+            local diffB = math.abs(b.playing - currentPlayers)
+            return diffA < diffB
+        end)
+        
+        return servers
+    end
+    return {}
+end
 
-btns:Button("Get max level", function()
-DiscordLib:Notification("Notification", "Max level!", "Okay!")
-end)
+-- Server hop function
+local function ServerHop()
+    if os.time() - _G.Bro_broaHub.LastTeleport < 10 then
+        return "Please wait 10 seconds between hops"
+    end
+    
+    local servers = GetAvailableServers()
+    if #servers == 0 then
+        return "No available servers found"
+    end
+    
+    local targetServer = servers[math.random(1, math.min(5, #servers))]
+    _G.Bro_broaHub.LastTeleport = os.time()
+    
+    teleportService:TeleportToPlaceInstance(game.PlaceId, targetServer.id, player)
+    return "Hopping to server: "..targetServer.id
+end
 
-local tgls = serv:Channel("Toggles")
+-- Universal reload function
+local function SetupAutoReload()
+    local reloadScript = [[
+        wait(0.01)
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%206.0", true))()
+    ]]
+    
+    if queue_on_teleport then
+        queue_on_teleport(reloadScript)
+        LogDebug("Auto-Reload", "Queued for next teleport")
+        return true
+    else
+        LogDebug("Auto-Reload", "queue_on_teleport not available")
+        return false
+    end
+end
 
-tgls:Toggle("Auto-Farm",false, function(bool)
-print(bool)
-end)
+-- Continuous reload setup
+local function MaintainAutoReload()
+    while true do
+        -- Ensure reload is always queued
+        if not _G.Bro_broaHub.TeleportSetupDone then
+            if SetupAutoReload() then
+                _G.Bro_broaHub.TeleportSetupDone = true
+            end
+        end
+        
+        -- Check every 30 seconds
+        task.wait(30)
+    end
+end
 
-local sldrs = serv:Channel("Sliders")
+-- Enhanced hint function with pcall error handling
+local function ShowHint(message)
+    local success, err = pcall(function()
+        local hint = Instance.new("Hint")
+        hint.Text = tostring(message)
+        hint.Parent = workspace
+        
+        -- Safely destroy hint after delay
+        task.delay(3, function()
+            pcall(function()
+                if hint and hint.Parent then
+                    hint:Destroy()
+                end
+            end)
+        end)
+    end)
+    
+    if not success then
+        warn(tostring(err))
+    end
+end
 
-local sldr = sldrs:Slider("Slide me!", 0, 1000, 400, function(t)
-print(t)
-end)
+-- Create the main GUI using Discord Library
+local function CreateGUI()
+    -- Create main window
+    local window = DiscordLib:Window("Bro_broa Hub ".._G.Bro_broaHub.Version)
+    
+    -- Create servers (tabs)
+    local mainServer = window:Server("Main", "http://www.roblox.com/asset/?id=6031075938")
+    local playerServer = window:Server("Player", "")
+    local settingsServer = window:Server("Settings", "")
+    local bro_broaServer = window:Server("Bro_broa GUI", "")
+    local serverServer = window:Server("Server", "")
+    local feServer = window:Server("FE", "")
+    local tsbServer = window:Server("TSB", "")
+    local vblServer = window:Server("VBL", "")
+    
+    -- Create channels for each server
+    local mainChannel = mainServer:Channel("Main Features")
+    local playerChannel = playerServer:Channel("Player Features")
+    local settingsChannel = settingsServer:Channel("Settings")
+    local bro_broaChannel = bro_broaServer:Channel("Bro_broa Scripts")
+    local serverChannel = serverServer:Channel("Server Features")
+    local feChannel = feServer:Channel("FE Scripts")
+    local tsbChannel = tsbServer:Channel("TSB Scripts")
+    local vblChannel = vblServer:Channel("VBL Scripts")
+    
+    -- Enhanced Infinite Yield Button
+    mainChannel:Button("Infinite Yield FE", function()
+        DiscordLib:Notification("Loading", "Initializing Infinite Yield...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source', true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Infinite Yield loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-sldrs:Button("Change to 50", function()
-sldr:Change(50)
-end)
+    -- Enhanced Mobile buttons Button
+    mainChannel:Button("Mobile buttons", function()
+        DiscordLib:Notification("Loading", "Initializing Mobile buttons...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Mobile%20buttons", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Mobile buttons loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-local drops = serv:Channel("Dropdowns")
+    -- Enhanced Ping+FPS shower Button
+    mainChannel:Button("Ping+FPS shower", function()
+        DiscordLib:Notification("Loading", "Initializing Ping+FPS shower...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Ping%2BFPS%20shower", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Ping+FPS shower loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
+    -- Enhanced Use All Tools Button
+    mainChannel:Button("Use All Tools", function()
+        DiscordLib:Notification("Loading", "Initializing Use All Tools...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Use%20all%20tool", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Use All Tools loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-local drop = drops:Dropdown("Pick me!",{"Option 1","Option 2","Option 3","Option 4","Option 5"}, function(bool)
-print(bool)
-end)
+    -- Enhanced Click to TP Tool Button
+    mainChannel:Button("Click to TP Tool", function()
+        DiscordLib:Notification("Loading", "Initializing Click to TP Tool...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Click%20to%20tp%20tool", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Click to TP Tool loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-drops:Button("Clear", function()
-drop:Clear()
-end)
+    -- Enhanced Fling All Button
+    mainChannel:Button("Fling All", function()
+        DiscordLib:Notification("Loading", "Initializing Fling All...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Fling%20all", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Fling All loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-drops:Button("Add option", function()
-drop:Add("Option")
-end)
+    -- Enhanced SUS Button
+    mainChannel:Button("SUS Script", function()
+        DiscordLib:Notification("Loading", "Initializing SUS Script...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/SUS%20script", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "SUS Script loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-local clrs = serv:Channel("Colorpickers")
+    -- Enhanced music play Button
+    mainChannel:Button("music play", function()
+        DiscordLib:Notification("Loading", "Initializing music play...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Play%20music", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "music play loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-clrs:Colorpicker("ESP Color", Color3.fromRGB(255,1,1), function(t)
-print(t)
-end)
+    -- Create text input box for hints
+    mainChannel:Textbox("Enter Message(hint)", "Type message and press Enter...", true, function(InputText)
+        if InputText ~= "" then
+            ShowHint(InputText)
+        end
+    end)
 
-local textbs = serv:Channel("Textboxes")
+-- Enhanced Fly Gui Button
+    playerChannel:Button("Fly Gui", function()
+        DiscordLib:Notification("Loading", "Initializing Fly Gui...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Fly%20gui", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Fly Gui loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-textbs:Textbox("Gun power", "Type here!", true, function(t)
-print(t)
-end)
+    -- Enhanced Playerlist Gui Button
+    playerChannel:Button("Playerlist Gui", function()
+        DiscordLib:Notification("Loading", "Initializing Playerlist Gui...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Playerlist", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Playerlist Gui loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-local lbls = serv:Channel("Labels")
+    -- Enhanced Walkfling Gui Button
+    playerChannel:Button("walkfling gui", function()
+        DiscordLib:Notification("Loading", "Initializing walkfling gui...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Universal-Script-TOUCH-FLING-30401", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "walkfling gui loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-lbls:Label("This is just a label.")
+    -- Enhanced esp players Button
+    playerChannel:Button("esp players", function()
+        DiscordLib:Notification("Loading", "Initializing esp players...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Esp%20players", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "esp players loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-local bnds = serv:Channel("Binds")
+    -- Enhanced unesp players Button
+    playerChannel:Button("unesp players", function()
+        DiscordLib:Notification("Loading", "Initializing unesp players...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/unesp", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "unesp players loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
 
-bnds:Bind("Kill bind", Enum.KeyCode.RightShift, function()
-print("Killed everyone!")
-end)
+    -- Noclip toggle
+    local noclipConnection = nil
+    local currentNoclipState = false
 
-serv:Channel("by dawid#7205")
+    -- Safe collision update with pcall
+    local function updateCollision(state)
+        pcall(function()
+            if not player or not player.Character then return end
+            
+            for _, part in ipairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    -- Backup original collision
+                    if not part:FindFirstChild("OriginalCollision") then
+                        local backup = Instance.new("BoolValue")
+                        backup.Name = "OriginalCollision"
+                        backup.Value = part.CanCollide
+                        backup.Parent = part
+                    end
+                    
+                    -- Apply new state
+                    part.CanCollide = not state
+                end
+            end
+        end)
+    end
 
+    -- Protected noclip loop
+    local function startNoclip()
+        pcall(function()
+            if noclipConnection then 
+                noclipConnection:Disconnect() 
+            end
+            
+            noclipConnection = runService.Stepped:Connect(function()
+                if currentNoclipState then
+                    updateCollision(true)
+                end
+            end)
+        end)
+    end
 
-win:Server("Main", "http://www.roblox.com/asset/?id=6031075938")
+    -- Create noclip toggle
+    playerChannel:Toggle("Noclip", false, function(value)
+        pcall(function()
+            currentNoclipState = value
+            if value then
+                startNoclip()
+                updateCollision(true)
+            else
+                if noclipConnection then
+                    noclipConnection:Disconnect()
+                end
+                updateCollision(false)
+            end
+        end)
+    end)
+
+    -- Auto-reconnect with protection
+    player.CharacterAdded:Connect(function()
+        pcall(function()
+            if currentNoclipState then
+                task.wait(1) -- Wait for character load
+                updateCollision(true)
+                startNoclip()
+            end
+        end)
+    end)
+
+    -- Ultimate Speed Controller
+    local SpeedController = {
+        CustomSpeed = 16,
+        GameDefault = 16,
+        UseCustom = false,
+        IsLocked = true,
+        HumanoidRef = nil,
+        EventHandlers = {}
+    }
+
+    -- Safely updates humanoid reference
+    local function RefreshHumanoid()
+        pcall(function()
+            local character = players.LocalPlayer.Character
+            SpeedController.HumanoidRef = character and character:FindFirstChildOfClass("Humanoid")
+            if SpeedController.HumanoidRef and not SpeedController.UseCustom then
+                SpeedController.GameDefault = SpeedController.HumanoidRef.WalkSpeed
+            end
+        end)
+    end
+
+    -- Smart speed application
+    local function EnforceSpeed()
+        pcall(function()
+            if not SpeedController.HumanoidRef or not SpeedController.HumanoidRef.Parent then
+                RefreshHumanoid()
+                if not SpeedController.HumanoidRef then return end
+            end
+            
+            SpeedController.HumanoidRef.WalkSpeed = 
+                SpeedController.UseCustom and SpeedController.CustomSpeed 
+                or SpeedController.GameDefault
+        end)
+    end
+
+    -- Create UI with live feedback
+    playerChannel:Textbox("Speed Control", "Enter custom speed", true, function(input)
+        SpeedController.UseCustom = input ~= ""
+        SpeedController.CustomSpeed = tonumber(input) or SpeedController.GameDefault
+        EnforceSpeed()
+    end)
+
+    -- Real-time default speed monitoring
+    SpeedController.EventHandlers.SpeedWatcher = runService.Heartbeat:Connect(function()
+        if SpeedController.HumanoidRef and not SpeedController.UseCustom then
+            if SpeedController.HumanoidRef.WalkSpeed ~= SpeedController.GameDefault then
+                SpeedController.GameDefault = SpeedController.HumanoidRef.WalkSpeed
+            end
+        end
+        EnforceSpeed()
+    end)
+
+    -- Character respawn handler
+    SpeedController.EventHandlers.CharAdded = players.LocalPlayer.CharacterAdded:Connect(function()
+        task.wait(0.3)
+        RefreshHumanoid()
+        EnforceSpeed()
+    end)
+
+    -- Initialization
+    task.spawn(function()
+        task.wait(1)
+        RefreshHumanoid()
+        EnforceSpeed()
+    end)
+
+    -- Infjump functions
+    local InfJumpEnabled = false
+
+    local function SafeInfJump()
+        pcall(function()
+            game:GetService("UserInputService").JumpRequest:Connect(function()
+                if InfJumpEnabled and players.LocalPlayer.Character then
+                    local Humanoid = players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                    if Humanoid and Humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                        Humanoid:ChangeState("Jumping")
+                    end
+                end
+            end)
+        end)
+    end
+
+    SafeInfJump()
+
+    -- Infjump toggle
+    playerChannel:Toggle("infjump", false, function(Value)
+        pcall(function()
+            InfJumpEnabled = Value
+            DiscordLib:Notification("infjump " .. (Value and "open" or "close"), 
+                Value and "Already open" or "Already close", "Okay!")
+        end)
+    end)
+
+    -- Jump Power Control
+    playerChannel:Slider("Jump Power", 50, 500, 50, function(Value)
+        pcall(function()
+            local character = players.LocalPlayer.Character
+            if character and character:FindFirstChildOfClass("Humanoid") then
+                character.Humanoid.JumpPower = Value
+            end
+        end)
+    end)
+
+-- Key System Button
+    settingsChannel:Button("Get Key Info", function()
+        DiscordLib:Notification("Bro_broa Hub Key", "Join our Discord: discord.gg/Arftune3Ab", "Okay!")
+    end)
+
+    -- Complete Antistopgame Button
+    settingsChannel:Button("Antistopgame", function()
+        DiscordLib:Notification("Loading", "Enabling Antistopgame...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antistopgame", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Enabled", "Antistopgame active!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced antidisconnect Button
+    settingsChannel:Button("Antidisconnect", function()
+        DiscordLib:Notification("Loading", "Initializing Antidisconnect...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antidisconnect", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Antidisconnect loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced Antiafk Button
+    settingsChannel:Button("Antiafk", function()
+        DiscordLib:Notification("Loading", "Initializing Antiafk...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Antiafk", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Antiafk loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced FPS boost Button
+    settingsChannel:Button("FPS BOOST", function()
+        DiscordLib:Notification("Loading", "Initializing FPS boost...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FPS%20boost", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "FPS boost loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced Shiftlock Button
+    settingsChannel:Button("Shiftlock", function()
+        DiscordLib:Notification("Loading", "Initializing Shiftlock...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Shiftlock", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Shiftlock loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced safechat Button
+    settingsChannel:Button("safechat", function()
+        DiscordLib:Notification("Loading", "Initializing safechat...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/safechat", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "safechat loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    settingsChannel:Button("Show Debug Info", function()
+        local debugText = "Bro_broa Hub v".._G.Bro_broaHub.Version.."\n\n"
+        debugText = debugText.."Teleport Setup: "..tostring(_G.Bro_broaHub.TeleportSetupDone).."\n\n"
+        
+        for i, entry in ipairs(_G.Bro_broaHub.DebugInfo) do
+            if i <= 10 then  -- Limit to last 10 entries
+                debugText = debugText..entry.."\n"
+            end
+        end
+        
+        DiscordLib:Notification("Debug Information", debugText, "Okay!")
+    end)
+
+    -- Bro_broa GUI
+    bro_broaChannel:Button("Bro_broa GUI 1.75(bro_broa)", function()
+        DiscordLib:Notification("Loading", "Initializing Bro_broa GUI 1.75...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Bro_broa GUI 1.75 loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Bro_broa GUI
+    bro_broaChannel:Button("Bro_broa executor2.0", function()
+        DiscordLib:Notification("Loading", "Initializing Bro_broa executor2.0...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.0", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Bro_broa executor2.0 loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced Server hopper Button
+    serverChannel:Button("Server hopper", function()
+        DiscordLib:Notification("Loading", "Initializing Server hopper...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Server%20Hopper", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Server hopper loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced PrivateServerJoiner Button
+    serverChannel:Button("PrivateServerJoiner", function()
+        DiscordLib:Notification("Loading", "Initializing PrivateServerJoiner...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/PrivateServerJoiner", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "PrivateServerJoiner loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    serverChannel:Button("Server Hop(small server)", function()
+        local result = ServerHop()
+        DiscordLib:Notification("Server Hop", result, "Okay!")
+    end)
+    
+    serverChannel:Button("Rejoin Server", function()
+        teleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
+    end)
+
+    -- Enhanced leave game Button
+    serverChannel:Button("leave game", function()
+        DiscordLib:Notification("Loading", "Initializing leave game...", "Okay!")
+        
+        local success, err = pcall(function()
+            game:shutdown()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "leave game loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- FE changes
+    feChannel:Button("FE saitama", function()
+        DiscordLib:Notification("Loading", "Initializing FE saitama...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FE%20saitama", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "FE saitama loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- FE changes
+    feChannel:Button("FE dance hub(maybe only music or dance)", function()
+        DiscordLib:Notification("Loading", "Initializing FE dance hub...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/FE%20dance%20hub", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "FE dance hub loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+-- TSB Features
+    tsbChannel:Button("Phantasm", function()
+        DiscordLib:Notification("Loading", "Initializing Phantasm...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/secretisadev/Phantasm/refs/heads/main/Games/TSB.lua", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Phantasm loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- TSB Features
+    tsbChannel:Button("TSB(move)", function()
+        DiscordLib:Notification("Loading", "Initializing TSB...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/yes1nt/yes/refs/heads/main/Void%20Reaper%20Obfuscated.txt", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "TSB loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- TSB Features
+    tsbChannel:Button("trash man", function()
+        DiscordLib:Notification("Loading", "Initializing trash man...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/yes1nt/yes/refs/heads/main/Trashcan%20Man", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "trash man loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- TSB Features
+    tsbChannel:Button("Show death contour", function()
+        DiscordLib:Notification("Loading", "Initializing Show death contour...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/louismich4el/ItsLouisPlayz-Scripts/main/TSB%20Death%20Counter%20Identifier.lua", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Show death contour loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced VL Button
+    vblChannel:Button("Sigma hub", function()
+        DiscordLib:Notification("Loading", "Initializing Sigma hub...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/Volleyball-Legends-SigmaHub-Get-Any-Style-Inf-Spin*box-Changer-Auto-Play-OP-34977", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Sigma hub loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Enhanced VBL Button
+    vblChannel:Button("Xenith hub(need key)", function()
+        DiscordLib:Notification("Loading", "Initializing Xenith hub(need key)...", "Okay!")
+        
+        local success, err = pcall(function()
+            loadstring(game:HttpGet("https://rawscripts.net/raw/UPD-Volleyball-Legends-Polaris-Hub-20-More-Features-42345", true))()
+        end)
+        
+        if success then
+            DiscordLib:Notification("Success", "Xenith hub(need key) loaded!", "Okay!")
+        else
+            DiscordLib:Notification("Error", "Failed: "..err, "Okay!")
+        end
+    end)
+
+    -- Variables for VBL hitbox features
+    local hitboxEnabled = false
+    local targetSize = 100
+    local originalSizes = {}
+    local activeConnections = {}
+
+    -- Main function to modify ball hitboxes
+    local function modifyBallHitboxes()
+        -- Clear previous connections
+        for _, connection in pairs(activeConnections) do
+            connection:Disconnect()
+        end
+        activeConnections = {}
+    
+        if not hitboxEnabled then
+            -- Restore original sizes if disabling
+            for part, originalSize in pairs(originalSizes) do
+                if part and part.Parent then
+                    pcall(function()
+                        part.Size = originalSize
+                        part.Transparency = 0
+                        part.Color = Color3.fromRGB(255, 255, 255)
+                        part.Material = Enum.Material.Plastic
+                    end)
+                end
+            end
+            originalSizes = {}
+            return
+        end
+    
+        -- Function to process a ball part
+        local function processPart(part)
+            if not originalSizes[part] then
+                originalSizes[part] = part.Size
+            end
+        
+            pcall(function()
+                part.Size = Vector3.new(targetSize, targetSize, targetSize)
+                part.Transparency = 0.5
+                part.Color = Color3.fromRGB(255, 0, 0)
+                part.Material = Enum.Material.Neon
+                part.CanCollide = false
+            end)
+        end
+    
+        -- Function to process a ball model
+        local function processBall(ball)
+            for _, descendant in pairs(ball:GetDescendants()) do
+                if descendant:IsA("BasePart") then
+                    processPart(descendant)
+                end
+            end
+        end
+    
+        -- Process existing balls
+        for _, obj in pairs(workspace:GetChildren()) do
+            if obj.Name:find("CLIENT_BALL_") and obj:IsA("Model") then
+                processBall(obj)
+            end
+        end
+    
+        -- Set up listeners for new balls
+        local childAddedConnection = workspace.ChildAdded:Connect(function(child)
+            if child.Name:find("CLIENT_BALL_") and child:IsA("Model") then
+                processBall(child)
+            
+                -- Listen for new parts in this ball
+                local descendantConnection = child.DescendantAdded:Connect(function(descendant)
+                    if descendant:IsA("BasePart") then
+                        processPart(descendant)
+                    end
+                end)
+            
+                table.insert(activeConnections, descendantConnection)
+            end
+        end)
+    
+        table.insert(activeConnections, childAddedConnection)
+    end
+
+    -- Create UI elements in the VBL tab
+    vblChannel:Toggle("Change Ball Hitbox", false, function(Value)
+        hitboxEnabled = Value
+        modifyBallHitboxes()
+        DiscordLib:Notification("Hitbox", ("Hitbox %s"):format(Value and "enabled" or "disabled"), "Okay!")
+    end)
+
+    vblChannel:Textbox("Ball Hitbox Size", "Enter size number", true, function(Text)
+        local newSize = tonumber(Text)
+        if newSize and newSize > 0 then
+            targetSize = newSize
+            if hitboxEnabled then
+                modifyBallHitboxes()
+            end
+            DiscordLib:Notification("Size Updated", ("Hitbox size set to: %d"):format(newSize), "Okay!")
+        else
+            DiscordLib:Notification("Invalid Size", "Please enter a valid number greater than 0", "Okay!")
+        end
+    end)
+
+    -- Final initialization
+    DiscordLib:Notification("Bro_broa Hub ".._G.Bro_broaHub.Version, "Creator by bro_broa3", "Okay!")
+    
+    return true
+end
+
+-- Initialize the GUI
+if not _G.Bro_broaHub.Initialized then
+    LogDebug("Initializing", "Bro_broa Hub v".._G.Bro_broaHub.Version)
+    
+    -- Set up continuous auto-reload maintenance
+    coroutine.wrap(MaintainAutoReload)()
+    
+    -- Set up teleport detection
+    player.OnTeleport:Connect(function(teleportState)
+        if teleportState == Enum.TeleportState.Started then
+            LogDebug("Teleport Detected", "Resetting auto-reload flag")
+            _G.Bro_broaHub.TeleportSetupDone = false
+        end
+    end)
+    
+    -- Wait for player to be ready
+    local maxWaitTime = 30
+    local startTime = os.clock()
+    
+    while not player or not player.PlayerGui do
+        if os.clock() - startTime > maxWaitTime then
+            LogDebug("Timeout", "Player not ready after 30 seconds")
+            break
+        end
+        task.wait(0.5)
+    end
+    
+    -- Create GUI
+    local success = pcall(CreateGUI)
+    if not success then
+        LogDebug("GUI Creation Failed", "Discord Library initialization error")
+        ShowNotification("Critical Error", "GUI failed to initialize", 10)
+    else
+        _G.Bro_broaHub.Initialized = true
+    end
+end
