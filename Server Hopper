@@ -379,27 +379,39 @@ local function OpenServerHopper()
  
         return entry
     end
- 
-    -- Refresh server list
+
+    -- Variable to track current filter state
+    local sortAscending = false
+
+    -- Refresh server list with proper filtering
     local function RefreshServerList()
         for _, child in ipairs(scrollFrame:GetChildren()) do
             if child:IsA("Frame") then
                 child:Destroy()
             end
         end
- 
+
         local servers = GetServers(game.PlaceId)
+        
+        -- Apply sorting based on player count
+        table.sort(servers, function(a, b)
+            if sortAscending then
+                return a.playing < b.playing  -- Low to high
+            else
+                return a.playing > b.playing  -- High to low
+            end
+        end)
+
         for i, server in ipairs(servers) do
             CreateServerEntry(server, i)
         end
     end
  
     -- Sort functionality
-    local sortAscending = false
     filterBtn.MouseButton1Click:Connect(function()
         sortAscending = not sortAscending
         filterBtn.Text = sortAscending and "Filter: Low Players" or "Filter: High Players"
-        -- Actual sort implementation would go here
+        RefreshServerList()  -- Refresh with new filter
     end)
  
     -- Refresh button functionality
