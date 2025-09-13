@@ -1210,17 +1210,17 @@ local function CreateGUI()
 
     -- Bro_broa GUI
     Bro_broaguiTab:CreateButton({
-        Name = "Bro_broa executor2.0",
+        Name = "Bro_broa executor2.5",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
-                Content = "Initializing Bro_broa executor2.0...",
+                Content = "Initializing Bro_broa executor2.5...",
                 Duration = math.huge,
                 Image = 4483362458
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.0", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.5", true))()
             end)
             
             loadNotify:Destroy()
@@ -1228,7 +1228,7 @@ local function CreateGUI()
             if success then
                 Rayfield:Notify({
                     Title = "Success",
-                    Content = "Bro_broa executor2.0 loaded!",
+                    Content = "Bro_broa executor2.5 loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
