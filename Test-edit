@@ -505,7 +505,6 @@ MinimizedBorder.Parent = MinimizedFrame
 
 -- Script Library
 local ScriptLibrary = {
-    ["Bro_broa GUI 6.0"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/main/Bro_broa%20gui%206.0"))()',
     ["Infinite Yield"] = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()'
 }
 
