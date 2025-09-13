@@ -1,7 +1,10 @@
 -- Creator: bro_broa
+local CoreGui = game:GetService("CoreGui")
+local HttpService = game:GetService("HttpService")
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "BroBroaGUI"
-ScreenGui.Parent = game.CoreGui
+ScreenGui.Parent = CoreGui
 
 -- File system check
 local writefile = writefile or nil
@@ -19,12 +22,13 @@ local BorderColor = Color3.fromRGB(120, 160, 220)
 -- Main Frame with rounded corners and border
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 550, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -275, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 600, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -250)
 MainFrame.BackgroundColor3 = MainColor
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
 
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 12)
@@ -43,6 +47,7 @@ TitleBar.Size = UDim2.new(1, 0, 0, 30)
 TitleBar.BackgroundColor3 = SecondaryColor
 TitleBar.BorderSizePixel = 0
 TitleBar.Position = UDim2.new(0, 0, 0, 0)
+TitleBar.Parent = MainFrame
 
 local TitleCorner = Instance.new("UICorner")
 TitleCorner.CornerRadius = UDim.new(0, 12)
@@ -58,6 +63,7 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Position = UDim2.new(0, 15, 0, 0)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 14
+Title.Parent = TitleBar
 
 local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Name = "MinimizeButton"
@@ -68,6 +74,7 @@ MinimizeButton.BackgroundTransparency = 1
 MinimizeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
 MinimizeButton.Font = Enum.Font.GothamBold
 MinimizeButton.TextSize = 20
+MinimizeButton.Parent = TitleBar
 
 local LockButton = Instance.new("TextButton")
 LockButton.Name = "LockButton"
@@ -76,6 +83,7 @@ LockButton.Position = UDim2.new(1, -60, 0, 0)
 LockButton.Text = "🔓"
 LockButton.BackgroundTransparency = 1
 LockButton.TextColor3 = Color3.fromRGB(150, 200, 255)
+LockButton.Parent = TitleBar
 
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
@@ -85,6 +93,7 @@ CloseButton.Text = "X"
 CloseButton.BackgroundTransparency = 1
 CloseButton.TextColor3 = Color3.fromRGB(255, 100, 100)
 CloseButton.Font = Enum.Font.GothamBold
+CloseButton.Parent = TitleBar
 
 -- Tabs
 local Tabs = Instance.new("Frame")
@@ -92,6 +101,7 @@ Tabs.Name = "Tabs"
 Tabs.Size = UDim2.new(1, 0, 0, 40)
 Tabs.Position = UDim2.new(0, 0, 0, 30)
 Tabs.BackgroundColor3 = SecondaryColor
+Tabs.Parent = MainFrame
 
 local TabsCorner = Instance.new("UICorner")
 TabsCorner.CornerRadius = UDim.new(0, 8)
@@ -104,6 +114,7 @@ ExecutorTab.BackgroundColor3 = AccentColor
 ExecutorTab.Text = "Executor"
 ExecutorTab.TextColor3 = Color3.new(1, 1, 1)
 ExecutorTab.Font = Enum.Font.Gotham
+ExecutorTab.Parent = Tabs
 
 local LibraryTab = Instance.new("TextButton")
 LibraryTab.Name = "LibraryTab"
@@ -113,6 +124,7 @@ LibraryTab.BackgroundColor3 = SecondaryColor
 LibraryTab.Text = "Library"
 LibraryTab.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 LibraryTab.Font = Enum.Font.Gotham
+LibraryTab.Parent = Tabs
 
 local SettingsTab = Instance.new("TextButton")
 SettingsTab.Name = "SettingsTab"
@@ -122,6 +134,7 @@ SettingsTab.BackgroundColor3 = SecondaryColor
 SettingsTab.Text = "Settings"
 SettingsTab.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 SettingsTab.Font = Enum.Font.Gotham
+SettingsTab.Parent = Tabs
 
 local Line = Instance.new("Frame")
 Line.Name = "Line"
@@ -129,6 +142,7 @@ Line.Size = UDim2.new(1, 0, 0, 2)
 Line.Position = UDim2.new(0, 0, 0, 70)
 Line.BackgroundColor3 = AccentColor
 Line.BorderSizePixel = 0
+Line.Parent = MainFrame
 
 -- Executor Page
 local ExecutorPage = Instance.new("Frame")
@@ -137,14 +151,45 @@ ExecutorPage.Size = UDim2.new(1, -20, 1, -80)
 ExecutorPage.Position = UDim2.new(0, 10, 0, 75)
 ExecutorPage.BackgroundTransparency = 1
 ExecutorPage.Visible = true
+ExecutorPage.Parent = MainFrame
 
--- Script Container with Line Numbers
+-- Script Tabs Container
+local ScriptTabsContainer = Instance.new("Frame")
+ScriptTabsContainer.Name = "ScriptTabsContainer"
+ScriptTabsContainer.Size = UDim2.new(1, 0, 0, 30)
+ScriptTabsContainer.Position = UDim2.new(0, 0, 0, 0)
+ScriptTabsContainer.BackgroundTransparency = 1
+ScriptTabsContainer.Parent = ExecutorPage
+
+local ScriptTabsListLayout = Instance.new("UIListLayout")
+ScriptTabsListLayout.FillDirection = Enum.FillDirection.Horizontal
+ScriptTabsListLayout.Padding = UDim.new(0, 5)
+ScriptTabsListLayout.Parent = ScriptTabsContainer
+
+-- Add Tab Button
+local AddTabButton = Instance.new("TextButton")
+AddTabButton.Name = "AddTabButton"
+AddTabButton.Size = UDim2.new(0, 30, 0, 30)
+AddTabButton.BackgroundColor3 = SecondaryColor
+AddTabButton.Text = "+"
+AddTabButton.TextColor3 = Color3.new(1, 1, 1)
+AddTabButton.Font = Enum.Font.GothamBold
+AddTabButton.TextSize = 18
+AddTabButton.Parent = ScriptTabsContainer
+
+local AddTabCorner = Instance.new("UICorner")
+AddTabCorner.CornerRadius = UDim.new(0, 6)
+AddTabCorner.Parent = AddTabButton
+
+-- Script Container with Line Numbers (using ScrollingFrame for ScriptBox)
 local ScriptContainer = Instance.new("Frame")
 ScriptContainer.Name = "ScriptContainer"
 ScriptContainer.Size = UDim2.new(1, 0, 0.8, 0)
+ScriptContainer.Position = UDim2.new(0, 0, 0, 35)
 ScriptContainer.BackgroundTransparency = 1
+ScriptContainer.Parent = ExecutorPage
 
--- Line Numbers Frame
+-- Line Numbers ScrollingFrame (left column)
 local LineNumbers = Instance.new("ScrollingFrame")
 LineNumbers.Name = "LineNumbers"
 LineNumbers.Size = UDim2.new(0, 40, 1, 0)
@@ -154,23 +199,27 @@ LineNumbers.AutomaticCanvasSize = Enum.AutomaticSize.Y
 LineNumbers.CanvasSize = UDim2.new(0, 0, 0, 0)
 LineNumbers.ScrollingDirection = Enum.ScrollingDirection.Y
 LineNumbers.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
-LineNumbers.ScrollingEnabled = false -- Prevent independent scrolling
+LineNumbers.ScrollingEnabled = true
+LineNumbers.Parent = ScriptContainer
 
 local LineNumbersLayout = Instance.new("UIListLayout")
 LineNumbersLayout.Padding = UDim.new(0, 0)
 LineNumbersLayout.SortOrder = Enum.SortOrder.LayoutOrder
+LineNumbersLayout.Parent = LineNumbers
 
--- Script Box with Text
+-- Script Box (now a ScrollingFrame) with TextBox inside
 local ScriptBox = Instance.new("ScrollingFrame")
 ScriptBox.Name = "ScriptBox"
 ScriptBox.Size = UDim2.new(1, -40, 1, 0)
 ScriptBox.Position = UDim2.new(0, 40, 0, 0)
 ScriptBox.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
-ScriptBox.ScrollBarThickness = 8
 ScriptBox.BorderSizePixel = 0
+ScriptBox.ScrollBarThickness = 8
 ScriptBox.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScriptBox.CanvasSize = UDim2.new(0, 0, 0, 0)
 ScriptBox.ScrollingDirection = Enum.ScrollingDirection.Y
 ScriptBox.VerticalScrollBarInset = Enum.ScrollBarInset.ScrollBar
+ScriptBox.Parent = ScriptContainer
 
 local ScriptBoxCorner = Instance.new("UICorner")
 ScriptBoxCorner.CornerRadius = UDim.new(0, 6)
@@ -181,9 +230,10 @@ ScriptBoxBorder.Thickness = 1
 ScriptBoxBorder.Color = Color3.fromRGB(80, 80, 100)
 ScriptBoxBorder.Parent = ScriptBox
 
+-- TextBox inside the ScrollingFrame (this is the actual editable area)
 local InputBox = Instance.new("TextBox")
 InputBox.Name = "InputBox"
-InputBox.Size = UDim2.new(1, -15, 1, -5)
+InputBox.Size = UDim2.new(1, -15, 0, 20) -- height will expand via CanvasSize update
 InputBox.Position = UDim2.new(0, 5, 0, 5)
 InputBox.BackgroundTransparency = 1
 InputBox.Text = ""
@@ -195,57 +245,18 @@ InputBox.Font = Enum.Font.RobotoMono
 InputBox.MultiLine = true
 InputBox.TextWrapped = false
 InputBox.ClearTextOnFocus = false
-
--- Function to sync scrolling
-local function syncScroll()
-    LineNumbers.CanvasPosition = Vector2.new(0, ScriptBox.CanvasPosition.Y)
-end
-
-ScriptBox:GetPropertyChangedSignal("CanvasPosition"):Connect(syncScroll)
-
--- Function to update line numbers
-local function updateLineNumbers()
-    local lineCount = #string.split(InputBox.Text, "\n")
-    if lineCount == 0 then lineCount = 1 end
-    
-    -- Clear existing line numbers
-    for _, child in ipairs(LineNumbers:GetChildren()) do
-        if child:IsA("TextLabel") then
-            child:Destroy()
-        end
-    end
-    
-    -- Create new line numbers
-    for i = 1, lineCount do
-        local lineLabel = Instance.new("TextLabel")
-        lineLabel.Name = "Line_" .. i
-        lineLabel.Size = UDim2.new(1, 0, 0, 20)
-        lineLabel.BackgroundTransparency = 1
-        lineLabel.Text = tostring(i)
-        lineLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-        lineLabel.TextXAlignment = Enum.TextXAlignment.Right
-        lineLabel.Font = Enum.Font.RobotoMono
-        lineLabel.TextSize = 14
-        lineLabel.Parent = LineNumbers
-    end
-    
-    -- Update canvas sizes
-    local textHeight = lineCount * 20
-    LineNumbers.CanvasSize = UDim2.new(0, 0, 0, textHeight)
-    ScriptBox.CanvasSize = UDim2.new(0, 0, 0, textHeight)
-end
-
-InputBox:GetPropertyChangedSignal("Text"):Connect(updateLineNumbers)
+InputBox.Parent = ScriptBox
 
 -- Buttons
 local ExecuteButton = Instance.new("TextButton")
 ExecuteButton.Name = "ExecuteButton"
 ExecuteButton.Size = UDim2.new(0.3, -5, 0, 35)
-ExecuteButton.Position = UDim2.new(0, 0, 0.8, 10)
+ExecuteButton.Position = UDim2.new(0, 5, 0.8, 10)
 ExecuteButton.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 ExecuteButton.Text = "Execute"
 ExecuteButton.TextColor3 = Color3.new(1, 1, 1)
 ExecuteButton.Font = Enum.Font.GothamBold
+ExecuteButton.Parent = ExecutorPage
 
 local ExecuteCorner = Instance.new("UICorner")
 ExecuteCorner.CornerRadius = UDim.new(0, 6)
@@ -260,6 +271,7 @@ ClearButton.Text = "Clear"
 ClearButton.TextColor3 = Color3.new(1, 1, 1)
 ClearButton.Font = Enum.Font.GothamBold
 ClearButton.TextSize = 14
+ClearButton.Parent = ExecutorPage
 
 local ClearCorner = Instance.new("UICorner")
 ClearCorner.CornerRadius = UDim.new(0, 6)
@@ -274,6 +286,7 @@ SaveButton.Text = "Save to Library"
 SaveButton.TextColor3 = Color3.new(1, 1, 1)
 SaveButton.Font = Enum.Font.GothamBold
 SaveButton.TextSize = 14
+SaveButton.Parent = ExecutorPage
 
 local SaveCorner = Instance.new("UICorner")
 SaveCorner.CornerRadius = UDim.new(0, 6)
@@ -286,6 +299,7 @@ LibraryPage.Size = UDim2.new(1, -20, 1, -80)
 LibraryPage.Position = UDim2.new(0, 10, 0, 75)
 LibraryPage.BackgroundTransparency = 1
 LibraryPage.Visible = false
+LibraryPage.Parent = MainFrame
 
 local ScriptsFrame = Instance.new("ScrollingFrame")
 ScriptsFrame.Name = "ScriptsFrame"
@@ -294,10 +308,12 @@ ScriptsFrame.BackgroundTransparency = 1
 ScriptsFrame.ScrollBarThickness = 8
 ScriptsFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 ScriptsFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+ScriptsFrame.Parent = LibraryPage
 
 local UIListLayout = Instance.new("UIListLayout")
 UIListLayout.Padding = UDim.new(0, 10)
 UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Parent = ScriptsFrame
 
 -- Template for script entries
 local Template = Instance.new("Frame")
@@ -305,6 +321,7 @@ Template.Name = "Template"
 Template.Size = UDim2.new(1, 0, 0, 50)
 Template.BackgroundColor3 = SecondaryColor
 Template.Visible = false
+Template.Parent = ScreenGui
 
 local TemplateCorner = Instance.new("UICorner")
 TemplateCorner.CornerRadius = UDim.new(0, 8)
@@ -317,15 +334,15 @@ TemplateBorder.Parent = Template
 
 local ScriptName = Instance.new("TextLabel")
 ScriptName.Name = "ScriptName"
-ScriptName.Size = UDim2.new(0.4, 0, 1, 0) -- Adjusted to make room for buttons
+ScriptName.Size = UDim2.new(0.4, 0, 1, 0)
 ScriptName.BackgroundTransparency = 1
 ScriptName.Text = "Script Name"
 ScriptName.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 ScriptName.TextXAlignment = Enum.TextXAlignment.Left
 ScriptName.Position = UDim2.new(0, 15, 0, 0)
 ScriptName.Font = Enum.Font.Gotham
+ScriptName.Parent = Template
 
--- ADDED: Rename button for script entries
 local RenameButton = Instance.new("TextButton")
 RenameButton.Name = "RenameButton"
 RenameButton.Size = UDim2.new(0.1, 0, 0.7, 0)
@@ -335,6 +352,7 @@ RenameButton.Text = "Rename"
 RenameButton.TextColor3 = Color3.new(1, 1, 1)
 RenameButton.Font = Enum.Font.Gotham
 RenameButton.TextSize = 12
+RenameButton.Parent = Template
 
 local RenameCorner = Instance.new("UICorner")
 RenameCorner.CornerRadius = UDim.new(0, 6)
@@ -349,6 +367,7 @@ CopyButton.Text = "Copy"
 CopyButton.TextColor3 = Color3.new(1, 1, 1)
 CopyButton.Font = Enum.Font.Gotham
 CopyButton.TextSize = 12
+CopyButton.Parent = Template
 
 local CopyCorner = Instance.new("UICorner")
 CopyCorner.CornerRadius = UDim.new(0, 6)
@@ -363,6 +382,7 @@ LoadButton.Text = "Load"
 LoadButton.TextColor3 = Color3.new(1, 1, 1)
 LoadButton.Font = Enum.Font.Gotham
 LoadButton.TextSize = 12
+LoadButton.Parent = Template
 
 local LoadCorner = Instance.new("UICorner")
 LoadCorner.CornerRadius = UDim.new(0, 6)
@@ -377,6 +397,7 @@ DeleteButton.Text = "Delete"
 DeleteButton.TextColor3 = Color3.new(1, 1, 1)
 DeleteButton.Font = Enum.Font.Gotham
 DeleteButton.TextSize = 12
+DeleteButton.Parent = Template
 
 local DeleteCorner = Instance.new("UICorner")
 DeleteCorner.CornerRadius = UDim.new(0, 6)
@@ -389,6 +410,7 @@ SettingsPage.Size = UDim2.new(1, -20, 1, -80)
 SettingsPage.Position = UDim2.new(0, 10, 0, 75)
 SettingsPage.BackgroundTransparency = 1
 SettingsPage.Visible = false
+SettingsPage.Parent = MainFrame
 
 local ColorLabel = Instance.new("TextLabel")
 ColorLabel.Name = "ColorLabel"
@@ -399,8 +421,8 @@ ColorLabel.Text = "Script Box Background Color (0-255):"
 ColorLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 ColorLabel.TextXAlignment = Enum.TextXAlignment.Left
 ColorLabel.Font = Enum.Font.Gotham
+ColorLabel.Parent = SettingsPage
 
--- FIXED: Adjust RGB input positions with proper spacing
 local RBox = Instance.new("TextBox")
 RBox.Name = "RBox"
 RBox.Size = UDim2.new(0.18, 0, 0, 35)
@@ -410,6 +432,7 @@ RBox.PlaceholderText = "R"
 RBox.Text = "35"
 RBox.TextColor3 = Color3.new(1, 1, 1)
 RBox.Font = Enum.Font.Gotham
+RBox.Parent = SettingsPage
 
 local RBoxCorner = Instance.new("UICorner")
 RBoxCorner.CornerRadius = UDim.new(0, 6)
@@ -424,6 +447,7 @@ GBox.PlaceholderText = "G"
 GBox.Text = "35"
 GBox.TextColor3 = Color3.new(1, 1, 1)
 GBox.Font = Enum.Font.Gotham
+GBox.Parent = SettingsPage
 
 local GBoxCorner = Instance.new("UICorner")
 GBoxCorner.CornerRadius = UDim.new(0, 6)
@@ -438,12 +462,12 @@ BBox.PlaceholderText = "B"
 BBox.Text = "45"
 BBox.TextColor3 = Color3.new(1, 1, 1)
 BBox.Font = Enum.Font.Gotham
+BBox.Parent = SettingsPage
 
 local BBoxCorner = Instance.new("UICorner")
 BBoxCorner.CornerRadius = UDim.new(0, 6)
 BBoxCorner.Parent = BBox
 
--- FIXED: Apply button positioning with margin
 local ApplyButton = Instance.new("TextButton")
 ApplyButton.Name = "ApplyButton"
 ApplyButton.Size = UDim2.new(0.25, 0, 0, 35)
@@ -453,12 +477,13 @@ ApplyButton.Text = "Apply Color"
 ApplyButton.TextColor3 = Color3.new(1, 1, 1)
 ApplyButton.Font = Enum.Font.GothamBold
 ApplyButton.TextSize = 13
+ApplyButton.Parent = SettingsPage
 
 local ApplyCorner = Instance.new("UICorner")
 ApplyCorner.CornerRadius = UDim.new(0, 6)
 ApplyCorner.Parent = ApplyButton
 
--- Minimized Mode - Circular GUI (movable)
+-- Minimized Mode
 local MinimizedFrame = Instance.new("ImageButton")
 MinimizedFrame.Name = "MinimizedFrame"
 MinimizedFrame.Size = UDim2.new(0, 50, 0, 50)
@@ -466,7 +491,8 @@ MinimizedFrame.Position = UDim2.new(0, 100, 0, 100)
 MinimizedFrame.Image = "http://www.roblox.com/asset/?id=119526989765479"
 MinimizedFrame.Visible = false
 MinimizedFrame.Active = true
-MinimizedFrame.Draggable = true  -- Always movable
+MinimizedFrame.Draggable = true
+MinimizedFrame.Parent = ScreenGui
 
 local MinimizedCorner = Instance.new("UICorner")
 MinimizedCorner.CornerRadius = UDim.new(1, 0)
@@ -477,47 +503,8 @@ MinimizedBorder.Thickness = 1.5
 MinimizedBorder.Color = BorderColor
 MinimizedBorder.Parent = MinimizedFrame
 
--- Parent Hierarchy
-MinimizedFrame.Parent = ScreenGui
-Template.Parent = ScreenGui
-ScriptName.Parent = Template
-RenameButton.Parent = Template
-CopyButton.Parent = Template
-LoadButton.Parent = Template
-DeleteButton.Parent = Template
-LineNumbersLayout.Parent = LineNumbers
-LineNumbers.Parent = ScriptContainer
-InputBox.Parent = ScriptBox
-ScriptBox.Parent = ScriptContainer
-ScriptContainer.Parent = ExecutorPage
-ExecutorPage.Parent = MainFrame
-LibraryPage.Parent = MainFrame
-SettingsPage.Parent = MainFrame
-ColorLabel.Parent = SettingsPage
-RBox.Parent = SettingsPage
-GBox.Parent = SettingsPage
-BBox.Parent = SettingsPage
-ApplyButton.Parent = SettingsPage
-ExecuteButton.Parent = ExecutorPage
-ClearButton.Parent = ExecutorPage
-SaveButton.Parent = ExecutorPage
-ScriptsFrame.Parent = LibraryPage
-UIListLayout.Parent = ScriptsFrame
-Line.Parent = MainFrame
-ExecutorTab.Parent = Tabs
-LibraryTab.Parent = Tabs
-SettingsTab.Parent = Tabs
-Tabs.Parent = MainFrame
-MinimizeButton.Parent = TitleBar
-CloseButton.Parent = TitleBar
-LockButton.Parent = TitleBar
-Title.Parent = TitleBar
-TitleBar.Parent = MainFrame
-MainFrame.Parent = ScreenGui
-
 -- Script Library
 local ScriptLibrary = {
-    ["Bro_broa GUI 5.0"] = '-- Creator by bro_broa3\nloadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%205.1"))()',
     ["Infinite Yield"] = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()'
 }
 
@@ -528,7 +515,7 @@ local function SaveLibrary()
             if not isfile("BroBroaGUI") then
                 makefolder("BroBroaGUI")
             end
-            local json = game:GetService("HttpService"):JSONEncode(ScriptLibrary)
+            local json = HttpService:JSONEncode(ScriptLibrary)
             writefile(scriptLibraryPath, json)
             print("Script library saved successfully!")
         end)
@@ -541,11 +528,160 @@ local function LoadLibrary()
     if readfile and isfile and isfile(scriptLibraryPath) then
         pcall(function()
             local data = readfile(scriptLibraryPath)
-            ScriptLibrary = game:GetService("HttpService"):JSONDecode(data)
+            ScriptLibrary = HttpService:JSONDecode(data)
             print("Script library loaded successfully!")
         end)
     else
         print("No saved script library found - using default scripts")
+    end
+end
+
+-- Robust split helper function
+local function splitLines(str)
+    if not str or str == "" then return {""} end
+    local t = {}
+    local function helper(line) table.insert(t, line) return "" end
+    helper((str:gsub("(.-)\r?\n", helper)))
+    return t
+end
+
+-- Fixed updateLineNumbers function
+local function updateLineNumbers()
+    local lines = splitLines(InputBox.Text)
+    local lineCount = #lines
+    if lineCount == 0 then lineCount = 1 end
+
+    -- Remove existing number labels
+    for _, child in ipairs(LineNumbers:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+
+    -- Create new line numbers
+    local lineHeight = 20
+    for i = 1, lineCount do
+        local lineLabel = Instance.new("TextLabel")
+        lineLabel.Name = "Line_" .. i
+        lineLabel.Size = UDim2.new(1, -4, 0, lineHeight)
+        lineLabel.BackgroundTransparency = 1
+        lineLabel.Text = tostring(i)
+        lineLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+        lineLabel.TextXAlignment = Enum.TextXAlignment.Right
+        lineLabel.Font = Enum.Font.RobotoMono
+        lineLabel.TextSize = 14
+        lineLabel.LayoutOrder = i
+        lineLabel.Parent = LineNumbers
+    end
+
+    local textHeight = lineCount * lineHeight
+    -- set CanvasSize for both scrolling frames
+    LineNumbers.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+    ScriptBox.CanvasSize = UDim2.new(0, 0, 0, textHeight)
+
+    -- resize the textbox area so caret behavior and wrapping are predictable
+    InputBox.Size = UDim2.new(1, -15, 0, textHeight)
+end
+
+-- Function to sync scrolling
+ScriptBox:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+    LineNumbers.CanvasPosition = Vector2.new(0, ScriptBox.CanvasPosition.Y)
+end)
+
+-- Tab Management
+local scriptTabs = {}
+local currentTab = nil
+
+-- createNewTab function with always visible close button
+local function createNewTab(name, content)
+    -- ensure unique name
+    local baseName = name
+    local suffix = 1
+    while scriptTabs[name] do
+        name = baseName .. " (" .. suffix .. ")"
+        suffix = suffix + 1
+    end
+
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = name
+    tabButton.Size = UDim2.new(0, 100, 0, 30)
+    tabButton.BackgroundColor3 = SecondaryColor
+    tabButton.Text = name
+    tabButton.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+    tabButton.Font = Enum.Font.Gotham
+    tabButton.TextSize = 12
+
+    local tabCorner = Instance.new("UICorner")
+    tabCorner.CornerRadius = UDim.new(0, 6)
+    tabCorner.Parent = tabButton
+
+    local closeButton = Instance.new("TextButton")
+    closeButton.Name = "CloseButton"
+    closeButton.Size = UDim2.new(0, 20, 0, 20)
+    closeButton.Position = UDim2.new(1, -24, 0.5, -10)
+    closeButton.BackgroundColor3 = Color3.fromRGB(180, 70, 70)
+    closeButton.Text = "X"
+    closeButton.TextColor3 = Color3.new(1, 1, 1)
+    closeButton.Font = Enum.Font.Gotham
+    closeButton.TextSize = 10
+    closeButton.Visible = true  -- Always visible
+    closeButton.Parent = tabButton
+
+    local closeCorner = Instance.new("UICorner")
+    closeCorner.CornerRadius = UDim.new(0, 4)
+    closeCorner.Parent = closeButton
+
+    tabButton.Parent = ScriptTabsContainer
+
+    -- store tab
+    scriptTabs[name] = {
+        button = tabButton,
+        content = content or "",
+        closeButton = closeButton
+    }
+
+    -- select tab
+    tabButton.MouseButton1Click:Connect(function()
+        if currentTab and scriptTabs[currentTab] then
+            -- save current
+            scriptTabs[currentTab].content = InputBox.Text
+            scriptTabs[currentTab].button.BackgroundColor3 = SecondaryColor
+        end
+        currentTab = name
+        tabButton.BackgroundColor3 = AccentColor
+        InputBox.Text = scriptTabs[name].content or ""
+        updateLineNumbers()
+    end)
+
+    -- close tab action
+    closeButton.MouseButton1Click:Connect(function()
+        -- don't allow closing last tab
+        local tabCount = 0
+        for _ in pairs(scriptTabs) do tabCount = tabCount + 1 end
+        if tabCount <= 1 then return end
+
+        -- remove
+        scriptTabs[name] = nil
+        tabButton:Destroy()
+
+        -- if closed tab was the current, switch to another
+        if currentTab == name then
+            for tabName, tabData in pairs(scriptTabs) do
+                currentTab = tabName
+                tabData.button.BackgroundColor3 = AccentColor
+                InputBox.Text = tabData.content or ""
+                updateLineNumbers()
+                break
+            end
+        end
+    end)
+
+    -- auto-select if first
+    if not currentTab then
+        currentTab = name
+        tabButton.BackgroundColor3 = AccentColor
+        InputBox.Text = content or ""
+        updateLineNumbers()
     end
 end
 
@@ -557,7 +693,7 @@ local function CreateScriptEntry(name, content)
     newEntry.Visible = true
     newEntry.LayoutOrder = #ScriptsFrame:GetChildren()
     newEntry.Parent = ScriptsFrame
-    
+
     newEntry.LoadButton.MouseButton1Click:Connect(function()
         InputBox.Text = content
         ExecutorPage.Visible = true
@@ -568,96 +704,66 @@ local function CreateScriptEntry(name, content)
         SettingsTab.BackgroundColor3 = SecondaryColor
         updateLineNumbers()
     end)
-    
+
     newEntry.CopyButton.MouseButton1Click:Connect(function()
-        setclipboard(content)
-        newEntry.CopyButton.Text = "Copied!"
-        task.wait(1)
-        newEntry.CopyButton.Text = "Copy"
+        if setclipboard then
+            setclipboard(content)
+            newEntry.CopyButton.Text = "Copied!"
+            task.wait(1)
+            newEntry.CopyButton.Text = "Copy"
+        else
+            warn("No clipboard support")
+        end
     end)
-    
-    -- ADDED: Rename button functionality
+
+    -- rename logic
     newEntry.RenameButton.MouseButton1Click:Connect(function()
         local oldName = newEntry.Name
         local textBox = Instance.new("TextBox")
+        textBox.Name = "RenameBox"
         textBox.Size = newEntry.ScriptName.Size
         textBox.Position = newEntry.ScriptName.Position
-        textBox.BackgroundTransparency = 1
+        textBox.BackgroundTransparency = 0
+        textBox.BackgroundColor3 = SecondaryColor
         textBox.Text = oldName
-        textBox.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+        textBox.TextColor3 = Color3.new(0.9, 0.9, 0.9)
         textBox.Font = newEntry.ScriptName.Font
         textBox.TextSize = newEntry.ScriptName.TextSize
         textBox.TextXAlignment = Enum.TextXAlignment.Left
         textBox.Parent = newEntry
-        newEntry.ScriptName:Destroy()
-        
+
+        newEntry.ScriptName.Visible = false
         textBox:CaptureFocus()
-        
-        local function rename()
-            local newName = textBox.Text
-            if newName ~= "" and newName ~= oldName then
-                -- Update script library
-                ScriptLibrary[newName] = ScriptLibrary[oldName]
-                ScriptLibrary[oldName] = nil
-                
-                -- Update UI
+
+        local function finishRename(confirm)
+            local newName = (textBox.Text ~= "" and textBox.Text) or oldName
+            textBox:Destroy()
+            newEntry.ScriptName.Text = newName
+            newEntry.ScriptName.Visible = true
+
+            if confirm and newName ~= oldName then
+                -- update library safely
+                if ScriptLibrary[oldName] then
+                    ScriptLibrary[newName] = ScriptLibrary[oldName]
+                    ScriptLibrary[oldName] = nil
+                else
+                    ScriptLibrary[newName] = ScriptLibrary[oldName] or ""
+                end
                 newEntry.Name = newName
-                local label = Instance.new("TextLabel")
-                label.Name = "ScriptName"
-                label.Size = textBox.Size
-                label.Position = textBox.Position
-                label.BackgroundTransparency = 1
-                label.Text = newName
-                label.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.Font = textBox.Font
-                label.TextSize = textBox.TextSize
-                label.Parent = newEntry
-                textBox:Destroy()
-                
                 SaveLibrary()
-            else
-                -- Restore original name label
-                local label = Instance.new("TextLabel")
-                label.Name = "ScriptName"
-                label.Size = textBox.Size
-                label.Position = textBox.Position
-                label.BackgroundTransparency = 1
-                label.Text = oldName
-                label.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.Font = textBox.Font
-                label.TextSize = textBox.TextSize
-                label.Parent = newEntry
-                textBox:Destroy()
+                UpdateLibrary()
             end
         end
-        
+
         textBox.FocusLost:Connect(function(enterPressed)
-            if enterPressed then
-                rename()
-            else
-                -- If clicked away, cancel rename
-                local label = Instance.new("TextLabel")
-                label.Name = "ScriptName"
-                label.Size = textBox.Size
-                label.Position = textBox.Position
-                label.BackgroundTransparency = 1
-                label.Text = oldName
-                label.TextColor3 = Color3.new(0.8, 0.8, 0.8)
-                label.TextXAlignment = Enum.TextXAlignment.Left
-                label.Font = textBox.Font
-                label.TextSize = textBox.TextSize
-                label.Parent = newEntry
-                textBox:Destroy()
-            end
+            finishRename(enterPressed)
         end)
     end)
-    
+
     newEntry.DeleteButton.MouseButton1Click:Connect(function()
         ScriptLibrary[name] = nil
         newEntry:Destroy()
-        SaveLibrary()  -- Save after deletion
+        SaveLibrary()
     end)
 end
 
@@ -667,16 +773,25 @@ local function UpdateLibrary()
             child:Destroy()
         end
     end
-    
+
     for name, content in pairs(ScriptLibrary) do
         CreateScriptEntry(name, content)
     end
 end
 
 -- Initialization
-LoadLibrary()  -- Load saved scripts
+LoadLibrary()
 UpdateLibrary()
 updateLineNumbers()
+
+-- Create initial tab
+createNewTab("Script 1", "")
+
+-- Connect events after UI is built
+ScriptBox:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
+    LineNumbers.CanvasPosition = Vector2.new(0, ScriptBox.CanvasPosition.Y)
+end)
+InputBox:GetPropertyChangedSignal("Text"):Connect(updateLineNumbers)
 
 -- Tab Switching
 ExecutorTab.MouseButton1Click:Connect(function()
@@ -709,11 +824,16 @@ end)
 -- Button Functionality
 ExecuteButton.MouseButton1Click:Connect(function()
     local success, err = pcall(function()
-        loadstring(InputBox.Text)()
+        local f, lerr = loadstring(InputBox.Text)
+        if not f then
+            error(lerr)
+        else
+            f()
+        end
     end)
-    
+
     if not success then
-        warn("Execution error: " .. err)
+        warn("Execution error: " .. tostring(err))
     end
 end)
 
@@ -726,18 +846,18 @@ SaveButton.MouseButton1Click:Connect(function()
     local name = "Script_" .. tostring(math.random(1000,9999))
     ScriptLibrary[name] = InputBox.Text
     UpdateLibrary()
-    SaveLibrary()  -- Save after adding new script
+    SaveLibrary()
 end)
 
 ApplyButton.MouseButton1Click:Connect(function()
     local r = math.clamp(tonumber(RBox.Text) or 35, 0, 255)
     local g = math.clamp(tonumber(GBox.Text) or 35, 0, 255)
     local b = math.clamp(tonumber(BBox.Text) or 45, 0, 255)
-    
+
     RBox.Text = tostring(r)
     GBox.Text = tostring(g)
     BBox.Text = tostring(b)
-    
+
     ScriptBox.BackgroundColor3 = Color3.fromRGB(r, g, b)
 end)
 
@@ -758,4 +878,12 @@ end)
 LockButton.MouseButton1Click:Connect(function()
     MainFrame.Draggable = not MainFrame.Draggable
     LockButton.Text = MainFrame.Draggable and "🔓" or "🔒"
+end)
+
+-- Add Tab Button Functionality
+AddTabButton.MouseButton1Click:Connect(function()
+    local tabCount = 0
+    for _ in pairs(scriptTabs) do tabCount = tabCount + 1 end
+    local tabName = "Script " .. (tabCount + 1)
+    createNewTab(tabName, "")
 end)
