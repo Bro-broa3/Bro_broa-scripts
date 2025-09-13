@@ -84,7 +84,7 @@ end
 local function SetupAutoReload()
     local reloadScript = [[
         wait(0.01)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%206.0", true))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Discord%20UI", true))()
     ]]
     
     if queue_on_teleport then
