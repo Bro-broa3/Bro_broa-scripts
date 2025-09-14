@@ -55,7 +55,9 @@ local randomMessages = {
     "Beat😎",
     "####",
     "So ez🥱",
-    "Lag?Bro cheat!😡"
+    "Lag?Bro cheat!😡",
+    "Haha",
+    "Noob"
 }
 
 -- UI elements for message list
