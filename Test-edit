@@ -1,97 +1,238 @@
+-- Rayfield UI Library Loader
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Window = Rayfield:CreateWindow({
-    Name = "Your Hub Name",
-    LoadingTitle = "Loading UI...",
-    LoadingSubtitle = "With Anto Chat Feature",
-    ConfigurationSaving = {
-        Enabled = true,
-        FolderName = "YourHubConfig",
-        FileName = "Settings"
-    },
-    Discord = {
-        Enabled = false,
-        Invite = "yourinvitecode",
-        RememberJoins = true
-    },
-    KeySystem = false
-})
+-- Create main window with pcall
+local success, Window = pcall(function()
+    return Rayfield:CreateWindow({
+        Name = "Anto Chat System",
+        LoadingTitle = "Loading Anto Chat...",
+        LoadingSubtitle = "Random Message System",
+        Theme = "DarkBlue",
+        ConfigurationSaving = {
+            Enabled = true,
+            FolderName = "AntoChatConfig",
+            FileName = "Settings"
+        },
+        Discord = {
+            Enabled = false,
+            Invite = "noinvite",
+            RememberJoins = true
+        },
+        KeySystem = false
+    })
+end)
 
-local MainTab = Window:CreateTab("Main", 4483362458) -- Main tab
-local MainSection = MainTab:CreateSection("Chat Controls")
+if not success or not Window then
+    warn("Failed to create Rayfield window")
+    return
+end
 
--- Anto Chat Toggle
-local AntoToggle = MainTab:CreateToggle({
-    Name = "Anto Chat",
-    CurrentValue = false,
-    Flag = "AntoChatToggle",
-    Callback = function(Value)
-        _G.AntoChatEnabled = Value
-        
-        if Value then
-            -- Start sending random messages when toggle is enabled
-            Rayfield:Notify({
-                Title = "Anto Chat",
-                Content = "Enabled - Sending random messages",
-                Duration = 3,
-            })
+-- Create main tab with pcall
+local success, MainTab = pcall(function()
+    return Window:CreateTab("Main", "home")
+end)
+
+if not success or not MainTab then
+    warn("Failed to create main tab")
+    return
+end
+
+-- Global variables
+_G.AntoChatEnabled = false
+_G.MessageFrequency = 5 -- Default frequency in seconds
+
+-- Random messages table
+local randomMessages = {
+    "Hello everyone!",
+    "How's it going?",
+    "This game is fun!",
+    "What are you all doing?",
+    "Nice weather today!",
+    "I'm using Anto Chat!",
+    "Anyone want to team up?",
+    "Check out this cool feature!",
+    "Wow, amazing!",
+    "Hello there!"
+}
+
+-- UI elements for message list
+local messageListLabel = MainTab:CreateLabel("Current Messages: " .. #randomMessages)
+local messageListBox = MainTab:CreateParagraph({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
+
+-- Function to update message list display with pcall
+local function updateMessageListDisplay()
+    local success1, err1 = pcall(function()
+        messageListLabel:Set("Current Messages: " .. #randomMessages)
+    end)
+    
+    local success2, err2 = pcall(function()
+        messageListBox:Set({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
+    end)
+    
+    if not success1 then
+        warn("Failed to update message list label: " .. tostring(err1))
+    end
+    
+    if not success2 then
+        warn("Failed to update message list box: " .. tostring(err2))
+    end
+end
+
+-- Function to send random messages with pcall
+local function sendRandomMessage()
+    if not _G.AntoChatEnabled then return end
+    
+    local success, TextChatService = pcall(function()
+        return game:GetService("TextChatService")
+    end)
+    
+    if not success or not TextChatService then
+        warn("Failed to get TextChatService")
+        return
+    end
+    
+    local success, textChannels = pcall(function()
+        return TextChatService:FindFirstChild("TextChannels")
+    end)
+    
+    if not success or not textChannels then
+        warn("Failed to find TextChannels")
+        return
+    end
+    
+    local success, generalChannel = pcall(function()
+        return textChannels:FindFirstChild("RBXGeneral")
+    end)
+    
+    if not success or not generalChannel then
+        warn("Failed to find RBXGeneral channel")
+        return
+    end
+    
+    local randomIndex = math.random(1, #randomMessages)
+    local selectedMessage = randomMessages[randomIndex]
+    
+    local success, errorMsg = pcall(function()
+        generalChannel:SendAsync(selectedMessage)
+    end)
+    
+    if not success then
+        warn("Failed to send message: " .. tostring(errorMsg))
+    end
+end
+
+-- Anto Chat Toggle with pcall
+local success, AntoToggle = pcall(function()
+    return MainTab:CreateToggle({
+        Name = "Anto Chat",
+        CurrentValue = false,
+        Flag = "AntoChatToggle",
+        Callback = function(Value)
+            _G.AntoChatEnabled = Value
             
-            -- Random messages table
-            local randomMessages = {
-                "Hello everyone!",
-                "How's it going?",
-                "This game is fun!",
-                "What are you all doing?",
-                "Nice weather today!",
-                "I'm Chat!",
-                "Anyone want to team up?",
-                "Check out this cool feature!",
-                "Wow, amazing!",
-                "Hello there!"
-            }
-            
-            -- Message sending function
-            local function sendRandomMessage()
-                if not _G.AntoChatEnabled then return end
+            if Value then
+                -- Start sending random messages when toggle is enabled
+                pcall(function()
+                    Rayfield:Notify({
+                        Title = "Anto Chat",
+                        Content = "Enabled - Sending random messages",
+                        Duration = 3,
+                    })
+                end)
                 
-                local TextChatService = game:GetService("TextChatService")
-                local textChannel = TextChatService:FindFirstChild("TextChannels")[citation:1]
-                if textChannel then
-                    textChannel = textChannel:FindFirstChild("RBXGeneral")
-                    if textChannel then
-                        local randomIndex = math.random(1, #randomMessages)
-                        local selectedMessage = randomMessages[randomIndex]
-                        textChannel:SendAsync(selectedMessage)
+                -- Create loop for sending messages
+                task.spawn(function()
+                    while _G.AntoChatEnabled do
+                        sendRandomMessage()
+                        task.wait(_G.MessageFrequency)
                     end
-                end
+                end)
+            else
+                -- Notify when disabled
+                pcall(function()
+                    Rayfield:Notify({
+                        Title = "Anto Chat",
+                        Content = "Disabled - No sending messages",
+                        Duration = 3,
+                    })
+                end)
             end
-            
-            -- Create loop for sending messages
-            task.spawn(function()
-                while _G.AntoChatEnabled and task.wait(10) do -- Adjust delay as needed
-                    sendRandomMessage()
-                end
-            end)
-        else
-            -- Notify when disabled
-            Rayfield:Notify({
-                Title = "Anto Chat",
-                Content = "Disabled - No longer sending messages",
-                Duration = 3,
-            })
-        end
-    end,
-})
+        end,
+    })
+end)
 
--- Optional: Add a slider to control message frequency
-local FrequencySlider = MainTab:CreateSlider({
-    Name = "Message Frequency",
-    Range = {5, 60},
-    Increment = 5,
-    Suffix = "seconds",
-    CurrentValue = 10,
-    Flag = "MessageFrequency",
-    Callback = function(Value)
-        _G.MessageFrequency = Value
-    end,
-})
+if not success then
+    warn("Failed to create Anto Chat toggle")
+end
+
+-- Frequency slider with pcall
+local success, FrequencySlider = pcall(function()
+    return MainTab:CreateSlider({
+        Name = "Message Frequency",
+        Range = {5, 60},
+        Increment = 1,
+        Suffix = "seconds",
+        CurrentValue = 5,
+        Flag = "MessageFrequency",
+        Callback = function(Value)
+            _G.MessageFrequency = Value
+        end,
+    })
+end)
+
+if not success then
+    warn("Failed to create frequency slider")
+end
+
+if success then
+    local success, MessageInput = pcall(function()
+        return MainTab:CreateInput({
+            Name = "Add Message",
+            PlaceholderText = "Enter your message",
+            RemoveTextAfterFocusLost = false,
+            Callback = function(Text)
+                if Text and Text ~= "" then
+                    table.insert(randomMessages, Text)
+                    updateMessageListDisplay()
+                    pcall(function()
+                        Rayfield:Notify({
+                            Title = "Message Added",
+                            Content = "Added: " .. Text,
+                            Duration = 3,
+                        })
+                    end)
+                end
+            end,
+        })
+    end)
+    
+    if not success then
+        warn("Failed to create message input")
+    end
+end
+
+-- Clear messages button with pcall
+local success, ClearButton = pcall(function()
+    return MainTab:CreateButton({
+        Name = "Clear All Messages",
+        Callback = function()
+            randomMessages = {
+            }
+            updateMessageListDisplay()
+            pcall(function()
+                Rayfield:Notify({
+                    Title = "Messages Reset",
+                    Content = "All messages have been cleared",
+                    Duration = 3,
+                })
+            end)
+        end,
+    })
+end)
+
+if not success then
+    warn("Failed to create clear messages button")
+end
+
+-- Initial update of message list
+updateMessageListDisplay()
