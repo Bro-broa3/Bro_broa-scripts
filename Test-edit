@@ -43,38 +43,45 @@ _G.MessageFrequency = 5 -- Default frequency in seconds
 
 -- Random messages table
 local randomMessages = {
-    "Hello everyone!",
-    "How's it going?",
-    "This game is fun!",
-    "What are you all doing?",
-    "Nice weather today!",
-    "I'm using Anto Chat!",
-    "Anyone want to team up?",
-    "Check out this cool feature!",
-    "Wow, amazing!",
-    "Hello there!"
+    "Skill issue",
+    "Wifi from MCDONALD?",
+    "Insane💀",
+    "lol🤡",
+    "spammer skill",
+    "like milk?Good girl🥵",
+    "kid😂",
+    "Hello Loser!",
+    "Wow,amazing!",
+    "Beat😎",
+    "####",
+    "So ez🥱",
+    "Lag?Bro cheat!😡"
 }
 
 -- UI elements for message list
-local messageListLabel = MainTab:CreateLabel("Current Messages: " .. #randomMessages)
+local messageListLabel = MainTab:CreateLabel("Messages: " .. #randomMessages)
 local messageListBox = MainTab:CreateParagraph({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
 
 -- Function to update message list display with pcall
 local function updateMessageListDisplay()
-    local success1, err1 = pcall(function()
-        messageListLabel:Set("Current Messages: " .. #randomMessages)
-    end)
-    
-    local success2, err2 = pcall(function()
-        messageListBox:Set({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
-    end)
-    
-    if not success1 then
-        warn("Failed to update message list label: " .. tostring(err1))
+    if messageListLabel then
+        local success1, err1 = pcall(function()
+            messageListLabel:Set("Current Messages: " .. #randomMessages)
+        end)
+        
+        if not success1 then
+            warn("Failed to update message list label: " .. tostring(err1))
+        end
     end
     
-    if not success2 then
-        warn("Failed to update message list box: " .. tostring(err2))
+    if messageListBox then
+        local success2, err2 = pcall(function()
+            messageListBox:Set({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
+        end)
+        
+        if not success2 then
+            warn("Failed to update message list box: " .. tostring(err2))
+        end
     end
 end
 
@@ -82,29 +89,23 @@ end
 local function sendRandomMessage()
     if not _G.AntoChatEnabled then return end
     
-    local success, TextChatService = pcall(function()
-        return game:GetService("TextChatService")
-    end)
+    local TextChatService = game:GetService("TextChatService")
     
-    if not success or not TextChatService then
+    if not TextChatService then
         warn("Failed to get TextChatService")
         return
     end
     
-    local success, textChannels = pcall(function()
-        return TextChatService:FindFirstChild("TextChannels")
-    end)
+    local textChannels = TextChatService:FindFirstChild("TextChannels")
     
-    if not success or not textChannels then
+    if not textChannels then
         warn("Failed to find TextChannels")
         return
     end
     
-    local success, generalChannel = pcall(function()
-        return textChannels:FindFirstChild("RBXGeneral")
-    end)
+    local generalChannel = textChannels:FindFirstChild("RBXGeneral")
     
-    if not success or not generalChannel then
+    if not generalChannel then
         warn("Failed to find RBXGeneral channel")
         return
     end
@@ -121,118 +122,81 @@ local function sendRandomMessage()
     end
 end
 
--- Anto Chat Toggle with pcall
-local success, AntoToggle = pcall(function()
-    return MainTab:CreateToggle({
-        Name = "Anto Chat",
-        CurrentValue = false,
-        Flag = "AntoChatToggle",
-        Callback = function(Value)
-            _G.AntoChatEnabled = Value
+-- Create UI elements without pcall to ensure they all get created
+local AntoToggle = MainTab:CreateToggle({
+    Name = "Anto Chat",
+    CurrentValue = false,
+    Flag = "AntoChatToggle",
+    Callback = function(Value)
+        _G.AntoChatEnabled = Value
+        
+        if Value then
+            -- Start sending random messages when toggle is enabled
+            Rayfield:Notify({
+                Title = "Anto Chat",
+                Content = "Enabled - Sending random messages",
+                Duration = 3,
+            })
             
-            if Value then
-                -- Start sending random messages when toggle is enabled
-                pcall(function()
-                    Rayfield:Notify({
-                        Title = "Anto Chat",
-                        Content = "Enabled - Sending random messages",
-                        Duration = 3,
-                    })
-                end)
-                
-                -- Create loop for sending messages
-                task.spawn(function()
-                    while _G.AntoChatEnabled do
-                        sendRandomMessage()
-                        task.wait(_G.MessageFrequency)
-                    end
-                end)
-            else
-                -- Notify when disabled
-                pcall(function()
-                    Rayfield:Notify({
-                        Title = "Anto Chat",
-                        Content = "Disabled - No sending messages",
-                        Duration = 3,
-                    })
-                end)
-            end
-        end,
-    })
-end)
-
-if not success then
-    warn("Failed to create Anto Chat toggle")
-end
-
--- Frequency slider with pcall
-local success, FrequencySlider = pcall(function()
-    return MainTab:CreateSlider({
-        Name = "Message Frequency",
-        Range = {5, 60},
-        Increment = 1,
-        Suffix = "seconds",
-        CurrentValue = 5,
-        Flag = "MessageFrequency",
-        Callback = function(Value)
-            _G.MessageFrequency = Value
-        end,
-    })
-end)
-
-if not success then
-    warn("Failed to create frequency slider")
-end
-
-if success then
-    local success, MessageInput = pcall(function()
-        return MainTab:CreateInput({
-            Name = "Add Message",
-            PlaceholderText = "Enter your message",
-            RemoveTextAfterFocusLost = false,
-            Callback = function(Text)
-                if Text and Text ~= "" then
-                    table.insert(randomMessages, Text)
-                    updateMessageListDisplay()
-                    pcall(function()
-                        Rayfield:Notify({
-                            Title = "Message Added",
-                            Content = "Added: " .. Text,
-                            Duration = 3,
-                        })
-                    end)
+            -- Create loop for sending messages
+            task.spawn(function()
+                while _G.AntoChatEnabled do
+                    sendRandomMessage()
+                    task.wait(_G.MessageFrequency)
                 end
-            end,
-        })
-    end)
-    
-    if not success then
-        warn("Failed to create message input")
-    end
-end
-
--- Clear messages button with pcall
-local success, ClearButton = pcall(function()
-    return MainTab:CreateButton({
-        Name = "Clear All Messages",
-        Callback = function()
-            randomMessages = {
-            }
-            updateMessageListDisplay()
-            pcall(function()
-                Rayfield:Notify({
-                    Title = "Messages Reset",
-                    Content = "All messages have been cleared",
-                    Duration = 3,
-                })
             end)
-        end,
-    })
-end)
+        else
+            -- Notify when disabled
+            Rayfield:Notify({
+                Title = "Anto Chat",
+                Content = "Disabled - No sending messages",
+                Duration = 3,
+            })
+        end
+    end,
+})
 
-if not success then
-    warn("Failed to create clear messages button")
-end
+local FrequencySlider = MainTab:CreateSlider({
+    Name = "Message Frequency",
+    Range = {5, 60},
+    Increment = 1,
+    Suffix = "seconds",
+    CurrentValue = 5,
+    Flag = "MessageFrequency",
+    Callback = function(Value)
+        _G.MessageFrequency = Value
+    end,
+})
+
+local MessageInput = MainTab:CreateInput({
+    Name = "Add Message to list",
+    PlaceholderText = "Enter your message",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        if Text and Text ~= "" then
+            table.insert(randomMessages, Text)
+            updateMessageListDisplay()
+            Rayfield:Notify({
+                Title = "Message Added",
+                Content = "Added: " .. Text,
+                Duration = 3,
+            })
+        end
+    end,
+})
+
+local ClearButton = MainTab:CreateButton({
+    Name = "Clear All Messages",
+    Callback = function()
+        randomMessages = {}
+        updateMessageListDisplay()
+        Rayfield:Notify({
+            Title = "Messages Reset",
+            Content = "All messages have been cleared",
+            Duration = 3,
+        })
+    end,
+})
 
 -- Initial update of message list
 updateMessageListDisplay()
