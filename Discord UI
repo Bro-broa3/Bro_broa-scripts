@@ -141,13 +141,13 @@ local function CreateGUI()
     
     -- Create servers (tabs)
     local mainServer = window:Server("Main", "http://www.roblox.com/asset/?id=6031075938")
-    local playerServer = window:Server("Player", "")
+    local playerServer = window:Server("Player", "https://www.roblox.com/headshot-thumbnail/image?userId=".. game.Players.LocalPlayer.UserId .."&width=420&height=420&format=png")
     local settingsServer = window:Server("Settings", "")
-    local bro_broaServer = window:Server("Bro_broa GUI", "")
+    local bro_broaServer = window:Server("Bro_broa GUI", "rbxassetid://119526989765479")
     local serverServer = window:Server("Server", "")
     local feServer = window:Server("FE", "")
-    local tsbServer = window:Server("TSB", "")
-    local vblServer = window:Server("VBL", "")
+    local tsbServer = window:Server("TSB", "rbxassetid://81881501400974")
+    local vblServer = window:Server("VBL", "rbxassetid://76928457867772")
     
     -- Create channels for each server
     local mainChannel = mainServer:Channel("Main Features")
