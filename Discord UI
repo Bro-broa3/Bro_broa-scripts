@@ -656,11 +656,11 @@ local function CreateGUI()
     end)
 
     -- Bro_broa GUI
-    bro_broaChannel:Button("Bro_broa executor2.0", function()
+    bro_broaChannel:Button("Bro_broa executor2.5", function()
         DiscordLib:Notification("Loading", "Initializing Bro_broa executor2.0...", "Okay!")
         
         local success, err = pcall(function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.0", true))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.5", true))()
         end)
         
         if success then
