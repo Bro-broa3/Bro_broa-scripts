@@ -1,202 +1,278 @@
--- Rayfield UI Library Loader
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+-- Build Your Escape GUI Script
+-- Made by bro_broa
 
--- Create main window with pcall
-local success, Window = pcall(function()
-    return Rayfield:CreateWindow({
-        Name = "Anto Chat System",
-        LoadingTitle = "Loading Anto Chat...",
-        LoadingSubtitle = "Random Message System",
-        Theme = "DarkBlue",
-        ConfigurationSaving = {
-            Enabled = true,
-            FolderName = "AntoChatConfig",
-            FileName = "Settings"
-        },
-        Discord = {
-            Enabled = false,
-            Invite = "noinvite",
-            RememberJoins = true
-        },
-        KeySystem = false
-    })
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create main screen GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "BuildYourEscapeGUI"
+screenGui.Parent = playerGui
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Create main frame (draggable)
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 300, 0, 250)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -125)
+mainFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+-- Add corner rounding
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = mainFrame
+
+-- Add drop shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.Image = "rbxassetid://5554236805"
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(23, 23, 277, 277)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.BackgroundTransparency = 1
+shadow.ZIndex = -1
+shadow.Parent = mainFrame
+
+-- Title bar
+local titleBar = Instance.new("Frame")
+titleBar.Name = "TitleBar"
+titleBar.Size = UDim2.new(1, 0, 0, 30)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 8)
+titleCorner.Parent = titleBar
+
+-- GUI title
+local title = Instance.new("TextLabel")
+title.Name = "Title"
+title.Size = UDim2.new(0.7, 0, 1, 0)
+title.Position = UDim2.new(0.05, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Build your escape script | made by bro_broa"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.Parent = titleBar
+
+-- Close button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -30, 0, 0)
+closeButton.BackgroundColor3 = Color3.fromRGB(232, 72, 85)
+closeButton.BorderSizePixel = 0
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 14
+closeButton.Parent = titleBar
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 8)
+closeCorner.Parent = closeButton
+
+-- Content area
+local content = Instance.new("Frame")
+content.Name = "Content"
+content.Size = UDim2.new(1, -20, 1, -50)
+content.Position = UDim2.new(0, 10, 0, 40)
+content.BackgroundTransparency = 1
+content.Parent = mainFrame
+
+-- Inf trap toggle
+local toggleFrame = Instance.new("Frame")
+toggleFrame.Name = "ToggleFrame"
+toggleFrame.Size = UDim2.new(1, 0, 0, 40)
+toggleFrame.Position = UDim2.new(0, 0, 0, 0)
+toggleFrame.BackgroundTransparency = 1
+toggleFrame.Parent = content
+
+local toggleLabel = Instance.new("TextLabel")
+toggleLabel.Name = "ToggleLabel"
+toggleLabel.Size = UDim2.new(0.6, 0, 1, 0)
+toggleLabel.Position = UDim2.new(0, 0, 0, 0)
+toggleLabel.BackgroundTransparency = 1
+toggleLabel.Text = "Inf trap"
+toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+toggleLabel.Font = Enum.Font.Gotham
+toggleLabel.TextSize = 16
+toggleLabel.Parent = toggleFrame
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 50, 0, 25)
+toggleButton.Position = UDim2.new(1, -50, 0.5, -12.5)
+toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+toggleButton.BorderSizePixel = 0
+toggleButton.Text = ""
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 14
+toggleButton.Parent = toggleFrame
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 12)
+toggleCorner.Parent = toggleButton
+
+local toggleFill = Instance.new("Frame")
+toggleFill.Name = "ToggleFill"
+toggleFill.Size = UDim2.new(0, 23, 0, 23)
+toggleFill.Position = UDim2.new(0, 2, 0, 1)
+toggleFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+toggleFill.BorderSizePixel = 0
+toggleFill.Parent = toggleButton
+
+local toggleFillCorner = Instance.new("UICorner")
+toggleFillCorner.CornerRadius = UDim.new(0, 12)
+toggleFillCorner.Parent = toggleFill
+
+-- Install Win button
+local installButton = Instance.new("TextButton")
+installButton.Name = "InstallButton"
+installButton.Size = UDim2.new(1, 0, 0, 40)
+installButton.Position = UDim2.new(0, 0, 0, 60)
+installButton.BackgroundColor3 = Color3.fromRGB(97, 205, 187)
+installButton.BorderSizePixel = 0
+installButton.Text = "install win"
+installButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+installButton.Font = Enum.Font.GothamBold
+installButton.TextSize = 16
+installButton.Parent = content
+
+local installCorner = Instance.new("UICorner")
+installCorner.CornerRadius = UDim.new(0, 8)
+installCorner.Parent = installButton
+
+-- Status label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Name = "StatusLabel"
+statusLabel.Size = UDim2.new(1, 0, 0, 20)
+statusLabel.Position = UDim2.new(0, 0, 0, 120)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Ready"
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.TextSize = 14
+statusLabel.Parent = content
+
+-- Variables
+local isToggled = false
+local farmLoop = nil
+
+-- Function to toggle Inf trap
+local function toggleInfTrap()
+    isToggled = not isToggled
+    
+    if isToggled then
+        -- Turn ON
+        toggleButton.Text = ""
+        toggleButton.BackgroundColor3 = Color3.fromRGB(97, 205, 187)
+        toggleFill.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        toggleFill.Position = UDim2.new(1, -25, 0, 1)
+        statusLabel.Text = "Status: Inf Trap Enabled"
+        
+        -- Start the farm loop
+        getgenv().farm = true
+        
+        if farmLoop then
+            farmLoop:Disconnect()
+        end
+        
+        farmLoop = game:GetService("RunService").Heartbeat:Connect(function()
+            if getgenv().farm then
+                local args = {"Trap"}
+                game:GetService("ReplicatedStorage"):WaitForChild("ActivateGear"):FireServer(unpack(args))
+            end
+        end)
+    else
+        -- Turn OFF
+        toggleButton.Text = ""
+        toggleButton.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+        toggleFill.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+        toggleFill.Position = UDim2.new(0, 2, 0, 1)
+        statusLabel.Text = "Status: Inf Trap Disabled"
+        
+        -- Stop the farm loop
+        getgenv().farm = false
+        
+        if farmLoop then
+            farmLoop:Disconnect()
+            farmLoop = nil
+        end
+    end
+end
+
+-- Function to teleport to EscapeArea
+local function teleportToEscapeArea()
+    statusLabel.Text = "Status: Searching for EscapeArea..."
+    
+    -- Find the EscapeArea part
+    local escapeArea = workspace:FindFirstChild("EscapeArea")
+    
+    if escapeArea then
+        -- Teleport player to the EscapeArea
+        player.Character:SetPrimaryPartCFrame(escapeArea.CFrame + Vector3.new(0, 5, 0))
+        statusLabel.Text = "Status: Teleported to EscapeArea!"
+    else
+        statusLabel.Text = "Status: EscapeArea not found!"
+    end
+end
+
+-- Function to close the GUI
+local function closeGUI()
+    screenGui:Destroy()
+end
+
+-- Connect events
+toggleButton.MouseButton1Click:Connect(toggleInfTrap)
+installButton.MouseButton1Click:Connect(teleportToEscapeArea)
+closeButton.MouseButton1Click:Connect(closeGUI)
+
+-- Add smooth animations
+toggleButton.MouseEnter:Connect(function()
+    if isToggled then
+        game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(87, 185, 168)}):Play()
+    else
+        game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(100, 100, 100)}):Play()
+    end
 end)
 
-if not success or not Window then
-    warn("Failed to create Rayfield window")
-    return
-end
-
--- Create main tab with pcall
-local success, MainTab = pcall(function()
-    return Window:CreateTab("Main", "home")
+toggleButton.MouseLeave:Connect(function()
+    if isToggled then
+        game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(97, 205, 187)}):Play()
+    else
+        game:GetService("TweenService"):Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 80)}):Play()
+    end
 end)
 
-if not success or not MainTab then
-    warn("Failed to create main tab")
-    return
-end
+installButton.MouseEnter:Connect(function()
+    game:GetService("TweenService"):Create(installButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(87, 185, 168)}):Play()
+end)
 
--- Global variables
-_G.AntoChatEnabled = false
-_G.MessageFrequency = 5 -- Default frequency in seconds
+installButton.MouseLeave:Connect(function()
+    game:GetService("TweenService"):Create(installButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(97, 205, 187)}):Play()
+end)
 
--- Random messages table
-local randomMessages = {
-    "Skill issue",
-    "Wifi from MCDONALD?",
-    "Insane💀",
-    "lol🤡",
-    "spammer skill",
-    "like milk?Good girl🥵",
-    "kid😂",
-    "Hello Loser!",
-    "Wow,amazing!",
-    "Beat😎",
-    "####",
-    "So ez🥱",
-    "Lag?Bro cheat!😡"
-}
+closeButton.MouseEnter:Connect(function()
+    game:GetService("TweenService"):Create(closeButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(210, 60, 70)}):Play()
+end)
 
--- UI elements for message list
-local messageListLabel = MainTab:CreateLabel("Messages: " .. #randomMessages)
-local messageListBox = MainTab:CreateParagraph({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
-
--- Function to update message list display with pcall
-local function updateMessageListDisplay()
-    if messageListLabel then
-        local success1, err1 = pcall(function()
-            messageListLabel:Set("Current Messages: " .. #randomMessages)
-        end)
-        
-        if not success1 then
-            warn("Failed to update message list label: " .. tostring(err1))
-        end
-    end
-    
-    if messageListBox then
-        local success2, err2 = pcall(function()
-            messageListBox:Set({Title = "Message List:", Content = table.concat(randomMessages, "\n")})
-        end)
-        
-        if not success2 then
-            warn("Failed to update message list box: " .. tostring(err2))
-        end
-    end
-end
-
--- Function to send random messages with pcall
-local function sendRandomMessage()
-    if not _G.AntoChatEnabled then return end
-    
-    local TextChatService = game:GetService("TextChatService")
-    
-    if not TextChatService then
-        warn("Failed to get TextChatService")
-        return
-    end
-    
-    local textChannels = TextChatService:FindFirstChild("TextChannels")
-    
-    if not textChannels then
-        warn("Failed to find TextChannels")
-        return
-    end
-    
-    local generalChannel = textChannels:FindFirstChild("RBXGeneral")
-    
-    if not generalChannel then
-        warn("Failed to find RBXGeneral channel")
-        return
-    end
-    
-    local randomIndex = math.random(1, #randomMessages)
-    local selectedMessage = randomMessages[randomIndex]
-    
-    local success, errorMsg = pcall(function()
-        generalChannel:SendAsync(selectedMessage)
-    end)
-    
-    if not success then
-        warn("Failed to send message: " .. tostring(errorMsg))
-    end
-end
-
--- Create UI elements without pcall to ensure they all get created
-local AntoToggle = MainTab:CreateToggle({
-    Name = "Anto Chat",
-    CurrentValue = false,
-    Flag = "AntoChatToggle",
-    Callback = function(Value)
-        _G.AntoChatEnabled = Value
-        
-        if Value then
-            -- Start sending random messages when toggle is enabled
-            Rayfield:Notify({
-                Title = "Anto Chat",
-                Content = "Enabled - Sending random messages",
-                Duration = 3,
-            })
-            
-            -- Create loop for sending messages
-            task.spawn(function()
-                while _G.AntoChatEnabled do
-                    sendRandomMessage()
-                    task.wait(_G.MessageFrequency)
-                end
-            end)
-        else
-            -- Notify when disabled
-            Rayfield:Notify({
-                Title = "Anto Chat",
-                Content = "Disabled - No sending messages",
-                Duration = 3,
-            })
-        end
-    end,
-})
-
-local FrequencySlider = MainTab:CreateSlider({
-    Name = "Message Frequency",
-    Range = {5, 60},
-    Increment = 1,
-    Suffix = "seconds",
-    CurrentValue = 5,
-    Flag = "MessageFrequency",
-    Callback = function(Value)
-        _G.MessageFrequency = Value
-    end,
-})
-
-local MessageInput = MainTab:CreateInput({
-    Name = "Add Message to list",
-    PlaceholderText = "Enter your message",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(Text)
-        if Text and Text ~= "" then
-            table.insert(randomMessages, Text)
-            updateMessageListDisplay()
-            Rayfield:Notify({
-                Title = "Message Added",
-                Content = "Added: " .. Text,
-                Duration = 3,
-            })
-        end
-    end,
-})
-
-local ClearButton = MainTab:CreateButton({
-    Name = "Clear All Messages",
-    Callback = function()
-        randomMessages = {}
-        updateMessageListDisplay()
-        Rayfield:Notify({
-            Title = "Messages Reset",
-            Content = "All messages have been cleared",
-            Duration = 3,
-        })
-    end,
-})
-
--- Initial update of message list
-updateMessageListDisplay()
+closeButton.MouseLeave:Connect(function()
+    game:GetService("TweenService"):Create(closeButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(232, 72, 85)}):Play()
+end)
