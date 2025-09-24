@@ -181,8 +181,8 @@ local function CreateGUI()
     local MainTab = window:CreateTab("Main", "home")
     local PlayerTab = window:CreateTab("Player", "user")
     local SettingsTab = window:CreateTab("Settings", "settings")    
-    local Bro_broaguiTab = window:CreateTab("Bro_broa GUI", "flag")
     local ServerTab = window:CreateTab("Server", "flag")
+    local Bro_broaguiTab = window:CreateTab("Bro_broa GUI", "flag")
     local FeTab = window:CreateTab("FE", "flag")
     local TSBtab = window:CreateTab("TSB", "flag")
     local VBLTab = window:CreateTab("VBL", "flag")
@@ -1173,76 +1173,6 @@ local function CreateGUI()
         end
     })
 
-    -- Bro_broa GUI
-    Bro_broaguiTab:CreateButton({
-        Name = "Bro_broa GUI 1.75(bro_broa)",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Bro_broa GUI 1.75...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa", true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Bro_broa GUI 1.75 loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    -- Bro_broa GUI
-    Bro_broaguiTab:CreateButton({
-        Name = "Bro_broa executor2.5",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Bro_broa executor2.5...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.5", true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Bro_broa executor2.5 loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
     -- Enhanced Server hopper Button
     ServerTab:CreateButton({
         Name = "Server hopper",
@@ -1355,6 +1285,76 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "leave game loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    -- Bro_broa GUI
+    Bro_broaguiTab:CreateButton({
+        Name = "Bro_broa GUI 1.75(bro_broa)",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Bro_broa GUI 1.75...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Bro_broa GUI 1.75 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    -- Bro_broa GUI
+    Bro_broaguiTab:CreateButton({
+        Name = "Bro_broa executor2.5",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Bro_broa executor2.5...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20executor%202.5", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Bro_broa executor2.5 loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
