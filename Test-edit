@@ -186,7 +186,7 @@ local function CreateGUI()
     local FeTab = window:CreateTab("FE", "flag")
     local TSBtab = window:CreateTab("TSB", "flag")
     local VBLTab = window:CreateTab("VBL", "flag")
-    local DoorsTab = window:CrateTab("Doors", "flag")
+    local DoorsTab = window:CreateTab("Doors", "flag")
 
     -- Enhanced Infinite Yield Button
     MainTab:CreateButton({
