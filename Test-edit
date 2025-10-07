@@ -1,4 +1,4 @@
--- Bro_broa Hub v6.0
+-- Bro_broa Hub v6.5
 local teleportService = game:GetService("TeleportService")
 local players = game:GetService("Players")
 local httpService = game:GetService("HttpService")
@@ -8,7 +8,7 @@ local runService = game:GetService("RunService")
 -- Global state management
 if not _G.Bro_broaHub then
     _G.Bro_broaHub = {
-        Version = "6.0",
+        Version = "6.5",
         LastTeleport = 0,
         DebugInfo = {},
         TeleportSetupDone = false
@@ -135,7 +135,7 @@ end
 local function SetupAutoReload()
     local reloadScript = [[
         wait(0.01)
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%206.0", true))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Bro_broa%20gui%206.5", true))()
     ]]
     
     if queue_on_teleport then
@@ -186,6 +186,7 @@ local function CreateGUI()
     local FeTab = window:CreateTab("FE", "flag")
     local TSBtab = window:CreateTab("TSB", "flag")
     local VBLTab = window:CreateTab("VBL", "flag")
+    local DoorsTab = window:CrateTab("Doors", "flag")
 
     -- Enhanced Infinite Yield Button
     MainTab:CreateButton({
@@ -278,6 +279,41 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "Ping+FPS shower loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+   -- Enhanced Youtube Player Button
+    MainTab:CreateButton({
+        Name = "Youtube Player",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Youtube Player...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Play/1%20YoutubePlay.lua', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Youtube Player loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
@@ -881,7 +917,7 @@ local function CreateGUI()
                 InfJumpEnabled = Value
                 Rayfield:Notify({
                     Title = "infjump " .. (Value and "open" or "close"),
-                    Content = Value and "Already open" or "Already close",
+                    Content = Value and "open" or "close",
                     Duration = 1.5,
                     Image = 4483362458,
                 })
@@ -906,16 +942,37 @@ local function CreateGUI()
         end
     })
 
-    -- Key System Button
     SettingsTab:CreateButton({
-        Name = "Get Key Info",
+        Name = "Copy discord link",
         Callback = function()
-            Rayfield:Notify({
-                Title = "Bro_broa Hub Key",
-                Content = "Join our Discord: discord.gg/Arftune3Ab",
-                Duration = 5,
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "copy discord...",
+                Duration = math.huge,
                 Image = 4483362458
             })
+            
+            local success, err = pcall(function()
+                setclipboard("https://discord.gg/hTEvZ3nkZd")
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Copied discord",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
         end
     })
 
@@ -1208,6 +1265,41 @@ local function CreateGUI()
         end
     })
 
+    -- Enhanced FreePrivateServer Button
+    ServerTab:CreateButton({
+        Name = "FreePrivateServer",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing FreePrivateServer...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://gist.githubusercontent.com/Tesker-103/ed48b3ae8120b0c040584b661cbda063/raw/210408b3f107dc740a4c9b832bfa647f92aa25d1/FreePrivateServerGUI", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "FreePrivateServer loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
     -- Enhanced PrivateServerJoiner Button
     ServerTab:CreateButton({
         Name = "PrivateServerJoiner",
@@ -1390,6 +1482,76 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "FE saitama loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    -- FE changes
+    FeTab:CreateButton({
+        Name = "FE emote(1)",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing FE emote(1)...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://yarhm.mhi.im/scr?channel=afemmax", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "FE Emote(1) loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    -- FE changes
+    FeTab:CreateButton({
+        Name = "FE emote(2)",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing FE emote(2)...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://gist.githubusercontent.com/Defy-cloud/128d2dfc5030202b6d072807a89a790c/raw/043331f680a7d5954f0a1f9370560851ab3e3205/EmotePackFixer.lua", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "FE Emote(2) loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
@@ -1774,6 +1936,41 @@ local function CreateGUI()
                 })
             end
         end,
+    })
+
+    -- Enhanced Doors Button
+    DoorsTab:CreateButton({
+        Name = "mshax hub 4.5",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing mshax hub 4.5...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/TheHunterSolo1/Scripts/refs/heads/main/Doors",true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "mshax hub 4.5 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
     })
 
     -- Final initialization
