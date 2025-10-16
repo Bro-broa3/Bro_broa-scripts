@@ -188,7 +188,6 @@ local function CreateGUI()
     local VBLTab = window:CreateTab("VBL", "flag")
     local DoorsTab = window:CreateTab("Doors", "flag")
 
-    -- Enhanced Infinite Yield Button
     MainTab:CreateButton({
         Name = "Infinite Yield FE",
         Callback = function()
@@ -223,7 +222,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Mobile buttons Button
     MainTab:CreateButton({
         Name = "Mobile buttons",
         Callback = function()
@@ -258,19 +256,18 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Ping+FPS shower Button
     MainTab:CreateButton({
-        Name = "Ping+FPS shower",
+        Name = "Delta keyboard",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
-                Content = "Initializing Ping+FPS shower...",
+                Content = "Initializing Delta keyboard...",
                 Duration = math.huge,
                 Image = 4483362458
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Ping%2BFPS%20shower", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Delta%20keyboard", true))()
             end)
             
             loadNotify:Destroy()
@@ -278,7 +275,7 @@ local function CreateGUI()
             if success then
                 Rayfield:Notify({
                     Title = "Success",
-                    Content = "Ping+FPS shower loaded!",
+                    Content = "Delta keyboard loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
@@ -293,7 +290,6 @@ local function CreateGUI()
         end
     })
 
-   -- Enhanced Youtube Player Button
     MainTab:CreateButton({
         Name = "Youtube Player",
         Callback = function()
@@ -328,7 +324,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Use All Tools Button
     MainTab:CreateButton({
         Name = "Use All Tools",
         Callback = function()
@@ -363,7 +358,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Click to TP Tool Button
     MainTab:CreateButton({
         Name = "Click to TP Tool",
         Callback = function()
@@ -398,7 +392,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Fling All Button
     MainTab:CreateButton({
         Name = "Fling All",
         Callback = function()
@@ -433,7 +426,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced SUS Button
     MainTab:CreateButton({
         Name = "SUS Script",
         Callback = function()
@@ -468,7 +460,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced music play Button
     MainTab:CreateButton({
         Name = "music play",
         Callback = function()
@@ -503,14 +494,12 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced hint function with pcall error handling
     local function ShowHint(message)
         local success, err = pcall(function()
             local hint = Instance.new("Hint")
             hint.Text = tostring(message)
             hint.Parent = workspace
             
-            -- Safely destroy hint after delay
             task.delay(3, function()
                 pcall(function()
                     if hint and hint.Parent then
@@ -525,7 +514,6 @@ local function CreateGUI()
         end
     end
 
-    -- Create text input box
     local success, input = pcall(function()
         return MainTab:CreateInput({
             Name = "Enter Message(hint)",
@@ -540,7 +528,6 @@ local function CreateGUI()
         })
     end)
 
-    -- Enhanced Fly Gui Button
     PlayerTab:CreateButton({
         Name = "Fly Gui",
         Callback = function()
@@ -575,7 +562,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Playerlist Gui Button
     PlayerTab:CreateButton({
         Name = "Playerlist Gui",
         Callback = function()
@@ -610,7 +596,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Walkfling Gui Button
     PlayerTab:CreateButton({
         Name = "walkfling gui",
         Callback = function()
@@ -645,7 +630,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced esp players Button
     PlayerTab:CreateButton({
         Name = "esp players",
         Callback = function()
@@ -680,7 +664,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced unesp players Button
     PlayerTab:CreateButton({
         Name = "unesp players",
         Callback = function()
@@ -907,7 +890,6 @@ local function CreateGUI()
 
     SafeInfJump()
 
-    -- Infjump toggle
     PlayerTab:CreateToggle({
         Name = "infjump",
         CurrentValue = false,
@@ -925,7 +907,6 @@ local function CreateGUI()
         end,
     })
 
-    -- Jump Power Control
     PlayerTab:CreateSlider({
         Name = "Jump Power",
         Range = {50, 500},
@@ -976,7 +957,6 @@ local function CreateGUI()
         end
     })
 
-    -- Complete Antistopgame Button
     SettingsTab:CreateButton({
         Name = "Antistopgame",
         CurrentValue = false,
@@ -1021,7 +1001,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced antidisconnect Button
     SettingsTab:CreateButton({
         Name = "Antidisconnect",
         Callback = function()
@@ -1056,7 +1035,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Antiafk Button
     SettingsTab:CreateButton({
         Name = "Antiafk",
         Callback = function()
@@ -1091,7 +1069,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced FPS boost Button
     SettingsTab:CreateButton({
         Name = "FPS BOOST",
         Callback = function()
@@ -1126,7 +1103,40 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Shiftlock Button
+    SettingsTab:CreateButton({
+        Name = "Ping+FPS shower",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Ping+FPS shower...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Ping%2BFPS%20shower", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Ping+FPS shower loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
     SettingsTab:CreateButton({
         Name = "Shiftlock",
         Callback = function()
@@ -1161,7 +1171,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced safechat Button
     SettingsTab:CreateButton({
         Name = "safechat",
         Callback = function()
@@ -1230,7 +1239,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced Server hopper Button
     ServerTab:CreateButton({
         Name = "Server hopper",
         Callback = function()
@@ -1265,7 +1273,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced FreePrivateServer Button
     ServerTab:CreateButton({
         Name = "FreePrivateServer",
         Callback = function()
@@ -1300,7 +1307,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced PrivateServerJoiner Button
     ServerTab:CreateButton({
         Name = "PrivateServerJoiner",
         Callback = function()
@@ -1356,7 +1362,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced leave game Button
     ServerTab:CreateButton({
         Name = "leave game",
         Callback = function()
@@ -1391,7 +1396,6 @@ local function CreateGUI()
         end
     })
 
-    -- Bro_broa GUI
     Bro_broaguiTab:CreateButton({
         Name = "Bro_broa GUI 1.75(bro_broa)",
         Callback = function()
@@ -1426,7 +1430,6 @@ local function CreateGUI()
         end
     })
 
-    -- Bro_broa GUI
     Bro_broaguiTab:CreateButton({
         Name = "Bro_broa executor2.5",
         Callback = function()
@@ -1461,7 +1464,6 @@ local function CreateGUI()
         end
     })
 
-    -- FE changes
     FeTab:CreateButton({
         Name = "FE saitama",
         Callback = function()
@@ -1496,7 +1498,6 @@ local function CreateGUI()
         end
     })
 
-    -- FE changes
     FeTab:CreateButton({
         Name = "FE emote(1)",
         Callback = function()
@@ -1531,7 +1532,6 @@ local function CreateGUI()
         end
     })
 
-    -- FE changes
     FeTab:CreateButton({
         Name = "FE emote(2)",
         Callback = function()
@@ -1566,7 +1566,6 @@ local function CreateGUI()
         end
     })
 
-    -- FE changes
     FeTab:CreateButton({
         Name = "FE dance hub(maybe only music or dance)",
         Callback = function()
@@ -1601,7 +1600,6 @@ local function CreateGUI()
         end
     })
 
-    -- TSB Features
     TSBtab:CreateButton({
         Name = "Phantasm",
         Callback = function()
@@ -1636,7 +1634,6 @@ local function CreateGUI()
         end
     })
 
-    -- TSB Features
     TSBtab:CreateButton({
         Name = "TSB(move)",
         Callback = function()
@@ -1671,7 +1668,6 @@ local function CreateGUI()
         end
     })
 
-    -- TSB Features
     TSBtab:CreateButton({
         Name = "trash man",
         Callback = function()
@@ -1706,7 +1702,6 @@ local function CreateGUI()
         end
     })
 
-    -- TSB Features
     TSBtab:CreateButton({
         Name = "Show death contour",
         Callback = function()
@@ -1741,7 +1736,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced VL Button
     VBLTab:CreateButton({
         Name = "Sigma hub",
         Callback = function()
@@ -1776,7 +1770,6 @@ local function CreateGUI()
         end
     })
 
-    -- Enhanced VBL Button
     VBLTab:CreateButton({
         Name = "Xenith hub(need key)",
         Callback = function()
@@ -1938,7 +1931,6 @@ local function CreateGUI()
         end,
     })
 
-    -- Enhanced Doors Button
     DoorsTab:CreateButton({
         Name = "mshax hub 4.5",
         Callback = function()
