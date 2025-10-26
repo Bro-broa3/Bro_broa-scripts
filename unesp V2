@@ -1,0 +1,123 @@
+-- UN-ESP SCRIPT (Complete Removal - No Forgetting)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+-- Turn off ESP globally
+_G.ESP_ENABLED = false
+
+local function removeAllESP()
+    print("Removing ALL ESP...")
+    
+    -- Remove from all current players
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            -- Remove Highlight
+            local esp = player.Character:FindFirstChild(player.Name .. "_ESP")
+            if esp then
+                esp:Destroy()
+                print("✓ Removed ESP from: " .. player.Name)
+            end
+            
+            -- Remove BillboardGui
+            local info = player.Character:FindFirstChild(player.Name .. "_Info")
+            if info then
+                info:Destroy()
+                print("✓ Removed info from: " .. player.Name)
+            end
+        end
+    end
+    
+    -- Double check - search entire workspace for any ESP objects
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Highlight") and (obj.Name:find("_ESP") or obj.Name:find("Highlight")) then
+            obj:Destroy()
+            print("✓ Removed stray highlight: " .. obj.Name)
+        end
+        
+        if obj:IsA("BillboardGui") and obj.Name:find("_Info") then
+            obj:Destroy()
+            print("✓ Removed stray billboard: " .. obj.Name)
+        end
+    end
+    
+    print("First cleanup completed!")
+end
+
+-- Run initial cleanup
+removeAllESP()
+
+-- Continuous cleanup for 5 seconds to catch any missed ESP
+local startTime = tick()
+local cleanupConnection
+
+cleanupConnection = RunService.Heartbeat:Connect(function()
+    -- Stop after 5 seconds of cleaning
+    if tick() - startTime > 5 then
+        cleanupConnection:Disconnect()
+        print("Cleanup finished! All ESP should be removed.")
+        return
+    end
+    
+    -- Keep removing any ESP that appears
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Character then
+            local esp = player.Character:FindFirstChild(player.Name .. "_ESP")
+            local info = player.Character:FindFirstChild(player.Name .. "_Info")
+            
+            if esp then 
+                esp:Destroy()
+                print("✓ Cleaned missed ESP from: " .. player.Name)
+            end
+            if info then 
+                info:Destroy()
+                print("✓ Cleaned missed info from: " .. player.Name)
+            end
+        end
+    end
+    
+    -- Also clean any new ESP in workspace
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Highlight") and (obj.Name:find("_ESP") or obj.Name:find("Highlight")) then
+            obj:Destroy()
+        end
+        if obj:IsA("BillboardGui") and obj.Name:find("_Info") then
+            obj:Destroy()
+        end
+    end
+end)
+
+-- Handle new players joining while cleanup is running
+local newPlayerConnection
+newPlayerConnection = Players.PlayerAdded:Connect(function(player)
+    if not _G.ESP_ENABLED then
+        -- Remove ESP immediately when new player gets character
+        player.CharacterAdded:Connect(function(character)
+            wait(0.2) -- Wait a bit for ESP to be created
+            local esp = character:FindFirstChild(player.Name .. "_ESP")
+            local info = character:FindFirstChild(player.Name .. "_Info")
+            
+            if esp then 
+                esp:Destroy()
+                print("✓ Prevented ESP on new player: " .. player.Name)
+            end
+            if info then 
+                info:Destroy()
+                print("✓ Prevented info on new player: " .. player.Name)
+            end
+        end)
+    end
+end)
+
+print("====================================")
+print("UN-ESP ACTIVATED!")
+print("All ESP will be removed completely")
+print("Run ESP script again when you want it back")
+print("====================================")
+
+-- Optional: Auto-disconnect after some time
+spawn(function()
+    wait(6) -- Wait 6 seconds total
+    if cleanupConnection then cleanupConnection:Disconnect() end
+    if newPlayerConnection then newPlayerConnection:Disconnect() end
+    print("UN-ESP monitoring stopped")
+end)
