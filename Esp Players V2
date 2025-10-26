@@ -1,0 +1,245 @@
+-- Part 1 of 2
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local localPlayer = Players.LocalPlayer
+local highlights = {}
+
+-- Function to format numbers without unnecessary .0
+local function formatNumber(num)
+    local rounded = math.floor(num * 10 + 0.5) / 10
+    if rounded == math.floor(rounded) then
+        return tostring(math.floor(rounded))
+    else
+        return string.format("%.1f", rounded)
+    end
+end
+
+-- Function to create ESP for a player
+local function createESP(player)
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = player.Name .. "_ESP"
+    highlight.Adornee = character
+    highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    highlight.FillTransparency = 0.5
+    highlight.OutlineColor = Color3.new(1, 1, 1)
+    highlight.Parent = character
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = player.Name .. "_Info"
+    billboard.Adornee = rootPart
+    billboard.Size = UDim2.new(0, 200, 0, 70)
+    billboard.StudsOffset = Vector3.new(0, 3.5, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = character
+    
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Size = UDim2.new(1, 0, 0.33, 0)
+    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.TextSize = 14
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.TextColor3 = Color3.new(1, 1, 1)
+    nameLabel.TextStrokeTransparency = 0
+    nameLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    nameLabel.Text = player.Name .. " | " .. "<font color='rgb(255,0,0)'>Bro_broa</font>"
+    nameLabel.RichText = true
+    nameLabel.Parent = billboard
+    
+    local healthLabel = Instance.new("TextLabel")
+    healthLabel.Name = "HealthLabel"
+    healthLabel.Size = UDim2.new(1, 0, 0.33, 0)
+    healthLabel.Position = UDim2.new(0, 0, 0.33, 0)
+    healthLabel.BackgroundTransparency = 1
+    healthLabel.TextSize = 12
+    healthLabel.Font = Enum.Font.Gotham
+    healthLabel.TextColor3 = Color3.new(1, 1, 1)
+    healthLabel.TextStrokeTransparency = 0
+    healthLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    healthLabel.Parent = billboard
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Name = "DistanceLabel"
+    distanceLabel.Size = UDim2.new(1, 0, 0.33, 0)
+    distanceLabel.Position = UDim2.new(0, 0, 0.66, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.TextSize = 12
+    distanceLabel.Font = Enum.Font.Gotham
+    distanceLabel.TextColor3 = Color3.new(1, 1, 1)
+    distanceLabel.TextStrokeTransparency = 0
+    distanceLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    distanceLabel.Text = "Distance: 0 studs"
+    distanceLabel.Parent = billboard
+    
+    -- Store highlight for color animation
+    highlights[player] = highlight
+    
+    -- Update function for the ESP
+    local function updateESP()
+        if not character or not character:FindFirstChild("Humanoid") or not character:FindFirstChild("HumanoidRootPart") then
+            return
+        end
+        
+        -- Update health with clean decimal formatting
+        local health = humanoid.Health
+        local maxHealth = humanoid.MaxHealth
+        local healthPercent = (health / maxHealth) * 100
+        
+        -- Format health without unnecessary .0
+        healthLabel.Text = string.format("Health: %s/%s (%s%%)", 
+            formatNumber(health), 
+            formatNumber(maxHealth), 
+            formatNumber(healthPercent))
+        
+        -- Change health color based on percentage
+        if healthPercent > 60 then
+            healthLabel.TextColor3 = Color3.new(0, 1, 0)
+        elseif healthPercent > 30 then
+            healthLabel.TextColor3 = Color3.new(1, 1, 0)
+        else
+            healthLabel.TextColor3 = Color3.new(1, 0, 0)
+        end
+        
+        -- Update distance
+        local localCharacter = localPlayer.Character
+        if localCharacter and localCharacter:FindFirstChild("HumanoidRootPart") then
+            local localRoot = localCharacter.HumanoidRootPart
+            local distance = (localRoot.Position - rootPart.Position).Magnitude
+            
+            -- Format distance without unnecessary .0
+            local formattedDistance = formatNumber(distance)
+            distanceLabel.Text = "Distance: " .. formattedDistance .. " studs"
+            
+            -- Change distance color based on proximity
+            if distance < 20 then
+                distanceLabel.TextColor3 = Color3.new(1, 0, 0)
+            elseif distance < 50 then
+                distanceLabel.TextColor3 = Color3.new(1, 1, 0)
+            else
+                distanceLabel.TextColor3 = Color3.new(0, 1, 1)
+            end
+        end
+    end
+    
+    -- Connect update events
+    local conn1 = humanoid.HealthChanged:Connect(updateESP)
+    local conn2 = RunService.Heartbeat:Connect(updateESP)
+    
+    -- Clean up when character is removed
+    character.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            conn1:Disconnect()
+            conn2:Disconnect()
+            if highlight then highlight:Destroy() end
+            if billboard then billboard:Destroy() end
+            highlights[player] = nil
+        end
+    end)
+end
+
+-- Initialize ESP for existing players
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= localPlayer then
+        if player.Character then
+            createESP(player)
+        end
+        player.CharacterAdded:Connect(function(character)
+            createESP(player)
+        end)
+    end
+end
+
+-- Handle new players
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Connect(function(character)
+        createESP(player)
+    end)
+end)
+
+-- Part 2 of 2
+
+-- Handle player removal
+Players.PlayerRemoving:Connect(function(player)
+    highlights[player] = nil
+    if player.Character then
+        local esp = player.Character:FindFirstChild(player.Name .. "_ESP")
+        local info = player.Character:FindFirstChild(player.Name .. "_Info")
+        
+        if esp then esp:Destroy() end
+        if info then info:Destroy() end
+    end
+end)
+
+-- Smooth rainbow color animation function
+spawn(function()
+    while true do
+        local time = tick()
+        
+        for player, highlight in pairs(highlights) do
+            if player and player.Character and highlight and highlight.Parent then
+                -- Smooth rainbow gradient
+                local r = (math.sin(time * 1.5) + 1) / 2
+                local g = (math.sin(time * 1.5 + 2) + 1) / 2
+                local b = (math.sin(time * 1.5 + 4) + 1) / 2
+                
+                highlight.FillColor = Color3.new(r, g, b)
+            else
+                highlights[player] = nil
+            end
+        end
+        
+        wait(0.03)
+    end
+end)
+
+-- Infinite distance ESP by preventing distance checks
+local camera = workspace.CurrentCamera
+local function updatePositions()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            local billboard = player.Character:FindFirstChild(player.Name .. "_Info")
+            
+            if rootPart and billboard then
+                billboard.Enabled = true
+            end
+        end
+    end
+end
+
+-- Run position updates
+RunService.Heartbeat:Connect(updatePositions)
+
+-- Cleanup when script is terminated
+local function cleanup()
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local esp = player.Character:FindFirstChild(player.Name .. "_ESP")
+            local info = player.Character:FindFirstChild(player.Name .. "_Info")
+            
+            if esp then esp:Destroy() end
+            if info then info:Destroy() end
+        end
+    end
+    highlights = {}
+end
+
+-- Connect cleanup to script termination
+game:GetService("UserInputService").WindowFocusReleased:Connect(function()
+    cleanup()
+end)
+
+-- Final initialization message
+print("Full Body ESP loaded successfully!")
+print("Features:")
+print("- Smooth rainbow color animation")
+print("- Clean decimal health display")
+print("- Clean distance display")
+print("- Infinite distance ESP")
+print("- Health percentage and exact values")
+print("- 'Bro_broa' always in red")
