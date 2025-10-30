@@ -1,16 +1,233 @@
--- Roblox Exploit MP3 Player GUI - Fixed Textbox Scrolling
+-- Roblox Exploit MP3 Player GUI - Fixed Mute Button & History Issues
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
 
--- Create main GUI
+-- ========== VARIABLES ==========
+local currentSound = nil
+local isMuted = false
+local isLooping = true
+local currentVolume = 1.0
+local isMinimized = false
+local isHistoryOpen = false
+local downloadHistory = {}
+local isPlaying = false
+local HISTORY_FILE = "mp3_history.json"
+
+-- ========== CORE FUNCTIONS ==========
+
+-- Load download history from file
+local function loadHistory()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(HISTORY_FILE) then
+            local jsonData = readfile(HISTORY_FILE)
+            return HttpService:JSONDecode(jsonData)
+        end
+    end)
+    return success and result or {}
+end
+
+-- Save download history to file
+local function saveHistory()
+    local success, errorMsg = pcall(function()
+        if writefile then
+            local jsonData = HttpService:JSONEncode(downloadHistory)
+            writefile(HISTORY_FILE, jsonData)
+        end
+    end)
+    if not success then
+        warn("Failed to save history: " .. tostring(errorMsg))
+    end
+end
+
+-- Add a song to download history
+local function addToHistory(url, fileName)
+    local historyEntry = {
+        url = url,
+        fileName = fileName,
+        timestamp = os.time(),
+        date = os.date("%Y-%m-%d %H:%M:%S")
+    }
+    
+    table.insert(downloadHistory, 1, historyEntry)
+    
+    -- Keep only last 50 entries
+    if #downloadHistory > 50 then
+        for i = 51, #downloadHistory do
+            downloadHistory[i] = nil
+        end
+    end
+    
+    saveHistory()
+end
+
+-- Remove a song from download history
+local function removeFromHistory(index)
+    if downloadHistory[index] then
+        table.remove(downloadHistory, index)
+        saveHistory()
+        return true
+    end
+    return false
+end
+
+-- FIXED: Improved stop function that properly destroys the sound
+local function stopMusic()
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+    end
+    isPlaying = false
+end
+
+-- Function to mute ALL game sounds - FIXED VERSION
+local function muteAllGameSounds(mute)
+    isMuted = mute
+    
+    -- Mute all sounds in workspace
+    for _, sound in pairs(workspace:GetDescendants()) do
+        if sound:IsA("Sound") then
+            pcall(function()
+                if mute then
+                    sound.Volume = 0
+                else
+                    -- Only restore volume for non-player sounds
+                    if sound ~= currentSound then
+                        sound.Volume = 0.5
+                    end
+                end
+            end)
+        end
+    end
+    
+    -- Mute all sounds in lighting
+    local lighting = game:GetService("Lighting")
+    for _, sound in pairs(lighting:GetDescendants()) do
+        if sound:IsA("Sound") then
+            pcall(function()
+                if mute then
+                    sound.Volume = 0
+                else
+                    sound.Volume = 0.5
+                end
+            end)
+        end
+    end
+    
+    -- Handle current player sound
+    if currentSound then
+        currentSound.Volume = mute and 0 or currentVolume
+    end
+    
+    -- FIXED: Correct colors for mute button
+    if MuteToggle then
+        if mute then
+            MuteToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)  -- Green when ON
+            MuteToggle.Text = "🔇 GAME MUTE: ON"
+        else
+            MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)  -- Red when OFF
+            MuteToggle.Text = "🔊 GAME MUTE: OFF"
+        end
+    end
+    
+    -- Update status label
+    if StatusLabel then
+        if mute then
+            StatusLabel.Text = "🔇 All game sounds muted"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        else
+            StatusLabel.Text = "🔊 All game sounds unmuted"
+            StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+    end
+end
+
+-- Update volume slider visual
+local function updateVolumeSlider(volume)
+    currentVolume = volume
+    if VolumeFill then
+        VolumeFill.Size = UDim2.new(volume, 0, 1, 0)
+    end
+    if VolumeLabel then
+        VolumeLabel.Text = "Volume: " .. math.floor(volume * 100) .. "%"
+    end
+    
+    if currentSound and not isMuted then
+        currentSound.Volume = volume
+    end
+end
+
+-- Function to play music from URL
+local function playMusicFromUrl(url, fileName)
+    -- Stop current music first
+    stopMusic()
+    
+    if StatusLabel then
+        StatusLabel.Text = "⏬ Downloading..."
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    end
+    
+    local success, errorMessage = pcall(function()
+        -- Download audio file
+        local audioData = game:HttpGet(url)
+        writefile("audio.mp3", audioData)
+        
+        -- Create sound instance
+        currentSound = Instance.new("Sound")
+        currentSound.SoundId = getcustomasset("audio.mp3")
+        currentSound.Volume = isMuted and 0 or currentVolume
+        currentSound.Looped = isLooping
+        
+        -- Use workspace instead of character to avoid respawn issues
+        currentSound.Parent = workspace
+        
+        currentSound:Play()
+        isPlaying = true
+        
+        -- Check if URL already exists in history before adding
+        local alreadyInHistory = false
+        for _, entry in ipairs(downloadHistory) do
+            if entry.url == url then
+                alreadyInHistory = true
+                break
+            end
+        end
+        
+        if not alreadyInHistory then
+            addToHistory(url, fileName)
+        end
+    end)
+    
+    if success and currentSound then
+        if StatusLabel then
+            StatusLabel.Text = "🎵 Now Playing..."
+            StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+        return true
+    else
+        if StatusLabel then
+            StatusLabel.Text = "❌ Error: " .. tostring(errorMessage)
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        end
+        stopMusic()
+        return false
+    end
+end
+
+-- ========== GUI CREATION ==========
+
+-- Create main GUI with proper parenting to avoid character death issues
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MusicPlayerGUI"
-ScreenGui.Parent = player.PlayerGui
+ScreenGui.ResetOnSpawn = false -- This prevents GUI from disappearing on respawn
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
@@ -21,6 +238,9 @@ MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
+
+local originalSize = MainFrame.Size
+local minimizedSize = UDim2.new(0, 400, 0, 35)
 
 -- Add gradient outline effect
 local OutlineFrame = Instance.new("Frame")
@@ -140,7 +360,7 @@ ContentFrame.Position = UDim2.new(0, 10, 0, 45)
 ContentFrame.BackgroundTransparency = 1
 ContentFrame.Parent = MainFrame
 
--- URL input with FIXED scrolling
+-- URL input with scrolling
 local UrlLabel = Instance.new("TextLabel")
 UrlLabel.Name = "UrlLabel"
 UrlLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -191,25 +411,22 @@ UrlTextBox.TextXAlignment = Enum.TextXAlignment.Left
 UrlTextBox.TextWrapped = false
 UrlTextBox.Parent = UrlScrollingFrame
 
--- FIXED: Update scrolling frame properly
+-- Update scrolling frame properly
 local function updateScrollingFrame()
     local textWidth = UrlTextBox.TextBounds.X
     local frameWidth = UrlScrollingFrame.AbsoluteSize.X
     
     if textWidth > frameWidth - 10 then
         UrlScrollingFrame.CanvasSize = UDim2.new(0, textWidth + 20, 0, 0)
-        UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150) -- Visible scrollbar
+        UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
     else
         UrlScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-        UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150) -- Still visible but no scroll needed
+        UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
     end
 end
 
--- Connect text changes to update scrolling
 UrlTextBox:GetPropertyChangedSignal("Text"):Connect(updateScrollingFrame)
 UrlTextBox:GetPropertyChangedSignal("TextBounds"):Connect(updateScrollingFrame)
-
--- Also update when frame size changes
 UrlScrollingFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScrollingFrame)
 
 local TextBoxUICorner = Instance.new("UICorner")
@@ -258,33 +475,50 @@ local StopButtonUICorner = Instance.new("UICorner")
 StopButtonUICorner.CornerRadius = UDim.new(0, 6)
 StopButtonUICorner.Parent = StopButton
 
+-- History button
+local HistoryButton = Instance.new("TextButton")
+HistoryButton.Name = "HistoryButton"
+HistoryButton.Size = UDim2.new(1, 0, 0, 30)
+HistoryButton.Position = UDim2.new(0, 0, 0, 50)
+HistoryButton.BackgroundColor3 = Color3.fromRGB(100, 100, 200)
+HistoryButton.BorderSizePixel = 0
+HistoryButton.Text = "→ HISTORY"
+HistoryButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+HistoryButton.Font = Enum.Font.GothamBold
+HistoryButton.TextSize = 12
+HistoryButton.Parent = ControlButtons
+
+local HistoryButtonUICorner = Instance.new("UICorner")
+HistoryButtonUICorner.CornerRadius = UDim.new(0, 6)
+HistoryButtonUICorner.Parent = HistoryButton
+
 -- Status label
-local StatusLabel = Instance.new("TextLabel")
+StatusLabel = Instance.new("TextLabel")
 StatusLabel.Name = "StatusLabel"
-StatusLabel.Size = UDim2.new(1, 0, 0, 25)
-StatusLabel.Position = UDim2.new(0, 0, 0, 120)
+StatusLabel.Size = UDim2.new(1, 0, 0, 20)
+StatusLabel.Position = UDim2.new(0, 0, 1, -25)
 StatusLabel.BackgroundTransparency = 1
 StatusLabel.Text = "Ready to play music"
 StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Center
 StatusLabel.Font = Enum.Font.Gotham
-StatusLabel.TextSize = 12
+StatusLabel.TextSize = 11
 StatusLabel.Parent = ContentFrame
 
 -- Toggle buttons frame
 local ToggleFrame = Instance.new("Frame")
 ToggleFrame.Name = "ToggleFrame"
 ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
-ToggleFrame.Position = UDim2.new(0, 0, 0, 150)
+ToggleFrame.Position = UDim2.new(0, 0, 0, 120)
 ToggleFrame.BackgroundTransparency = 1
 ToggleFrame.Parent = ContentFrame
 
 -- Mute toggle
-local MuteToggle = Instance.new("TextButton")
+MuteToggle = Instance.new("TextButton")
 MuteToggle.Name = "MuteToggle"
 MuteToggle.Size = UDim2.new(0, 120, 0, 30)
 MuteToggle.Position = UDim2.new(0, 0, 0, 0)
-MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)  -- Start as red (OFF)
 MuteToggle.BorderSizePixel = 0
 MuteToggle.Text = "🔊 GAME MUTE: OFF"
 MuteToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -297,7 +531,7 @@ MuteUICorner.CornerRadius = UDim.new(0, 6)
 MuteUICorner.Parent = MuteToggle
 
 -- Loop toggle
-local LoopToggle = Instance.new("TextButton")
+LoopToggle = Instance.new("TextButton")
 LoopToggle.Name = "LoopToggle"
 LoopToggle.Size = UDim2.new(0, 100, 0, 30)
 LoopToggle.Position = UDim2.new(1, -100, 0, 0)
@@ -313,15 +547,15 @@ local LoopUICorner = Instance.new("UICorner")
 LoopUICorner.CornerRadius = UDim.new(0, 6)
 LoopUICorner.Parent = LoopToggle
 
--- Volume control with working slider
+-- Volume control
 local VolumeFrame = Instance.new("Frame")
 VolumeFrame.Name = "VolumeFrame"
 VolumeFrame.Size = UDim2.new(1, 0, 0, 40)
-VolumeFrame.Position = UDim2.new(0, 0, 0, 190)
+VolumeFrame.Position = UDim2.new(0, 0, 0, 160)
 VolumeFrame.BackgroundTransparency = 1
 VolumeFrame.Parent = ContentFrame
 
-local VolumeLabel = Instance.new("TextLabel")
+VolumeLabel = Instance.new("TextLabel")
 VolumeLabel.Name = "VolumeLabel"
 VolumeLabel.Size = UDim2.new(0, 80, 0, 20)
 VolumeLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -333,8 +567,7 @@ VolumeLabel.Font = Enum.Font.Gotham
 VolumeLabel.TextSize = 12
 VolumeLabel.Parent = VolumeFrame
 
--- Volume slider
-local VolumeSlider = Instance.new("TextButton")
+VolumeSlider = Instance.new("TextButton")
 VolumeSlider.Name = "VolumeSlider"
 VolumeSlider.Size = UDim2.new(1, -90, 0, 20)
 VolumeSlider.Position = UDim2.new(0, 85, 0, 10)
@@ -344,7 +577,7 @@ VolumeSlider.AutoButtonColor = false
 VolumeSlider.Text = ""
 VolumeSlider.Parent = VolumeFrame
 
-local VolumeFill = Instance.new("Frame")
+VolumeFill = Instance.new("Frame")
 VolumeFill.Name = "VolumeFill"
 VolumeFill.Size = UDim2.new(1, 0, 1, 0)
 VolumeFill.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
@@ -359,72 +592,239 @@ local VolumeFillCorner = Instance.new("UICorner")
 VolumeFillCorner.CornerRadius = UDim.new(0, 10)
 VolumeFillCorner.Parent = VolumeFill
 
--- Variables
-local currentSound = nil
-local isMuted = false
-local isLooping = true
-local currentVolume = 1.0
-local isMinimized = false
-local originalSize = MainFrame.Size
-local minimizedSize = UDim2.new(0, 400, 0, 35)
+-- History Panel
+local HistoryPanel = Instance.new("Frame")
+HistoryPanel.Name = "HistoryPanel"
+HistoryPanel.Size = UDim2.new(1, 0, 1, 0)
+HistoryPanel.Position = UDim2.new(1, 0, 0, 0)
+HistoryPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+HistoryPanel.BorderSizePixel = 0
+HistoryPanel.Visible = false
+HistoryPanel.Parent = ContentFrame
 
--- Function to mute ALL game sounds
-local function muteAllGameSounds(mute)
-    if mute then
-        -- Mute ALL sounds in the entire game
-        for _, sound in pairs(workspace:GetDescendants()) do
-            if sound:IsA("Sound") then
-                pcall(function()
-                    sound.Volume = 0
-                end)
-            end
+local HistoryPanelCorner = Instance.new("UICorner")
+HistoryPanelCorner.CornerRadius = UDim.new(0, 8)
+HistoryPanelCorner.Parent = HistoryPanel
+
+-- History title
+local HistoryTitle = Instance.new("TextLabel")
+HistoryTitle.Name = "HistoryTitle"
+HistoryTitle.Size = UDim2.new(1, 0, 0, 30)
+HistoryTitle.Position = UDim2.new(0, 0, 0, 0)
+HistoryTitle.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+HistoryTitle.BorderSizePixel = 0
+HistoryTitle.Text = "DOWNLOAD HISTORY"
+HistoryTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+HistoryTitle.Font = Enum.Font.GothamBold
+HistoryTitle.TextSize = 14
+HistoryTitle.Parent = HistoryPanel
+
+local HistoryTitleCorner = Instance.new("UICorner")
+HistoryTitleCorner.CornerRadius = UDim.new(0, 8)
+HistoryTitleCorner.Parent = HistoryTitle
+
+-- Back button
+local BackButton = Instance.new("TextButton")
+BackButton.Name = "BackButton"
+BackButton.Size = UDim2.new(0, 80, 0, 25)
+BackButton.Position = UDim2.new(0, 10, 0, 35)
+BackButton.BackgroundColor3 = Color3.fromRGB(80, 130, 200)
+BackButton.BorderSizePixel = 0
+BackButton.Text = "← BACK"
+BackButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+BackButton.Font = Enum.Font.GothamBold
+BackButton.TextSize = 12
+BackButton.Parent = HistoryPanel
+
+local BackButtonCorner = Instance.new("UICorner")
+BackButtonCorner.CornerRadius = UDim.new(0, 6)
+BackButtonCorner.Parent = BackButton
+
+-- History list scroll frame
+local HistoryScrollFrame = Instance.new("ScrollingFrame")
+HistoryScrollFrame.Name = "HistoryScrollFrame"
+HistoryScrollFrame.Size = UDim2.new(1, -20, 1, -70)
+HistoryScrollFrame.Position = UDim2.new(0, 10, 0, 70)
+HistoryScrollFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+HistoryScrollFrame.BorderSizePixel = 0
+HistoryScrollFrame.ScrollBarThickness = 8
+HistoryScrollFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+HistoryScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+HistoryScrollFrame.Parent = HistoryPanel
+
+local HistoryScrollCorner = Instance.new("UICorner")
+HistoryScrollCorner.CornerRadius = UDim.new(0, 6)
+HistoryScrollCorner.Parent = HistoryScrollFrame
+
+-- No history label
+local NoHistoryLabel = Instance.new("TextLabel")
+NoHistoryLabel.Name = "NoHistoryLabel"
+NoHistoryLabel.Size = UDim2.new(1, 0, 0, 50)
+NoHistoryLabel.Position = UDim2.new(0, 0, 0.5, -25)
+NoHistoryLabel.BackgroundTransparency = 1
+NoHistoryLabel.Text = "No download history yet\nPlay some music first!"
+NoHistoryLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+NoHistoryLabel.Font = Enum.Font.Gotham
+NoHistoryLabel.TextSize = 12
+NoHistoryLabel.TextWrapped = true
+NoHistoryLabel.Visible = true
+NoHistoryLabel.Parent = HistoryScrollFrame
+
+-- ========== GUI FUNCTIONS ==========
+
+-- Update the history list display
+local function updateHistoryList()
+    -- Clear existing history items
+    for _, child in pairs(HistoryScrollFrame:GetChildren()) do
+        if child.Name == "HistoryItem" then
+            child:Destroy()
         end
-        -- Also mute Lighting ambient sounds
-        local lighting = game:GetService("Lighting")
-        for _, sound in pairs(lighting:GetDescendants()) do
-            if sound:IsA("Sound") then
-                pcall(function()
-                    sound.Volume = 0
-                end)
+    end
+    
+    -- Show/hide no history label
+    NoHistoryLabel.Visible = #downloadHistory == 0
+    
+    if #downloadHistory == 0 then
+        HistoryScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        return
+    end
+    
+    local itemHeight = 45
+    local spacing = 5
+    local totalHeight = 0
+    
+    -- Create history items
+    for i, entry in ipairs(downloadHistory) do
+        local historyItem = Instance.new("Frame")
+        historyItem.Name = "HistoryItem"
+        historyItem.Size = UDim2.new(1, -10, 0, itemHeight)
+        historyItem.Position = UDim2.new(0, 5, 0, totalHeight)
+        historyItem.BackgroundColor3 = i % 2 == 0 and Color3.fromRGB(55, 55, 55) or Color3.fromRGB(50, 50, 50)
+        historyItem.BorderSizePixel = 0
+        historyItem.Parent = HistoryScrollFrame
+        
+        local itemCorner = Instance.new("UICorner")
+        itemCorner.CornerRadius = UDim.new(0, 4)
+        itemCorner.Parent = historyItem
+        
+        -- File name label
+        local fileNameLabel = Instance.new("TextLabel")
+        fileNameLabel.Name = "FileNameLabel"
+        fileNameLabel.Size = UDim2.new(0.6, -5, 0, 20)
+        fileNameLabel.Position = UDim2.new(0, 5, 0, 5)
+        fileNameLabel.BackgroundTransparency = 1
+        fileNameLabel.Text = entry.fileName or "Unknown"
+        fileNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        fileNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        fileNameLabel.Font = Enum.Font.Gotham
+        fileNameLabel.TextSize = 11
+        fileNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+        fileNameLabel.Parent = historyItem
+        
+        -- Date label
+        local dateLabel = Instance.new("TextLabel")
+        dateLabel.Name = "DateLabel"
+        dateLabel.Size = UDim2.new(0.6, -5, 0, 15)
+        dateLabel.Position = UDim2.new(0, 5, 0, 25)
+        dateLabel.BackgroundTransparency = 1
+        dateLabel.Text = entry.date or "Unknown date"
+        dateLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+        dateLabel.TextXAlignment = Enum.TextXAlignment.Left
+        dateLabel.Font = Enum.Font.Gotham
+        dateLabel.TextSize = 9
+        dateLabel.Parent = historyItem
+        
+        -- Play button for history item
+        local playHistoryButton = Instance.new("TextButton")
+        playHistoryButton.Name = "PlayHistoryButton"
+        playHistoryButton.Size = UDim2.new(0.15, -5, 0, 25)
+        playHistoryButton.Position = UDim2.new(0.6, 5, 0, 10)
+        playHistoryButton.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
+        playHistoryButton.BorderSizePixel = 0
+        playHistoryButton.Text = "▶"
+        playHistoryButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        playHistoryButton.Font = Enum.Font.GothamBold
+        playHistoryButton.TextSize = 12
+        playHistoryButton.Parent = historyItem
+        
+        local playButtonCorner = Instance.new("UICorner")
+        playButtonCorner.CornerRadius = UDim.new(0, 4)
+        playButtonCorner.Parent = playHistoryButton
+        
+        -- Delete button for history item
+        local deleteHistoryButton = Instance.new("TextButton")
+        deleteHistoryButton.Name = "DeleteHistoryButton"
+        deleteHistoryButton.Size = UDim2.new(0.15, -5, 0, 25)
+        deleteHistoryButton.Position = UDim2.new(0.8, 10, 0, 10)
+        deleteHistoryButton.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
+        deleteHistoryButton.BorderSizePixel = 0
+        deleteHistoryButton.Text = "🗑️"
+        deleteHistoryButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+        deleteHistoryButton.Font = Enum.Font.Gotham
+        deleteHistoryButton.TextSize = 12
+        deleteHistoryButton.Parent = historyItem
+        
+        local deleteButtonCorner = Instance.new("UICorner")
+        deleteButtonCorner.CornerRadius = UDim.new(0, 4)
+        deleteButtonCorner.Parent = deleteHistoryButton
+        
+        -- FIXED: Play button functionality with proper error handling
+        playHistoryButton.MouseButton1Click:Connect(function()
+            if entry and entry.url then
+                UrlTextBox.Text = entry.url
+                StatusLabel.Text = "⏬ Loading from history..."
+                StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+                
+                -- Auto-close history panel
+                if isHistoryOpen then
+                    toggleHistoryPanel()
+                end
+                
+                -- Play the music immediately
+                playMusicFromUrl(entry.url, entry.fileName or "audio.mp3")
+            else
+                StatusLabel.Text = "❌ Error: Invalid history entry"
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
             end
-        end
+        end)
+        
+        -- Delete button functionality
+        deleteHistoryButton.MouseButton1Click:Connect(function()
+            if removeFromHistory(i) then
+                StatusLabel.Text = "🗑️ Removed from history"
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
+                updateHistoryList() -- Refresh the list
+            end
+        end)
+        
+        totalHeight = totalHeight + itemHeight + spacing
+    end
+    
+    HistoryScrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+end
+
+-- Toggle history panel
+local function toggleHistoryPanel()
+    isHistoryOpen = not isHistoryOpen
+    
+    if isHistoryOpen then
+        HistoryPanel.Visible = true
+        local tween = TweenService:Create(HistoryPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, 0)})
+        tween:Play()
+        HistoryButton.Text = "← HISTORY"
+        updateHistoryList()
     else
-        -- Unmute ALL sounds
-        for _, sound in pairs(workspace:GetDescendants()) do
-            if sound:IsA("Sound") then
-                pcall(function()
-                    sound.Volume = 0.5 -- Restore to reasonable volume
-                end)
-            end
-        end
-        local lighting = game:GetService("Lighting")
-        for _, sound in pairs(lighting:GetDescendants()) do
-            if sound:IsA("Sound") then
-                pcall(function()
-                    sound.Volume = 0.5
-                end)
-            end
-        end
-    end
-    
-    -- Always control our current sound separately
-    if currentSound then
-        currentSound.Volume = mute and 0 or currentVolume
+        local tween = TweenService:Create(HistoryPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(1, 0, 0, 0)})
+        tween:Play()
+        HistoryButton.Text = "→ HISTORY"
+        wait(0.3)
+        HistoryPanel.Visible = false
     end
 end
 
--- Update volume slider visual
-local function updateVolumeSlider(volume)
-    currentVolume = volume
-    VolumeFill.Size = UDim2.new(volume, 0, 1, 0)
-    VolumeLabel.Text = "Volume: " .. math.floor(volume * 100) .. "%"
-    
-    if currentSound and not isMuted then
-        currentSound.Volume = volume
-    end
-end
+-- ========== EVENT CONNECTIONS ==========
 
--- Custom drag functionality for GUI
+-- Custom drag functionality
 local dragInput, dragStart, startPos
 
 local function update(input)
@@ -474,7 +874,6 @@ VolumeSlider.MouseButton1Down:Connect(function()
     VolumeSlider.MouseLeave:Connect(disconnect)
 end)
 
--- Also allow clicking anywhere on slider
 VolumeSlider.MouseButton1Click:Connect(function()
     local mouseX = mouse.X - VolumeSlider.AbsolutePosition.X
     local volume = math.clamp(mouseX / VolumeSlider.AbsoluteSize.X, 0, 1)
@@ -483,26 +882,20 @@ end)
 
 -- Button functions
 CloseButton.MouseButton1Click:Connect(function()
-    -- Unmute all sounds before closing
     if isMuted then
         muteAllGameSounds(false)
     end
-    if currentSound then
-        currentSound:Stop()
-        currentSound:Destroy()
-    end
+    stopMusic()
     ScreenGui:Destroy()
 end)
 
 MinimizeButton.MouseButton1Click:Connect(function()
     if isMinimized then
-        -- Restore
         MainFrame.Size = originalSize
         ContentFrame.Visible = true
         OutlineFrame.Visible = true
         isMinimized = false
     else
-        -- Minimize
         MainFrame.Size = minimizedSize
         ContentFrame.Visible = false
         OutlineFrame.Visible = false
@@ -510,22 +903,13 @@ MinimizeButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Global mute
+-- History button functionality
+HistoryButton.MouseButton1Click:Connect(toggleHistoryPanel)
+BackButton.MouseButton1Click:Connect(toggleHistoryPanel)
+
+-- Global mute - FIXED: Proper toggle with correct colors
 MuteToggle.MouseButton1Click:Connect(function()
-    isMuted = not isMuted
-    if isMuted then
-        MuteToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-        MuteToggle.Text = "🔇 GAME MUTE: ON"
-        muteAllGameSounds(true)
-        StatusLabel.Text = "🔇 All game sounds muted"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-    else
-        MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-        MuteToggle.Text = "🔊 GAME MUTE: OFF"
-        muteAllGameSounds(false)
-        StatusLabel.Text = "🔊 All game sounds unmuted"
-        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    end
+    muteAllGameSounds(not isMuted)
 end)
 
 LoopToggle.MouseButton1Click:Connect(function()
@@ -549,92 +933,67 @@ end)
 PlayButton.MouseButton1Click:Connect(function()
     local url = UrlTextBox.Text
     
-    -- Validate URL
     if url == "" then
         StatusLabel.Text = "❌ Error: Please enter URL"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         return
     end
     
-    if not string.lower(string.sub(url, -4)) == ".mp3" then
+    -- Fixed URL validation
+    if string.sub(string.lower(url), -4) ~= ".mp3" then
         StatusLabel.Text = "❌ Error: URL must end with .mp3"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         return
     end
     
-    StatusLabel.Text = "⏬ Downloading..."
-    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-    
-    -- Stop current sound if playing
-    if currentSound then
-        currentSound:Stop()
-        currentSound:Destroy()
-        currentSound = nil
-        wait(0.1)
-    end
-    
-    -- Create and play new sound
-    local success, errorMessage = pcall(function()
-        -- Download and save file
-        local audioData = game:HttpGet(url)
-        writefile("audio.mp3", audioData)
-        
-        currentSound = Instance.new("Sound")
-        currentSound.SoundId = getcustomasset("audio.mp3")
-        currentSound.Volume = isMuted and 0 or currentVolume
-        currentSound.Looped = isLooping
-        
-        -- Try to parent to character head, fallback to workspace
-        local character = player.Character
-        if character and character:FindFirstChild("Head") then
-            currentSound.Parent = character.Head
-        else
-            currentSound.Parent = workspace
-        end
-        
-        currentSound:Play()
-    end)
-    
-    if success and currentSound then
-        StatusLabel.Text = "🎵 Now Playing..."
-        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
-    else
-        StatusLabel.Text = "❌ Error: " .. tostring(errorMessage)
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
-        if currentSound then
-            currentSound:Destroy()
-            currentSound = nil
+    -- Extract file name from URL
+    local fileName = "audio.mp3"
+    local urlParts = string.split(url, "/")
+    if #urlParts > 0 then
+        local lastPart = urlParts[#urlParts]
+        if string.find(lastPart, ".mp3") then
+            fileName = lastPart
+            fileName = string.gsub(fileName, "%%20", " ")
+            fileName = string.gsub(fileName, "%%25", "%%")
         end
     end
+    
+    playMusicFromUrl(url, fileName)
 end)
 
+-- Stop button
 StopButton.MouseButton1Click:Connect(function()
-    if currentSound then
-        currentSound:Stop()
-        currentSound:Destroy()
-        currentSound = nil
-        StatusLabel.Text = "⏹ Music Stopped"
-        StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    else
-        StatusLabel.Text = "ℹ️ No music playing"
-        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
-    end
+    stopMusic()
+    StatusLabel.Text = "⏹ Music Stopped"
+    StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 end)
 
--- Initialize volume slider
+-- ========== INITIALIZATION ==========
+
+-- Initialize
 updateVolumeSlider(currentVolume)
+downloadHistory = loadHistory()
+updateHistoryList()
+
+-- Handle character respawning
+local function onCharacterAdded(character)
+    if currentSound and isPlaying then
+        currentSound.Parent = workspace
+        if not currentSound.IsPlaying then
+            currentSound:Play()
+        end
+    end
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
 
 -- Auto-cleanup when player leaves
 Players.PlayerRemoving:Connect(function(leavingPlayer)
     if leavingPlayer == player then
-        -- Unmute all sounds
         if isMuted then
             muteAllGameSounds(false)
         end
-        if currentSound then
-            currentSound:Stop()
-            currentSound:Destroy()
-        end
+        stopMusic()
         ScreenGui:Destroy()
     end
 end)
