@@ -1,0 +1,625 @@
+-- Roblox Exploit MP3 Player GUI - Fixed Scrolling & Mute
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- Create main GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "MusicPlayerGUI"
+ScreenGui.Parent = player.PlayerGui
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 400, 0, 280)
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -140)
+MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Add gradient outline effect
+local OutlineFrame = Instance.new("Frame")
+OutlineFrame.Name = "OutlineFrame"
+OutlineFrame.Size = UDim2.new(1, 6, 1, 6)
+OutlineFrame.Position = UDim2.new(0, -3, 0, -3)
+OutlineFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+OutlineFrame.BorderSizePixel = 0
+OutlineFrame.ZIndex = 0
+OutlineFrame.Parent = MainFrame
+
+local UIStroke = Instance.new("UIStroke")
+UIStroke.Thickness = 3
+UIStroke.Color = Color3.fromRGB(80, 80, 80)
+UIStroke.Parent = OutlineFrame
+
+-- Animated gradient effect
+local function animateGradient()
+    local colors = {
+        Color3.fromRGB(255, 50, 50),
+        Color3.fromRGB(255, 150, 50),
+        Color3.fromRGB(255, 255, 50),
+        Color3.fromRGB(50, 255, 50),
+        Color3.fromRGB(50, 150, 255),
+        Color3.fromRGB(150, 50, 255),
+        Color3.fromRGB(255, 50, 255)
+    }
+    
+    local currentIndex = 1
+    while UIStroke and UIStroke.Parent do
+        local tweenInfo = TweenInfo.new(2, Enum.EasingStyle.Linear)
+        local tween = TweenService:Create(UIStroke, tweenInfo, {Color = colors[currentIndex]})
+        tween:Play()
+        
+        currentIndex = currentIndex + 1
+        if currentIndex > #colors then
+            currentIndex = 1
+        end
+        wait(2)
+    end
+end
+
+spawn(animateGradient)
+
+-- Add corner rounding
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+local OutlineCorner = Instance.new("UICorner")
+OutlineCorner.CornerRadius = UDim.new(0, 12)
+OutlineCorner.Parent = OutlineFrame
+
+-- Title bar
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 35)
+TitleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleBarUICorner = Instance.new("UICorner")
+TitleBarUICorner.CornerRadius = UDim.new(0, 10)
+TitleBarUICorner.Parent = TitleBar
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Name = "TitleText"
+TitleText.Size = UDim2.new(0, 200, 1, 0)
+TitleText.Position = UDim2.new(0, 15, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "GitHub MP3 Player"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Font = Enum.Font.GothamBold
+TitleText.TextSize = 16
+TitleText.Parent = TitleBar
+
+-- Close button
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 35, 0, 35)
+CloseButton.Position = UDim2.new(1, -35, 0, 0)
+CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+CloseButton.BorderSizePixel = 0
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.GothamBold
+CloseButton.TextSize = 16
+CloseButton.Parent = TitleBar
+
+local CloseUICorner = Instance.new("UICorner")
+CloseUICorner.CornerRadius = UDim.new(0, 8)
+CloseUICorner.Parent = CloseButton
+
+-- Minimize button
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Name = "MinimizeButton"
+MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
+MinimizeButton.Position = UDim2.new(1, -75, 0, 0)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 180, 60)
+MinimizeButton.BorderSizePixel = 0
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.Font = Enum.Font.GothamBold
+MinimizeButton.TextSize = 18
+MinimizeButton.Parent = TitleBar
+
+local MinimizeUICorner = Instance.new("UICorner")
+MinimizeUICorner.CornerRadius = UDim.new(0, 8)
+MinimizeUICorner.Parent = MinimizeButton
+
+-- Content frame
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Size = UDim2.new(1, -20, 1, -55)
+ContentFrame.Position = UDim2.new(0, 10, 0, 45)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainFrame
+
+-- URL input with PROPER SCROLLBAR
+local UrlLabel = Instance.new("TextLabel")
+UrlLabel.Name = "UrlLabel"
+UrlLabel.Size = UDim2.new(1, 0, 0, 20)
+UrlLabel.BackgroundTransparency = 1
+UrlLabel.Text = "GitHub MP3 URL:"
+UrlLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+UrlLabel.TextXAlignment = Enum.TextXAlignment.Left
+UrlLabel.Font = Enum.Font.Gotham
+UrlLabel.TextSize = 12
+UrlLabel.Parent = ContentFrame
+
+local UrlContainer = Instance.new("Frame")
+UrlContainer.Name = "UrlContainer"
+UrlContainer.Size = UDim2.new(1, 0, 0, 35)
+UrlContainer.Position = UDim2.new(0, 0, 0, 25)
+UrlContainer.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+UrlContainer.BorderSizePixel = 0
+UrlContainer.ClipsDescendants = true
+UrlContainer.Parent = ContentFrame
+
+local UrlScrollingFrame = Instance.new("ScrollingFrame")
+UrlScrollingFrame.Name = "UrlScrollingFrame"
+UrlScrollingFrame.Size = UDim2.new(1, -10, 1, 0)
+UrlScrollingFrame.Position = UDim2.new(0, 5, 0, 0)
+UrlScrollingFrame.BackgroundTransparency = 1
+UrlScrollingFrame.BorderSizePixel = 0
+UrlScrollingFrame.ScrollBarThickness = 8
+UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+UrlScrollingFrame.VerticalScrollBarInset = Enum.ScrollBarInset.None
+UrlScrollingFrame.HorizontalScrollBarInset = Enum.ScrollBarInset.Always
+UrlScrollingFrame.VerticalScrollBarPosition = Enum.VerticalScrollBarPosition.Left
+UrlScrollingFrame.CanvasSize = UDim2.new(2, 0, 0, 0)
+UrlScrollingFrame.Parent = UrlContainer
+
+local UrlTextBox = Instance.new("TextBox")
+UrlTextBox.Name = "UrlTextBox"
+UrlTextBox.Size = UDim2.new(2, 0, 1, 0) -- Wider than scrolling frame
+UrlTextBox.BackgroundTransparency = 1
+UrlTextBox.Text = ""
+UrlTextBox.PlaceholderText = "https://github.com/.../audio.mp3"
+UrlTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+UrlTextBox.Font = Enum.Font.Gotham
+UrlTextBox.TextSize = 12
+UrlTextBox.ClearTextOnFocus = false
+UrlTextBox.TextXAlignment = Enum.TextXAlignment.Left
+UrlTextBox.TextWrapped = false
+UrlTextBox.Parent = UrlScrollingFrame
+
+-- Update scrolling frame when text changes
+UrlTextBox:GetPropertyChangedSignal("Text"):Connect(function()
+    local textWidth = UrlTextBox.TextBounds.X
+    UrlScrollingFrame.CanvasSize = UDim2.new(0, math.max(textWidth + 20, UrlScrollingFrame.AbsoluteSize.X), 0, 0)
+end)
+
+local TextBoxUICorner = Instance.new("UICorner")
+TextBoxUICorner.CornerRadius = UDim.new(0, 6)
+TextBoxUICorner.Parent = UrlContainer
+
+-- Control buttons frame
+local ControlButtons = Instance.new("Frame")
+ControlButtons.Name = "ControlButtons"
+ControlButtons.Size = UDim2.new(1, 0, 0, 40)
+ControlButtons.Position = UDim2.new(0, 0, 0, 70)
+ControlButtons.BackgroundTransparency = 1
+ControlButtons.Parent = ContentFrame
+
+-- Play button
+local PlayButton = Instance.new("TextButton")
+PlayButton.Name = "PlayButton"
+PlayButton.Size = UDim2.new(0.48, 0, 1, 0)
+PlayButton.Position = UDim2.new(0, 0, 0, 0)
+PlayButton.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
+PlayButton.BorderSizePixel = 0
+PlayButton.Text = "▶ PLAY"
+PlayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayButton.Font = Enum.Font.GothamBold
+PlayButton.TextSize = 14
+PlayButton.Parent = ControlButtons
+
+local PlayButtonUICorner = Instance.new("UICorner")
+PlayButtonUICorner.CornerRadius = UDim.new(0, 6)
+PlayButtonUICorner.Parent = PlayButton
+
+-- Stop button
+local StopButton = Instance.new("TextButton")
+StopButton.Name = "StopButton"
+StopButton.Size = UDim2.new(0.48, 0, 1, 0)
+StopButton.Position = UDim2.new(0.52, 0, 0, 0)
+StopButton.BackgroundColor3 = Color3.fromRGB(200, 70, 70)
+StopButton.BorderSizePixel = 0
+StopButton.Text = "⏹ STOP"
+StopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+StopButton.Font = Enum.Font.GothamBold
+StopButton.TextSize = 14
+StopButton.Parent = ControlButtons
+
+local StopButtonUICorner = Instance.new("UICorner")
+StopButtonUICorner.CornerRadius = UDim.new(0, 6)
+StopButtonUICorner.Parent = StopButton
+
+-- Status label
+local StatusLabel = Instance.new("TextLabel")
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, 0, 0, 25)
+StatusLabel.Position = UDim2.new(0, 0, 0, 120)
+StatusLabel.BackgroundTransparency = 1
+StatusLabel.Text = "Ready to play music"
+StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+StatusLabel.TextXAlignment = Enum.TextXAlignment.Left
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.TextSize = 12
+StatusLabel.Parent = ContentFrame
+
+-- Toggle buttons frame
+local ToggleFrame = Instance.new("Frame")
+ToggleFrame.Name = "ToggleFrame"
+ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
+ToggleFrame.Position = UDim2.new(0, 0, 0, 150)
+ToggleFrame.BackgroundTransparency = 1
+ToggleFrame.Parent = ContentFrame
+
+-- Mute toggle (FIXED: Actually mutes ALL sounds)
+local MuteToggle = Instance.new("TextButton")
+MuteToggle.Name = "MuteToggle"
+MuteToggle.Size = UDim2.new(0, 120, 0, 30)
+MuteToggle.Position = UDim2.new(0, 0, 0, 0)
+MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)  -- Start as RED (muted off)
+MuteToggle.BorderSizePixel = 0
+MuteToggle.Text = "🔊 GAME MUTE: OFF"
+MuteToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+MuteToggle.Font = Enum.Font.Gotham
+MuteToggle.TextSize = 11
+MuteToggle.Parent = ToggleFrame
+
+local MuteUICorner = Instance.new("UICorner")
+MuteUICorner.CornerRadius = UDim.new(0, 6)
+MuteUICorner.Parent = MuteToggle
+
+-- Loop toggle
+local LoopToggle = Instance.new("TextButton")
+LoopToggle.Name = "LoopToggle"
+LoopToggle.Size = UDim2.new(0, 100, 0, 30)
+LoopToggle.Position = UDim2.new(1, -100, 0, 0)
+LoopToggle.BackgroundColor3 = Color3.fromRGB(80, 130, 200)
+LoopToggle.BorderSizePixel = 0
+LoopToggle.Text = "🔁 LOOP: ON"
+LoopToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoopToggle.Font = Enum.Font.Gotham
+LoopToggle.TextSize = 12
+LoopToggle.Parent = ToggleFrame
+
+local LoopUICorner = Instance.new("UICorner")
+LoopUICorner.CornerRadius = UDim.new(0, 6)
+LoopUICorner.Parent = LoopToggle
+
+-- Volume control with working slider
+local VolumeFrame = Instance.new("Frame")
+VolumeFrame.Name = "VolumeFrame"
+VolumeFrame.Size = UDim2.new(1, 0, 0, 40)
+VolumeFrame.Position = UDim2.new(0, 0, 0, 190)
+VolumeFrame.BackgroundTransparency = 1
+VolumeFrame.Parent = ContentFrame
+
+local VolumeLabel = Instance.new("TextLabel")
+VolumeLabel.Name = "VolumeLabel"
+VolumeLabel.Size = UDim2.new(0, 80, 0, 20)
+VolumeLabel.Position = UDim2.new(0, 0, 0, 0)
+VolumeLabel.BackgroundTransparency = 1
+VolumeLabel.Text = "Volume: 100%"
+VolumeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+VolumeLabel.TextXAlignment = Enum.TextXAlignment.Left
+VolumeLabel.Font = Enum.Font.Gotham
+VolumeLabel.TextSize = 12
+VolumeLabel.Parent = VolumeFrame
+
+-- Volume slider
+local VolumeSlider = Instance.new("TextButton")
+VolumeSlider.Name = "VolumeSlider"
+VolumeSlider.Size = UDim2.new(1, -90, 0, 20)
+VolumeSlider.Position = UDim2.new(0, 85, 0, 10)
+VolumeSlider.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+VolumeSlider.BorderSizePixel = 0
+VolumeSlider.AutoButtonColor = false
+VolumeSlider.Text = ""
+VolumeSlider.Parent = VolumeFrame
+
+local VolumeFill = Instance.new("Frame")
+VolumeFill.Name = "VolumeFill"
+VolumeFill.Size = UDim2.new(1, 0, 1, 0)
+VolumeFill.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
+VolumeFill.BorderSizePixel = 0
+VolumeFill.Parent = VolumeSlider
+
+local VolumeSliderCorner = Instance.new("UICorner")
+VolumeSliderCorner.CornerRadius = UDim.new(0, 10)
+VolumeSliderCorner.Parent = VolumeSlider
+
+local VolumeFillCorner = Instance.new("UICorner")
+VolumeFillCorner.CornerRadius = UDim.new(0, 10)
+VolumeFillCorner.Parent = VolumeFill
+
+-- Variables
+local currentSound = nil
+local isMuted = false
+local isLooping = true
+local currentVolume = 1.0
+local isMinimized = false
+local originalSize = MainFrame.Size
+local minimizedSize = UDim2.new(0, 400, 0, 35)
+
+-- FIXED: Function to mute ALL game sounds
+local function muteAllGameSounds(mute)
+    if mute then
+        -- Mute ALL sounds in the entire game
+        for _, sound in pairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then
+                pcall(function()
+                    sound.Volume = 0
+                end)
+            end
+        end
+        -- Also mute Lighting ambient sounds
+        local lighting = game:GetService("Lighting")
+        for _, sound in pairs(lighting:GetDescendants()) do
+            if sound:IsA("Sound") then
+                pcall(function()
+                    sound.Volume = 0
+                end)
+            end
+        end
+    else
+        -- Unmute ALL sounds
+        for _, sound in pairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") then
+                pcall(function()
+                    sound.Volume = 0.5 -- Restore to reasonable volume
+                end)
+            end
+        end
+        local lighting = game:GetService("Lighting")
+        for _, sound in pairs(lighting:GetDescendants()) do
+            if sound:IsA("Sound") then
+                pcall(function()
+                    sound.Volume = 0.5
+                end)
+            end
+        end
+    end
+    
+    -- Always control our current sound separately
+    if currentSound then
+        currentSound.Volume = mute and 0 or currentVolume
+    end
+end
+
+-- Update volume slider visual
+local function updateVolumeSlider(volume)
+    currentVolume = volume
+    VolumeFill.Size = UDim2.new(volume, 0, 1, 0)
+    VolumeLabel.Text = "Volume: " .. math.floor(volume * 100) .. "%"
+    
+    if currentSound and not isMuted then
+        currentSound.Volume = volume
+    end
+end
+
+-- Custom drag functionality for GUI
+local dragInput, dragStart, startPos
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragStart = input.Position
+        startPos = MainFrame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragStart = nil
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if input == dragInput and dragStart then
+        update(input)
+    end
+end)
+
+-- Volume slider interaction
+VolumeSlider.MouseButton1Down:Connect(function()
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        local mouseX = mouse.X - VolumeSlider.AbsolutePosition.X
+        local volume = math.clamp(mouseX / VolumeSlider.AbsoluteSize.X, 0, 1)
+        updateVolumeSlider(volume)
+    end)
+    
+    local function disconnect()
+        connection:Disconnect()
+    end
+    
+    VolumeSlider.MouseButton1Up:Connect(disconnect)
+    VolumeSlider.MouseLeave:Connect(disconnect)
+end)
+
+-- Also allow clicking anywhere on slider
+VolumeSlider.MouseButton1Click:Connect(function()
+    local mouseX = mouse.X - VolumeSlider.AbsolutePosition.X
+    local volume = math.clamp(mouseX / VolumeSlider.AbsoluteSize.X, 0, 1)
+    updateVolumeSlider(volume)
+end)
+
+-- Button functions
+CloseButton.MouseButton1Click:Connect(function()
+    -- Unmute all sounds before closing
+    if isMuted then
+        muteAllGameSounds(false)
+    end
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+    end
+    ScreenGui:Destroy()
+end)
+
+MinimizeButton.MouseButton1Click:Connect(function()
+    if isMinimized then
+        -- Restore
+        MainFrame.Size = originalSize
+        ContentFrame.Visible = true
+        OutlineFrame.Visible = true
+        isMinimized = false
+    else
+        -- Minimize
+        MainFrame.Size = minimizedSize
+        ContentFrame.Visible = false
+        OutlineFrame.Visible = false
+        isMinimized = true
+    end
+end)
+
+-- FIXED: Global mute that actually works
+MuteToggle.MouseButton1Click:Connect(function()
+    isMuted = not isMuted
+    if isMuted then
+        MuteToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)  -- GREEN when muted ON
+        MuteToggle.Text = "🔇 GAME MUTE: ON"
+        -- Mute ALL game sounds
+        muteAllGameSounds(true)
+        StatusLabel.Text = "🔇 All game sounds muted"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)  -- RED when muted OFF
+        MuteToggle.Text = "🔊 GAME MUTE: OFF"
+        -- Unmute ALL game sounds
+        muteAllGameSounds(false)
+        StatusLabel.Text = "🔊 All game sounds unmuted"
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end)
+
+LoopToggle.MouseButton1Click:Connect(function()
+    isLooping = not isLooping
+    if isLooping then
+        LoopToggle.BackgroundColor3 = Color3.fromRGB(80, 130, 200)
+        LoopToggle.Text = "🔁 LOOP: ON"
+        if currentSound then
+            currentSound.Looped = true
+        end
+    else
+        LoopToggle.BackgroundColor3 = Color3.fromRGB(130, 130, 130)
+        LoopToggle.Text = "➡ LOOP: OFF"
+        if currentSound then
+            currentSound.Looped = false
+        end
+    end
+end)
+
+-- Music playback
+PlayButton.MouseButton1Click:Connect(function()
+    local url = UrlTextBox.Text
+    
+    -- Validate URL
+    if url == "" then
+        StatusLabel.Text = "❌ Error: Please enter URL"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    if not string.lower(string.sub(url, -4)) == ".mp3" then
+        StatusLabel.Text = "❌ Error: URL must end with .mp3"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    
+    StatusLabel.Text = "⏬ Downloading..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    
+    -- Stop current sound if playing
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+        wait(0.1)
+    end
+    
+    -- Create and play new sound
+    local success, errorMessage = pcall(function()
+        -- Download and save file
+        local audioData = game:HttpGet(url)
+        writefile("audio.mp3", audioData)
+        
+        currentSound = Instance.new("Sound")
+        currentSound.SoundId = getcustomasset("audio.mp3")
+        currentSound.Volume = isMuted and 0 or currentVolume
+        currentSound.Looped = isLooping
+        
+        -- Try to parent to character head, fallback to workspace
+        local character = player.Character
+        if character and character:FindFirstChild("Head") then
+            currentSound.Parent = character.Head
+        else
+            currentSound.Parent = workspace
+        end
+        
+        currentSound:Play()
+    end)
+    
+    if success and currentSound then
+        StatusLabel.Text = "🎵 Now Playing..."
+        StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+    else
+        StatusLabel.Text = "❌ Error: " .. tostring(errorMessage)
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        if currentSound then
+            currentSound:Destroy()
+            currentSound = nil
+        end
+    end
+end)
+
+StopButton.MouseButton1Click:Connect(function()
+    if currentSound then
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil
+        StatusLabel.Text = "⏹ Music Stopped"
+        StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+    else
+        StatusLabel.Text = "ℹ️ No music playing"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    end
+end)
+
+-- Initialize volume slider
+updateVolumeSlider(currentVolume)
+
+-- Auto-cleanup when player leaves
+Players.PlayerRemoving:Connect(function(leavingPlayer)
+    if leavingPlayer == player then
+        -- Unmute all sounds
+        if isMuted then
+            muteAllGameSounds(false)
+        end
+        if currentSound then
+            currentSound:Stop()
+            currentSound:Destroy()
+        end
+        ScreenGui:Destroy()
+    end
+end)
