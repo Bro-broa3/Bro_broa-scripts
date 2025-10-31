@@ -325,6 +325,210 @@ local function CreateGUI()
     })
 
     MainTab:CreateButton({
+        Name = "Anto chat gui",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Anto chat gui...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Anto%20chat', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Anto chat gui loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MainTab:CreateButton({
+        Name = "Delta keyboard",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Delta keyboard...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Delta%20keyboard', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Delta keyboard loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MainTab:CreateButton({
+        Name = "Github mp3 player 1.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Github mp3 player 1.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%201.0', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Github mp3 player 1.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MainTab:CreateButton({
+        Name = "Dex",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Dex...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/dex.lua', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Dex loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MainTab:CreateButton({
+        Name = "Translator",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Translator...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Translator', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Translator loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MainTab:CreateButton({
+        Name = "Sigma spy",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Sigma spy...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Sigma%20spy', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Sigma spy loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MainTab:CreateButton({
         Name = "Use All Tools",
         Callback = function()
             local loadNotify = Rayfield:Notify({
@@ -631,17 +835,17 @@ local function CreateGUI()
     })
 
     PlayerTab:CreateButton({
-        Name = "esp players",
+        Name = "Esp Players V1",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
-                Content = "Initializing esp players...",
+                Content = "Initializing Esp Players V1...",
                 Duration = math.huge,
                 Image = 4483362458
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Esp%20players", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Esp%20Players%20V1", true))()
             end)
             
             loadNotify:Destroy()
@@ -649,7 +853,7 @@ local function CreateGUI()
             if success then
                 Rayfield:Notify({
                     Title = "Success",
-                    Content = "esp players loaded!",
+                    Content = "Esp Players V1 loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
@@ -665,17 +869,17 @@ local function CreateGUI()
     })
 
     PlayerTab:CreateButton({
-        Name = "unesp players",
+        Name = "Esp Players V2",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
-                Content = "Initializing unesp players...",
+                Content = "Initializing Esp Players V2...",
                 Duration = math.huge,
                 Image = 4483362458
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/unesp", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Esp%20Players%20V2", true))()
             end)
             
             loadNotify:Destroy()
@@ -683,7 +887,75 @@ local function CreateGUI()
             if success then
                 Rayfield:Notify({
                     Title = "Success",
-                    Content = "unesp players loaded!",
+                    Content = "Esp Players V2 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    PlayerTab:CreateButton({
+        Name = "unesp players V1",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing unesp players V1...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/unesp%20V1", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "unesp players V1 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    PlayerTab:CreateButton({
+        Name = "unesp players V2",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing unesp players V2...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/unesp%20V2", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "unesp players V2 loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
