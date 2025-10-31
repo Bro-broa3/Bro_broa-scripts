@@ -257,40 +257,6 @@ local function CreateGUI()
     })
 
     MainTab:CreateButton({
-        Name = "Delta keyboard",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Delta keyboard...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Delta%20keyboard", true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Delta keyboard loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    MainTab:CreateButton({
         Name = "Youtube Player",
         Callback = function()
             local loadNotify = Rayfield:Notify({
