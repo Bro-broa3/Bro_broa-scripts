@@ -117,3 +117,37 @@ UserInputService.InputChanged:Connect(function(input)
         )
     end
 end)
+-- UDim2 包含两个部分：Scale（比例）和 Offset（偏移量）
+-- 格式：UDim2.new(XScale, XOffset, YScale, YOffset)
+
+-- 例子：
+-- local position = UDim2.new(0.5, -150, 0.5, -100)
+-- 这表示：
+-- X 位置 = 屏幕宽度的50% - 150像素
+-- Y 位置 = 屏幕高度的50% - 100像素
+
+-- 假设：
+-- 开始拖拽时鼠标位置：dragStart = (500, 300)
+-- 开始拖拽时 GUI 位置：startPos = UDim2.new(0.5, -150, 0.5, -100)
+-- 当前鼠标位置：input.Position = (600, 400)
+
+-- 计算移动距离：
+-- local delta = (600, 400) - (500, 300) = (100, 100)
+
+-- 新位置计算：
+-- X: startPos.X.Offset + delta.X = -150 + 100 = -50
+-- Y: startPos.Y.Offset + delta.Y = -100 + 100 = 0
+-- 最终位置：UDim2.new(0.5, -50, 0.5, 0)
+-- {最简单的拖拽逻辑（伪代码）
+当标题栏被点击时:
+    记录开始位置
+    设置正在拖拽 = true
+
+当鼠标移动时:
+    如果正在拖拽:
+        计算移动距离 = 当前鼠标位置 - 开始位置
+        新位置 = 原始位置 + 移动距离
+        更新GUI位置 = 新位置
+
+当鼠标松开时:
+    设置正在拖拽 = false}
