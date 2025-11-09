@@ -1,0 +1,13 @@
+-- Instance.new("..."),that mean add something(like highlight)
+-- Parent,that mean where its add to some(may nil)
+-- WaitForChild,that mean loop find some(will not stop)
+local hi = Instance.new("ScreenGui")
+hi.Name = "Ez"
+
+hi.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local hi1 = Instance.new("Frame")
+hi1.Parent = hi
+hi1.Size = UDim2.new(0, 300, 0, 300)
+hi1.Position = UDim2.new(0.5, -150, 0.5, -150)
+hi1.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
