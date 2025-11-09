@@ -1,6 +1,33 @@
+-- Index Here:
 -- Instance.new("..."),that mean add something(like highlight)
--- Parent,that mean where its add to some(may nil)
--- WaitForChild,that mean loop find some(will not stop)
+-- varible.Parent,that mean where its add to some(may nil)
+-- WaitForChild("...)",that mean loop find some(will not stop)
+-- Title,that mean a Frame in the ScreenGui
+-- varible.Active,that mean make it work or no work(true of false)
+-- varible.Selectable,that mean its can be chooseable
+-- local ...,that mean crate a varible
+-- game:GetService("UserInputService"),that mean get local Player input(click,slider,etc)
+-- varible.InputBegan:Connect(function(input),that mean get local player inputBegan(start) and get the UserInputService function
+-- if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then,that mean get the input is mouse or touch
+-- connection = input.Changed:Connect(function(),that mean any chnage with UserInputService
+-- if input.UserInputState == Enum.UserInputState.End then,that mean UserInputService end input(no touch or mouse)
+-- Disconnect(),that mean stop some do(like need connet)
+-- varible.InputChanged:Connect(function(input),that mean check the chnage with the UserInputService
+-- if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then,that mean if...then do
+-- varible = input,that mean save some data
+-- UserInputService.InputChanged:Connect(function(input),that mean keep check the UserInputService
+-- if varible and (input == varible) then,that mean if 2 is true then do...
+-- local varible = input.Position - varible,that mean make the varible is inputPosition(likelu follow)
+--       mainFrame.Position = UDim2.new(
+--           startPos.X.Scale,      -- 保持原来的相对比例（0.5）
+--           startPos.X.Offset + delta.X,  -- 原来的偏移量 + 鼠标移动的X距离
+--           startPos.Y.Scale,      -- 保持原来的相对比例（0.5）
+--           startPos.Y.Offset + delta.Y   -- 原来的偏移量 + 鼠标移动的Y距离
+--       )
+--    end
+-- end)
+-- that mean update Gui position
+
 -- 创建一个 ScreenGui，这是所有 GUI 元素的容器
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "TestGUI"
