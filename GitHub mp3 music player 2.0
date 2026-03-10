@@ -84,6 +84,7 @@ end
 local function stopMusic()
     if currentSound then
         currentSound:Stop()
+        wait(0.1)
         currentSound:Destroy()
         currentSound = nil
     end
@@ -167,7 +168,7 @@ local function updateVolumeSlider(volume)
     end
 end
 
--- Function to play music from URL
+-- FIXED: Function to play music from URL with unique filenames
 local function playMusicFromUrl(url, fileName)
     -- Stop current music first
     stopMusic()
@@ -177,14 +178,18 @@ local function playMusicFromUrl(url, fileName)
         StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
     end
     
+    -- Generate a unique filename for each download to prevent conflicts
+    local timestamp = os.time()
+    local uniqueFileName = "audio_" .. timestamp .. ".mp3"
+    
     local success, errorMessage = pcall(function()
         -- Download audio file
         local audioData = game:HttpGet(url)
-        writefile("audio.mp3", audioData)
+        writefile(uniqueFileName, audioData)
         
-        -- Create sound instance
+        -- Create sound instance with unique asset
         currentSound = Instance.new("Sound")
-        currentSound.SoundId = getcustomasset("audio.mp3")
+        currentSound.SoundId = getcustomasset(uniqueFileName)
         currentSound.Volume = isMuted and 0 or currentVolume
         currentSound.Looped = isLooping
         
@@ -193,6 +198,27 @@ local function playMusicFromUrl(url, fileName)
         
         currentSound:Play()
         isPlaying = true
+        
+        -- Clean up old audio files (keep only last 10)
+        pcall(function()
+            if listfiles then
+                local files = listfiles()
+                local audioFiles = {}
+                for _, file in ipairs(files) do
+                    if string.find(file, "audio_") and string.find(file, ".mp3") then
+                        table.insert(audioFiles, file)
+                    end
+                end
+                -- Sort by timestamp (newest first)
+                table.sort(audioFiles, function(a, b)
+                    return a > b
+                end)
+                -- Delete old files (keep last 10)
+                for i = 11, #audioFiles do
+                    delfile(audioFiles[i])
+                end
+            end
+        end)
         
         -- Check if URL already exists in history before adding
         local alreadyInHistory = false
@@ -210,7 +236,7 @@ local function playMusicFromUrl(url, fileName)
     
     if success and currentSound then
         if StatusLabel then
-            StatusLabel.Text = "🎵 Now Playing..."
+            StatusLabel.Text = "🎵 Now Playing: " .. (fileName or "Unknown")
             StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         end
         return true
@@ -996,7 +1022,7 @@ function toggleHistoryPanel()
     end
 end
 
--- Update the history list display
+-- Update the history list display with fixed closure for buttons
 function updateHistoryList()
     -- Clear existing history items
     for _, child in pairs(HistoryScrollFrame:GetChildren()) do
@@ -1019,6 +1045,14 @@ function updateHistoryList()
     
     -- Create history items
     for i, entry in ipairs(downloadHistory) do
+        -- Create a local copy of the entry for this iteration to fix closure issue
+        local currentEntry = {
+            url = entry.url,
+            fileName = entry.fileName,
+            date = entry.date
+        }
+        local currentIndex = i -- Store the index for delete button
+        
         local historyItem = Instance.new("Frame")
         historyItem.Name = "HistoryItem"
         historyItem.Size = UDim2.new(1, -10, 0, itemHeight)
@@ -1037,7 +1071,7 @@ function updateHistoryList()
         fileNameLabel.Size = UDim2.new(0.6, -5, 0, 20)
         fileNameLabel.Position = UDim2.new(0, 5, 0, 5)
         fileNameLabel.BackgroundTransparency = 1
-        fileNameLabel.Text = entry.fileName or "Unknown"
+        fileNameLabel.Text = currentEntry.fileName or "Unknown"
         fileNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
         fileNameLabel.TextXAlignment = Enum.TextXAlignment.Left
         fileNameLabel.Font = Enum.Font.Gotham
@@ -1051,7 +1085,7 @@ function updateHistoryList()
         dateLabel.Size = UDim2.new(0.6, -5, 0, 15)
         dateLabel.Position = UDim2.new(0, 5, 0, 25)
         dateLabel.BackgroundTransparency = 1
-        dateLabel.Text = entry.date or "Unknown date"
+        dateLabel.Text = currentEntry.date or "Unknown date"
         dateLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
         dateLabel.TextXAlignment = Enum.TextXAlignment.Left
         dateLabel.Font = Enum.Font.Gotham
@@ -1092,9 +1126,9 @@ function updateHistoryList()
         deleteButtonCorner.CornerRadius = UDim.new(0, 4)
         deleteButtonCorner.Parent = deleteHistoryButton
         
-        -- Play button functionality with instant play
+        -- FIXED: Play button functionality with proper closure (uses currentEntry, not loop variable)
         playHistoryButton.MouseButton1Click:Connect(function()
-            if entry and entry.url then
+            if currentEntry and currentEntry.url then
                 StatusLabel.Text = "⏬ Loading from history..."
                 StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
                 
@@ -1103,20 +1137,20 @@ function updateHistoryList()
                     toggleHistoryPanel()
                 end
                 
-                -- Play the music immediately
-                playMusicFromUrl(entry.url, entry.fileName or "audio.mp3")
+                -- Play the music immediately with the correct URL
+                playMusicFromUrl(currentEntry.url, currentEntry.fileName or "audio.mp3")
             else
                 StatusLabel.Text = "❌ Error: Invalid history entry"
                 StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
             end
         end)
         
-        -- Delete button functionality
+        -- FIXED: Delete button functionality with proper index
         deleteHistoryButton.MouseButton1Click:Connect(function()
-            if removeFromHistory(i) then
+            if removeFromHistory(currentIndex) then
                 StatusLabel.Text = "🗑️ Removed from history"
                 StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-                updateHistoryList()
+                updateHistoryList() -- Refresh the list
             end
         end)
         
