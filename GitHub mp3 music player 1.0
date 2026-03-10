@@ -488,10 +488,6 @@ HistoryButton.Font = Enum.Font.GothamBold
 HistoryButton.TextSize = 12
 HistoryButton.Parent = ControlButtons
 
-local HistoryButtonUICorner = Instance.new("UICorner")
-HistoryButtonUICorner.CornerRadius = UDim.new(0, 6)
-HistoryButtonUICorner.Parent = HistoryButton
-
 -- Status label
 StatusLabel = Instance.new("TextLabel")
 StatusLabel.Name = "StatusLabel"
