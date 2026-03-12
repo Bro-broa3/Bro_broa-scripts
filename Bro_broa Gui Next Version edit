@@ -184,7 +184,7 @@ local function CreateGUI()
     local ServerTab = window:CreateTab("Server", "flag")
     local Bro_broaguiTab = window:CreateTab("Bro_broa GUI", "flag")
     local FeTab = window:CreateTab("FE", "flag")
-    local NoworkTab = window:CreateTab("No work", "flag")
+    local YoutubeTab = window:CreateTab("YouTube", "flag")
     local TSBtab = window:CreateTab("TSB", "flag")
     local VBLTab = window:CreateTab("VBL", "flag")
     local DoorsTab = window:CreateTab("Doors", "flag")
@@ -1839,8 +1839,8 @@ local function CreateGUI()
         end
     })
 
-    NoworkTab:CreateButton({
-        Name = "Youtube Player",
+    YoutubeTab:CreateButton({
+        Name = "Youtube Msuic Player",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
@@ -1850,7 +1850,7 @@ local function CreateGUI()
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet('https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Play/1%20YoutubePlay.lua', true))()
+                loadstring(game:HttpGet(('https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua'),true))()
             end)
             
             loadNotify:Destroy()
@@ -1859,74 +1859,6 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "Youtube Player loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    NoworkTab:CreateButton({
-        Name = "Sigma spy",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Sigma spy...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Sigma%20spy', true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Sigma spy loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    NoworkTab:CreateButton({
-        Name = "FreePrivateServer",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing FreePrivateServer...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://gist.githubusercontent.com/Tesker-103/ed48b3ae8120b0c040584b661cbda063/raw/210408b3f107dc740a4c9b832bfa647f92aa25d1/FreePrivateServerGUI", true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "FreePrivateServer loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
