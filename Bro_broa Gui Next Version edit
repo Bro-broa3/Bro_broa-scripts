@@ -63,7 +63,7 @@ local function CreateWindow(Rayfield)
                Invite = "Arftune3Ab",
                RememberJoins = true
             },
-            KeySystem = true,
+            KeySystem = false,
             KeySettings = {
                Title = "Bro_broa Hub",
                Subtitle = "Get key from Discord",
