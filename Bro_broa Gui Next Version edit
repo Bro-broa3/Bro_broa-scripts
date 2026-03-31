@@ -1008,17 +1008,17 @@ local function CreateGUI()
     })
 
     PlayerTab:CreateButton({
-        Name = "Playerlist Gui",
+        Name = "Playerlist 1.0",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
-                Content = "Initializing Playerlist Gui...",
+                Content = "Initializing Playerlist 1.0...",
                 Duration = math.huge,
                 Image = 4483362458
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Playerlist", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Playerlist%201.0", true))()
             end)
             
             loadNotify:Destroy()
@@ -1026,7 +1026,41 @@ local function CreateGUI()
             if success then
                 Rayfield:Notify({
                     Title = "Success",
-                    Content = "Playerlist Gui loaded!",
+                    Content = "Playerlist 1.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    PlayerTab:CreateButton({
+        Name = "Playerlist 2.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Playerlist 2.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Playerlist%202.0", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Playerlist 2.0 loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
