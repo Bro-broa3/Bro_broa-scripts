@@ -659,8 +659,6 @@ UIListLayout_3.Parent = Comments_2
 UIListLayout_3.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout_3.Padding = UDim.new(0, 5)
 
-
-
 assert(assert, "Assert couldn't assert itself! I think your computer might be broken.")
 
 function createfolders(path)
@@ -706,6 +704,8 @@ local cache = HttpService:JSONDecode(readfile("ScriptBlox/Searcher/Cache.json"))
 
 local page = 1
 local gquery = ""
+local pagefetchrunning = false
+local searchDebounce = nil
 
 function tableConcat(t1,t2)
 	for i, v in pairs(t2) do
@@ -778,18 +778,40 @@ function fetchScripts(query, page)
 	query = HttpService:UrlEncode(query)
 	
 	local url = _if(query == "", "https://www.scriptblox.com/api/script/fetch?page="..tostring(page), "https://scriptblox.com/api/script/search?q="..query.."&max=100&mode=free&page=".. tostring(page))
-	local req = HttpService:JSONDecode(game:HttpGetAsync(url)).result
+	local success, response = pcall(function()
+		return game:HttpGetAsync(url)
+	end)
 	
-	return req.scripts
+	if not success then
+		return {}
+	end
+	
+	local decoded = HttpService:JSONDecode(response)
+	if decoded and decoded.result then
+		return decoded.result.scripts or {}
+	end
+	
+	return {}
 end
 
 function fetchComments(scriptId, page)
 	page = page or 1	
 	
 	local url = "https://scriptblox.com/api/comment/" ..scriptId.. "?page=" ..tostring(page).. "&max=20"
-	local req = HttpService:JSONDecode(game:HttpGetAsync(url)).result
+	local success, response = pcall(function()
+		return game:HttpGetAsync(url)
+	end)
 	
-	return req.comments
+	if not success then
+		return {}
+	end
+	
+	local decoded = HttpService:JSONDecode(response)
+	if decoded and decoded.result then
+		return decoded.result.comments or {}
+	end
+	
+	return {}
 end
 
 function loadImage(url, id, ispfp)
@@ -804,10 +826,16 @@ function loadImage(url, id, ispfp)
 	if isfile(path) then
 		return getfakeasset(path)
 	else
-		local img = game:HttpGetAsync(url)
-		writefile(path, img)
+		local success, img = pcall(function()
+			return game:HttpGetAsync(url)
+		end)
 		
-		return getfakeasset(path)
+		if success then
+			writefile(path, img)
+			return getfakeasset(path)
+		else
+			return "rbxasset://textures/ui/GuiImagePlaceholder.png"
+		end
 	end
 end
 
@@ -819,12 +847,18 @@ function fixScript(scriptObj)
 			scriptObj["features"] = _if(scriptObj["features"], scriptObj["features"], cacheObj.features)
 			scriptObj["owner"] = _if(scriptObj["owner"], scriptObj["owner"], cacheObj.owner)
 		else
-			local req = HttpService:JSONDecode(game:HttpGetAsync("https://www.scriptblox.com/api/script/".. scriptObj.slug)).script
-			scriptObj["script"] = _if(scriptObj["script"], scriptObj["script"], req.script)
-			scriptObj["features"] = _if(scriptObj["features"], scriptObj["features"], req.features)
-			scriptObj["owner"] = _if(scriptObj["owner"], scriptObj["owner"], req.owner)
+			local success, response = pcall(function()
+				return game:HttpGetAsync("https://www.scriptblox.com/api/script/".. scriptObj.slug)
+			end)
 			
-			cache[scriptObj["_id"]] = req
+			if success then
+				local req = HttpService:JSONDecode(response).script
+				scriptObj["script"] = _if(scriptObj["script"], scriptObj["script"], req.script)
+				scriptObj["features"] = _if(scriptObj["features"], scriptObj["features"], req.features)
+				scriptObj["owner"] = _if(scriptObj["owner"], scriptObj["owner"], req.owner)
+				
+				cache[scriptObj["_id"]] = req
+			end
 		end
 	end
 	return scriptObj
@@ -853,6 +887,7 @@ function updateInfoBox(scriptObj)
 	local ExecuteConnection
 	local CopyLinkConnection
 	local CopyScriptConnection
+	local CloseConnection
 	
 	ExecuteConnection = ScriptBloxSearcher.MainFrame.InfoBox.Buttons.ExecuteButton.MouseButton1Click:Connect(function()
 		loadstring(scriptObj.script)()
@@ -866,10 +901,11 @@ function updateInfoBox(scriptObj)
 		setclipboard(scriptObj.script)
 	end)
 	
-	ScriptBloxSearcher.MainFrame.InfoBox.Buttons.Close.MouseButton1Click:Connect(function()
+	CloseConnection = ScriptBloxSearcher.MainFrame.InfoBox.Buttons.Close.MouseButton1Click:Connect(function()
 		ExecuteConnection:Disconnect()
 		CopyLinkConnection:Disconnect()
 		CopyScriptConnection:Disconnect()
+		CloseConnection:Disconnect()
 		
 		ScriptBloxSearcher.MainFrame.InfoBox.Visible = false
 		ScriptBloxSearcher.MainFrame.ScriptListFrame.Visible = true
@@ -880,8 +916,8 @@ function updateInfoBox(scriptObj)
 	commentsUIListLayout.Parent = ScriptBloxSearcher.MainFrame.InfoBox.Comments.Inner.Comments
 	
 	task.spawn(function()
-		for _, v in pairs(fetchComments(scriptObj["_id"])) do
-
+		local comments = fetchComments(scriptObj["_id"])
+		for _, v in pairs(comments) do
 			local newComment = Comment:Clone()
 			newComment.Parent = ScriptBloxSearcher.MainFrame.InfoBox.Comments.Inner.Comments
 			newComment.Content.Text = v.text
@@ -890,7 +926,6 @@ function updateInfoBox(scriptObj)
 			task.spawn(function()
 				newComment.ProfilePicture.Image = loadImage("https://scriptblox.com"..v.commentBy.profilePicture, v.commentBy["_id"], true)
 			end)
-
 		end
 	end)
 end
@@ -909,6 +944,28 @@ function refreshScripts(scriptTbl)
 	UIGridLayoutCopy.Parent = ScriptBloxSearcher.MainFrame.ScriptListFrame.Scripts
 	
 	addScripts(scriptTbl)
+end
+
+function resetScriptList()
+	local scriptsContainer = ScriptBloxSearcher.MainFrame.ScriptListFrame.Scripts
+	if scriptsContainer then
+		-- Keep only the UIGridLayout, clear everything else
+		for _, child in pairs(scriptsContainer:GetChildren()) do
+			if child:IsA("Frame") then
+				child:Destroy()
+			end
+		end
+	end
+	page = 1
+end
+
+function performSearch()
+	local searchText = ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.Text
+	gquery = searchText
+	resetScriptList()
+	
+	local scriptsTbl = fetchScripts(gquery, 1)
+	refreshScripts(scriptsTbl)
 end
 
 function addScripts(scriptTbl)
@@ -959,16 +1016,26 @@ function addScripts(scriptTbl)
 	pagefetchrunning = false
 end
 
-
-
--- Search Bar
+-- Search Bar with debounce
 ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
-		gquery = ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.Text
-		page = 1
-		local scriptsTbl = fetchScripts(ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.Text, 1)
-		refreshScripts(scriptsTbl)
+		performSearch()
 	end
+end)
+
+-- Add text changed for real-time search with debounce
+ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	if searchDebounce then
+		searchDebounce:Disconnect()
+	end
+	
+	searchDebounce = task.delay(0.5, function()
+		if ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.Text ~= "" then
+			performSearch()
+		else
+			performSearch() -- Show all scripts when search is cleared
+		end
+	end)
 end)
 
 -- Closing
@@ -980,12 +1047,33 @@ setHoverTransition(nil, Color3.fromRGB(214, 71, 74), ScriptBloxSearcher.MainFram
 -- Clear Cache
 ScriptBloxSearcher.MainFrame.TopBarFrame.ClearCacheButton.MouseButton1Click:Connect(function()
 	updateCache({})
-	for _, v in pairs(listfiles("ScriptBlox/Searcher/ImageCache/ProfilePictures")) do
-		delfile(_if(string.find(v, "ScriptBlox"), v, "ScriptBlox/Searcher/ImageCache/ProfilePictures/"..v))
+	
+	local success, files = pcall(function()
+		return listfiles("ScriptBlox/Searcher/ImageCache/ProfilePictures")
+	end)
+	
+	if success and files then
+		for _, v in pairs(files) do
+			pcall(function()
+				delfile(v)
+			end)
+		end
 	end
-	for _, v in pairs(listfiles("ScriptBlox/Searcher/ImageCache/Scripts")) do
-		delfile(_if(string.find(v, "ScriptBlox"), v, "ScriptBlox/Searcher/ImageCache/Scripts/"..v))
+	
+	local success2, files2 = pcall(function()
+		return listfiles("ScriptBlox/Searcher/ImageCache/Scripts")
+	end)
+	
+	if success2 and files2 then
+		for _, v in pairs(files2) do
+			pcall(function()
+				delfile(v)
+			end)
+		end
 	end
+	
+	-- Refresh scripts after clearing cache
+	performSearch()
 end)
 setHoverTransition(nil, Color3.new(0.254902, 0.317647, 0.576471), ScriptBloxSearcher.MainFrame.TopBarFrame.ClearCacheButton)
 
@@ -1029,13 +1117,29 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-refreshScripts(fetchScripts(gquery, 1))
-
+-- Infinite scroll with current search query
 ScriptBloxSearcher.MainFrame.ScriptListFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
-	if (ScriptBloxSearcher.MainFrame.ScriptListFrame.CanvasPosition.Y + ScriptBloxSearcher.MainFrame.ScriptListFrame.AbsoluteSize.Y) >= ScriptBloxSearcher.MainFrame.ScriptListFrame.AbsoluteCanvasSize.Y -200 and not pagefetchrunning then
-		page = page + 1
-		pagefetchrunning = true
-		addScripts(fetchScripts(gquery, page))
+	local scrollFrame = ScriptBloxSearcher.MainFrame.ScriptListFrame
+	local scriptsContainer = scrollFrame:FindFirstChild("Scripts")
+	
+	if scrollFrame and scriptsContainer then
+		local canvasPos = scrollFrame.CanvasPosition.Y
+		local absSize = scrollFrame.AbsoluteSize.Y
+		local canvasSize = scrollFrame.AbsoluteCanvasSize.Y
+		
+		if (canvasPos + absSize) >= canvasSize - 200 and not pagefetchrunning and canvasSize > 0 then
+			page = page + 1
+			pagefetchrunning = true
+			
+			local moreScripts = fetchScripts(gquery, page)
+			if moreScripts and #moreScripts > 0 then
+				addScripts(moreScripts)
+			else
+				pagefetchrunning = false
+			end
+		end
 	end
 end)
 
+-- Initial load
+refreshScripts(fetchScripts(gquery, 1))
