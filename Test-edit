@@ -7,7 +7,7 @@ local function OpenServerHopper()
     local RS = game:GetService("RunService")
     local HttpService = game:GetService("HttpService")
     local plr = Players.LocalPlayer
-    local guiParent = plr:WaitForChild("PlayerGui")
+    local guiParent = game:GetService("CoreGui")
  
     -- Clean up old instance
     local existing = guiParent:FindFirstChild("JoinGui")
@@ -309,17 +309,6 @@ local function OpenServerHopper()
     refreshBtn.TextSize = 12
     refreshBtn.AutoButtonColor = false
     Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
-    
-    -- ADDED: Page count label
-    local pageLabel = Instance.new("TextLabel", listHeader)
-    pageLabel.Size = UDim2.new(0.2, 0, 0, 16)
-    pageLabel.Position = UDim2.new(0.6, 0, 0.8, 0)
-    pageLabel.BackgroundTransparency = 1
-    pageLabel.Font = Enum.Font.Gotham
-    pageLabel.TextColor3 = CLR_TEXT_MUTED
-    pageLabel.TextSize = 10
-    pageLabel.TextXAlignment = Enum.TextXAlignment.Right
-    pageLabel.Text = "Servers: 0"
  
     -- Server list scroll area
     local scrollFrame = Instance.new("ScrollingFrame", serverList)
@@ -331,69 +320,18 @@ local function OpenServerHopper()
  
     local scrollLayout = Instance.new("UIListLayout", scrollFrame)
     scrollLayout.Padding = UDim.new(0, 5)
-    
-    -- ADDED: Loading indicator
-    local loadingLabel = Instance.new("TextLabel", scrollFrame)
-    loadingLabel.Size = UDim2.new(1, 0, 0, 30)
-    loadingLabel.BackgroundTransparency = 1
-    loadingLabel.Font = Enum.Font.GothamMedium
-    loadingLabel.TextColor3 = CLR_TEXT_MUTED
-    loadingLabel.TextSize = 14
-    loadingLabel.Text = "Loading servers..."
-    loadingLabel.Visible = false
  
-    -- MODIFIED: Function to get servers with pagination
-    local function GetServers(placeId, maxServers)
-        maxServers = maxServers or 1000  -- Default to 1000 servers
-        local allServers = {}
-        local cursor = ""
-        local requestsMade = 0
-        local maxRequests = 10  -- 10 pages * 100 = 1000 servers
-        
-        loadingLabel.Visible = true
-        
-        while #allServers < maxServers and requestsMade < maxRequests do
-            local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100"
-            if cursor ~= "" then
-                url = url .. "&cursor=" .. cursor
-            end
-            
-            local success, response = pcall(function()
-                return HttpService:JSONDecode(game:HttpGet(url, true))
-            end)
-            
-            if not success then
-                warn("Failed to fetch servers: ", response)
-                break
-            end
-            
-            if response and response.data then
-                for _, server in ipairs(response.data) do
-                    table.insert(allServers, server)
-                    if #allServers >= maxServers then
-                        break
-                    end
-                end
-                
-                cursor = response.nextPageCursor or ""
-                requestsMade = requestsMade + 1
-                
-                -- Update loading text
-                loadingLabel.Text = "Loading... (" .. #allServers .. "/" .. maxServers .. " servers)"
-                
-                if cursor == "" or #allServers >= maxServers then
-                    break
-                end
-                
-                -- Small delay to avoid rate limiting
-                wait(0.1)
-            else
-                break
-            end
+    -- Function to get servers
+    local function GetServers(placeId)
+        local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100"
+        local success, response = pcall(function()
+            return HttpService:JSONDecode(game:HttpGet(url))
+        end)
+ 
+        if success and response.data then
+            return response.data
         end
-        
-        loadingLabel.Visible = false
-        return allServers
+        return {}
     end
  
     -- Create server entry
@@ -445,7 +383,7 @@ local function OpenServerHopper()
     -- Variable to track current filter state
     local sortAscending = false
 
-    -- MODIFIED: Refresh server list to get 1000 servers
+    -- Refresh server list with proper filtering
     local function RefreshServerList()
         for _, child in ipairs(scrollFrame:GetChildren()) do
             if child:IsA("Frame") then
@@ -453,10 +391,7 @@ local function OpenServerHopper()
             end
         end
 
-        local servers = GetServers(game.PlaceId, 1000)  -- Get up to 1000 servers
-        
-        -- Update page label
-        pageLabel.Text = "Servers: " .. #servers
+        local servers = GetServers(game.PlaceId)
         
         -- Apply sorting based on player count
         table.sort(servers, function(a, b)
@@ -476,7 +411,7 @@ local function OpenServerHopper()
     filterBtn.MouseButton1Click:Connect(function()
         sortAscending = not sortAscending
         filterBtn.Text = sortAscending and "Filter: Low Players" or "Filter: High Players"
-        RefreshServerList()
+        RefreshServerList()  -- Refresh with new filter
     end)
  
     -- Refresh button functionality
