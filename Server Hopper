@@ -7,7 +7,7 @@ local function OpenServerHopper()
     local RS = game:GetService("RunService")
     local HttpService = game:GetService("HttpService")
     local plr = Players.LocalPlayer
-    local guiParent = plr:WaitForChild("PlayerGui")
+    local guiParent = game:GetService("CoreGui")
  
     -- Clean up old instance
     local existing = guiParent:FindFirstChild("JoinGui")
@@ -44,6 +44,7 @@ local function OpenServerHopper()
     frame.BackgroundColor3 = CLR_BACKGROUND
     frame.BorderSizePixel = 0
     frame.Active = true
+    frame.Draggable = true  -- <-- FIXED: Makes the GUI draggable
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
     Instance.new("UIStroke", frame).Color = Color3.fromRGB(80,80,80)
  
@@ -149,7 +150,7 @@ local function OpenServerHopper()
     joinBtn.LayoutOrder = 4
     Instance.new("UICorner", joinBtn).CornerRadius = UDim.new(0, 6)
  
-    -- REJOIN BUTTON (ADDED)
+    -- REJOIN BUTTON
     local rejoinBtn = Instance.new("TextButton", info)
     rejoinBtn.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
     rejoinBtn.BackgroundColor3 = CLR_SUCCESS
@@ -201,7 +202,7 @@ local function OpenServerHopper()
         return container
     end
  
-    -- UPTIME LABEL (ADDED)
+    -- UPTIME LABEL
     local uptimeLabel = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
     uptimeLabel.LayoutOrder = 7
  
@@ -223,7 +224,7 @@ local function OpenServerHopper()
     local jobLabel = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
     jobLabel.LayoutOrder = 11
  
-    -- UPTIME FUNCTIONALITY (ADDED)
+    -- UPTIME FUNCTIONALITY
     local startTime = tick()
     local uptimeConnection = RS.Heartbeat:Connect(function()
         local elapsed = tick() - startTime
@@ -247,7 +248,7 @@ local function OpenServerHopper()
         end
     end)
  
-    -- REJOIN FUNCTIONALITY (ADDED)
+    -- REJOIN FUNCTIONALITY
     rejoinBtn.MouseButton1Click:Connect(function()
         TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, plr)
     end)
@@ -419,32 +420,6 @@ local function OpenServerHopper()
  
     -- Initial load
     RefreshServerList()
- 
-    -- Drag functionality
-    local dragging, dragStart, startPos
-    frame.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-        end
-    end)
- 
-    frame.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
- 
-    UIS.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
-    end)
  
     -- Cleanup
     gui.Destroying:Connect(function()
