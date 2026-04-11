@@ -1538,6 +1538,55 @@ local function CreateGUI()
         end
     })
 
+    -- Fixed version of Code 2
+    local function getEnglishPlaceName()
+        local placeId = game.PlaceId
+        local http = game:GetService("HttpService")
+        
+        -- Try multiple request methods (executor compatibility)
+        local requestFunc = syn and syn.request or http_request or request or (http and http.request) or game.HttpGet
+        
+        if not requestFunc then
+            return "No request function available"
+        end
+        
+        local success, response = pcall(function()
+            if requestFunc == game.HttpGet then
+                return game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. game.GameId)
+            else
+                return requestFunc({
+                    Url = "https://games.roblox.com/v1/games?universeIds=" .. game.GameId,
+                    Method = "GET"
+                })
+            end
+        end)
+        
+        if success then
+            local data
+            if type(response) == "table" and response.Body then
+                data = http:JSONDecode(response.Body)
+            else
+                data = http:JSONDecode(response)
+            end
+            
+            if data.data and data.data[1] then
+                return data.data[1].name
+            end
+        end
+        
+        return "Failed to fetch"
+    end
+    
+    local englishName = getEnglishPlaceName()
+    setclipboard(englishName)
+    
+    SettingsTab:CreateButton({
+        Name = "Copy local place name(EN)",
+        Callback = function()
+            setclipboard(englishName)
+        end
+    })
+
     SettingsTab:CreateButton({
         Name = "Antistopgame",
         CurrentValue = false,
