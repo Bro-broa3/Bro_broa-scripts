@@ -7,7 +7,7 @@ local function OpenServerHopper()
     local RS = game:GetService("RunService")
     local HttpService = game:GetService("HttpService")
     local plr = Players.LocalPlayer
-    local guiParent = game:GetService("CoreGui")
+    local guiParent = plr:WaitForChild("PlayerGui")
  
     -- Clean up old instance
     local existing = guiParent:FindFirstChild("JoinGui")
