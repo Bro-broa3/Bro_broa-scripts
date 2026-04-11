@@ -1,3 +1,5 @@
+-- Combined Script: ScriptBlox Searcher + Local Game Search (English Name)
+
 local ScriptBloxSearcher = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local UIAspectRatioConstraint = Instance.new("UIAspectRatioConstraint")
@@ -11,6 +13,8 @@ local CloseButton = Instance.new("ImageButton")
 local UICorner_4 = Instance.new("UICorner")
 local ClearCacheButton = Instance.new("TextButton")
 local UICorner_5 = Instance.new("UICorner")
+local SearchLocalGameButton = Instance.new("TextButton")
+local UICorner_LocalGame = Instance.new("UICorner")
 local TopbarBottomCover = Instance.new("Frame")
 local ScriptListFrame = Instance.new("ScrollingFrame")
 local UIPadding = Instance.new("UIPadding")
@@ -77,6 +81,12 @@ local ProfilePicture_2 = Instance.new("ImageLabel")
 local UICorner_22 = Instance.new("UICorner")
 local UIListLayout_3 = Instance.new("UIListLayout")
 
+-- Check if GUI already exists and destroy it
+if game:GetService("CoreGui"):FindFirstChild("ScriptBloxSearcher") then
+    game:GetService("CoreGui"):FindFirstChild("ScriptBloxSearcher"):Destroy()
+    task.wait(0.1)
+end
+
 ScriptBloxSearcher.Name = "ScriptBloxSearcher"
 ScriptBloxSearcher.Parent = game:GetService("CoreGui")
 ScriptBloxSearcher.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -109,10 +119,10 @@ SearchBox.Name = "SearchBox"
 SearchBox.Parent = TopBarFrame
 SearchBox.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 SearchBox.Position = UDim2.new(0, 5, 0, 5)
-SearchBox.Size = UDim2.new(0, 220, 0, 30)
+SearchBox.Size = UDim2.new(0, 180, 0, 30)
 SearchBox.ClearTextOnFocus = false
 SearchBox.Font = Enum.Font.Gotham
-SearchBox.PlaceholderText = "Search"
+SearchBox.PlaceholderText = "Search Scripts"
 SearchBox.Text = ""
 SearchBox.TextColor3 = Color3.fromRGB(0, 0, 0)
 SearchBox.TextScaled = true
@@ -146,17 +156,32 @@ UICorner_4.Parent = CloseButton
 ClearCacheButton.Name = "ClearCacheButton"
 ClearCacheButton.Parent = TopBarFrame
 ClearCacheButton.BackgroundColor3 = Color3.fromRGB(39, 48, 88)
-ClearCacheButton.Position = UDim2.new(0, 755, 0, 5)
-ClearCacheButton.Size = UDim2.new(0, 220, 0, 30)
+ClearCacheButton.Position = UDim2.new(0, 595, 0, 5)
+ClearCacheButton.Size = UDim2.new(0, 120, 0, 30)
 ClearCacheButton.AutoButtonColor = false
 ClearCacheButton.Font = Enum.Font.GothamSemibold
 ClearCacheButton.Text = "Clear Cache"
 ClearCacheButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ClearCacheButton.TextSize = 24.000
+ClearCacheButton.TextSize = 16.000
 ClearCacheButton.TextWrapped = true
 
 UICorner_5.CornerRadius = UDim.new(0, 12)
 UICorner_5.Parent = ClearCacheButton
+
+SearchLocalGameButton.Name = "SearchLocalGameButton"
+SearchLocalGameButton.Parent = TopBarFrame
+SearchLocalGameButton.BackgroundColor3 = Color3.fromRGB(140, 125, 255)
+SearchLocalGameButton.Position = UDim2.new(0, 720, 0, 5)
+SearchLocalGameButton.Size = UDim2.new(0, 140, 0, 30)
+SearchLocalGameButton.AutoButtonColor = false
+SearchLocalGameButton.Font = Enum.Font.GothamSemibold
+SearchLocalGameButton.Text = "🔍 Local Game"
+SearchLocalGameButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+SearchLocalGameButton.TextSize = 14.000
+SearchLocalGameButton.TextWrapped = true
+
+UICorner_LocalGame.CornerRadius = UDim.new(0, 12)
+UICorner_LocalGame.Parent = SearchLocalGameButton
 
 TopbarBottomCover.Name = "TopbarBottomCover"
 TopbarBottomCover.Parent = MainFrame
@@ -659,6 +684,10 @@ UIListLayout_3.Parent = Comments_2
 UIListLayout_3.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout_3.Padding = UDim.new(0, 5)
 
+-- ============================================
+-- SCRIPT STARTS HERE
+-- ============================================
+
 assert(assert, "Assert couldn't assert itself! I think your computer might be broken.")
 
 function createfolders(path)
@@ -706,6 +735,7 @@ local page = 1
 local gquery = ""
 local pagefetchrunning = false
 local searchDebounce = nil
+local shownScriptIds = {}
 
 function tableConcat(t1,t2)
 	for i, v in pairs(t2) do
@@ -738,23 +768,19 @@ function setHoverTransition(from, to, obj)
 	from = from or obj.BackgroundColor3
 	
 	obj.MouseEnter:Connect(function()
-
 		TweenService:Create(obj, TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {
 			BackgroundColor3 = to
 		}):Play()
-
 	end)
 	
 	obj.MouseLeave:Connect(function()
-
 		TweenService:Create(obj, TweenInfo.new(0.2, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut), {
 			BackgroundColor3 = from
 		}):Play()
-
 	end)
 end
 
--- Info Box Hover Trabsitions
+-- Info Box Hover Transitions
 setHoverTransition(nil, Color3.new(0.152941, 0.188235, 0.345098), ScriptBloxSearcher.MainFrame.InfoBox.Buttons.ExecuteButton)
 setHoverTransition(nil, Color3.new(0.152941, 0.188235, 0.345098), ScriptBloxSearcher.MainFrame.InfoBox.Buttons.Close)
 setHoverTransition(nil, Color3.new(0.152941, 0.188235, 0.345098), ScriptBloxSearcher.MainFrame.InfoBox.Buttons.CopyScriptBloxLink)
@@ -772,7 +798,6 @@ function fastmodeExec(func)
 	end
 end
 
--- fetchScripts function
 function fetchScripts(query, page)
 	page = page or 1
 	query = HttpService:UrlEncode(query)
@@ -930,7 +955,6 @@ function updateInfoBox(scriptObj)
 	end)
 end
 
--- Refresh Scripts Browser with new scripts
 function refreshScripts(scriptTbl)
 	if #scriptTbl <= 0 then
 		ScriptBloxSearcher.MainFrame["No Scripts Found"].Visible = true
@@ -943,13 +967,14 @@ function refreshScripts(scriptTbl)
 	ScriptBloxSearcher.MainFrame.ScriptListFrame.Scripts:ClearAllChildren()
 	UIGridLayoutCopy.Parent = ScriptBloxSearcher.MainFrame.ScriptListFrame.Scripts
 	
+	shownScriptIds = {}
+	
 	addScripts(scriptTbl)
 end
 
 function resetScriptList()
 	local scriptsContainer = ScriptBloxSearcher.MainFrame.ScriptListFrame.Scripts
 	if scriptsContainer then
-		-- Keep only the UIGridLayout, clear everything else
 		for _, child in pairs(scriptsContainer:GetChildren()) do
 			if child:IsA("Frame") then
 				child:Destroy()
@@ -957,6 +982,7 @@ function resetScriptList()
 		end
 	end
 	page = 1
+	shownScriptIds = {}
 end
 
 function performSearch()
@@ -970,6 +996,12 @@ end
 
 function addScripts(scriptTbl)
 	for i, v in pairs(scriptTbl) do
+		if shownScriptIds[v["_id"]] then
+			continue
+		end
+		
+		shownScriptIds[v["_id"]] = true
+		
 		fastmodeExec(function()
 			local newScript
 
@@ -989,14 +1021,12 @@ function addScripts(scriptTbl)
 				newScript.Parent = ScriptBloxSearcher.MainFrame.ScriptListFrame.Scripts
 			end
 
-			-- Execute Button
 			newScript.ExecuteButton.MouseButton1Click:Connect(function()
 				loadstring(v.script)()
 			end)
 
 			setHoverTransition(newScript.ExecuteButton.BackgroundColor3, Color3.new(0.152941, 0.188235, 0.345098), newScript.ExecuteButton)
 
-			-- Info Button
 			newScript.InfoButton.MouseButton1Click:Connect(function()
 				updateInfoBox(v)
 				task.wait()
@@ -1006,7 +1036,6 @@ function addScripts(scriptTbl)
 
 			setHoverTransition(newScript.InfoButton.BackgroundColor3, Color3.new(0.152941, 0.188235, 0.345098), newScript.InfoButton)
 
-			-- Background
 			setHoverTransition(newScript.BackgroundColor3, Color3.new(0.254902, 0.317647, 0.576471), newScript)
 		end)
 	end
@@ -1016,6 +1045,152 @@ function addScripts(scriptTbl)
 	pagefetchrunning = false
 end
 
+-- ============================================
+-- IMPROVED LOCAL GAME SEARCH FUNCTION (FORCES ENGLISH NAME)
+-- ============================================
+local function getEnglishPlaceName()
+	local placeId = game.PlaceId
+	local universeId = game.GameId
+	local http = game:GetService("HttpService")
+	
+	-- Method 1: Get universe info with English headers (most reliable)
+	local requestFunc = syn and syn.request or http_request or request or http.request
+	
+	if requestFunc then
+		-- Try to get universe details with English language header
+		local success, response = pcall(function()
+			return requestFunc({
+				Url = "https://games.roblox.com/v1/games?universeIds=" .. universeId,
+				Method = "GET",
+				Headers = {
+					["Accept-Language"] = "en-US,en;q=0.9",
+					["Content-Type"] = "application/json"
+				}
+			})
+		end)
+		
+		if success and response.Body then
+			local data = http:JSONDecode(response.Body)
+			if data.data and data.data[1] and data.data[1].name then
+				return data.data[1].name
+			end
+		end
+	end
+	
+	-- Method 2: Direct HTTPS request with English header
+	local success2, response2 = pcall(function()
+		return game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. universeId)
+	end)
+	
+	if success2 and response2 then
+		local data = http:JSONDecode(response2)
+		if data.data and data.data[1] and data.data[1].name then
+			return data.data[1].name
+		end
+	end
+	
+	-- Method 3: Try to get from place details API
+	local success3, response3 = pcall(function()
+		return game:HttpGet("https://www.roblox.com/places/api-get-details?assetId=" .. placeId)
+	end)
+	
+	if success3 and response3 then
+		local data = http:JSONDecode(response3)
+		if data.Name then
+			return data.Name
+		end
+	end
+	
+	-- Method 4: Marketplace service (fallback, might return translated)
+	local success4, result = pcall(function()
+		return game:GetService("MarketplaceService"):GetProductInfo(placeId, Enum.InfoType.Asset)
+	end)
+	
+	if success4 and result then
+		return result.Name
+	end
+	
+	return nil
+end
+
+local function searchLocalGame()
+	-- Show loading indicator
+	SearchLocalGameButton.Text = "⏳ Loading..."
+	SearchLocalGameButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	
+	-- Get English name
+	local englishName = getEnglishPlaceName()
+	
+	if englishName and englishName ~= "" then
+		-- Clean up the name (remove any special characters that might break search)
+		local cleanName = englishName:gsub("%[.*%]", ""):gsub("%(.*%)", ""):match("^%s*(.-)%s*$")
+		
+		-- Set the search box text
+		ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.Text = cleanName
+		
+		-- Trigger search
+		performSearch()
+		
+		-- Show success notification
+		local notification = Instance.new("TextLabel")
+		notification.Parent = MainFrame
+		notification.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+		notification.BackgroundTransparency = 0.3
+		notification.BorderSizePixel = 0
+		notification.Position = UDim2.new(0.5, -150, 0.85, 0)
+		notification.Size = UDim2.new(0, 300, 0, 30)
+		notification.Font = Enum.Font.GothamBold
+		notification.Text = "✅ Searching: " .. cleanName
+		notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+		notification.TextSize = 12
+		notification.ZIndex = 10
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = notification
+		
+		task.delay(2.5, function()
+			notification:Destroy()
+		end)
+		
+		print("[ScriptBlox] Searching for English game name: " .. cleanName)
+	else
+		-- Show error notification
+		local notification = Instance.new("TextLabel")
+		notification.Parent = MainFrame
+		notification.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+		notification.BackgroundTransparency = 0.3
+		notification.BorderSizePixel = 0
+		notification.Position = UDim2.new(0.5, -150, 0.85, 0)
+		notification.Size = UDim2.new(0, 300, 0, 30)
+		notification.Font = Enum.Font.GothamBold
+		notification.Text = "❌ Failed to get English game name"
+		notification.TextColor3 = Color3.fromRGB(255, 255, 255)
+		notification.TextSize = 12
+		notification.ZIndex = 10
+		
+		local corner = Instance.new("UICorner")
+		corner.CornerRadius = UDim.new(0, 8)
+		corner.Parent = notification
+		
+		task.delay(2.5, function()
+			notification:Destroy()
+		end)
+		
+		warn("[ScriptBlox] Failed to fetch English game name")
+	end
+	
+	-- Reset button text
+	SearchLocalGameButton.Text = "🔍 Local Game"
+	SearchLocalGameButton.BackgroundColor3 = Color3.fromRGB(140, 125, 255)
+end
+
+-- Connect the Local Game button
+SearchLocalGameButton.MouseButton1Click:Connect(searchLocalGame)
+
+-- Hover effect for Local Game button
+setHoverTransition(nil, Color3.fromRGB(160, 145, 255), SearchLocalGameButton)
+
 -- Search Bar with debounce
 ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
@@ -1023,7 +1198,6 @@ ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.FocusLost:Connect(function(en
 	end
 end)
 
--- Add text changed for real-time search with debounce
 ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	if searchDebounce then
 		searchDebounce:Disconnect()
@@ -1033,7 +1207,7 @@ ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox:GetPropertyChangedSignal("Tex
 		if ScriptBloxSearcher.MainFrame.TopBarFrame.SearchBox.Text ~= "" then
 			performSearch()
 		else
-			performSearch() -- Show all scripts when search is cleared
+			performSearch()
 		end
 	end)
 end)
@@ -1072,7 +1246,6 @@ ScriptBloxSearcher.MainFrame.TopBarFrame.ClearCacheButton.MouseButton1Click:Conn
 		end
 	end
 	
-	-- Refresh scripts after clearing cache
 	performSearch()
 end)
 setHoverTransition(nil, Color3.new(0.254902, 0.317647, 0.576471), ScriptBloxSearcher.MainFrame.TopBarFrame.ClearCacheButton)
@@ -1117,7 +1290,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- Infinite scroll with current search query
+-- Infinite scroll
 ScriptBloxSearcher.MainFrame.ScriptListFrame:GetPropertyChangedSignal("CanvasPosition"):Connect(function()
 	local scrollFrame = ScriptBloxSearcher.MainFrame.ScriptListFrame
 	local scriptsContainer = scrollFrame:FindFirstChild("Scripts")
