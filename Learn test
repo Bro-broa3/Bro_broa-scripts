@@ -1,153 +1,103 @@
--- Index Here:
--- Instance.new("..."),that mean add something(like highlight)
--- varible.Parent,that mean where its add to some(may nil)
--- WaitForChild("...)",that mean loop find some(will not stop)
--- Title,that mean a Frame in the ScreenGui
--- varible.Active,that mean make it work or no work(true of false)
--- varible.Selectable,that mean its can be chooseable
--- local ...,that mean crate a varible
--- game:GetService("UserInputService"),that mean get local Player input(click,slider,etc)
--- varible.InputBegan:Connect(function(input),that mean get local player inputBegan(start) and get the UserInputService function
--- if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then,that mean get the input is mouse or touch
--- connection = input.Changed:Connect(function(),that mean any chnage with UserInputService
--- if input.UserInputState == Enum.UserInputState.End then,that mean UserInputService end input(no touch or mouse)
--- Disconnect(),that mean stop some do(like need connet)
--- varible.InputChanged:Connect(function(input),that mean check the chnage with the UserInputService
--- if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then,that mean if...then do
--- varible = input,that mean save some data
--- UserInputService.InputChanged:Connect(function(input),that mean keep check the UserInputService
--- if varible and (input == varible) then,that mean if 2 is true then do...
--- local varible = input.Position - varible,that mean make the varible is inputPosition(likelu follow)
---       mainFrame.Position = UDim2.new(
---           startPos.X.Scale,      -- 保持原来的相对比例（0.5）
---           startPos.X.Offset + delta.X,  -- 原来的偏移量 + 鼠标移动的X距离
---           startPos.Y.Scale,      -- 保持原来的相对比例（0.5）
---           startPos.Y.Offset + delta.Y   -- 原来的偏移量 + 鼠标移动的Y距离
---       )
---    end
--- end)
--- that mean update Gui position
+-- Create a ScreenGui to hold everything
+local Gui = Instance.new("ScreenGui")
+Gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+Gui.Name = "67"
 
--- 创建一个 ScreenGui，这是所有 GUI 元素的容器
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "TestGUI"
--- 将 ScreenGui 放入玩家的 PlayerGui 中，这样玩家才能看到
-screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-
--- 创建主框架，这是窗口的主要区域
+-- Create a main frame
 local mainFrame = Instance.new("Frame")
--- 设置大小：宽度300像素，高度200像素
 mainFrame.Size = UDim2.new(0, 300, 0, 200)
--- 设置位置：屏幕中央（X: 50% - 150px, Y: 50% - 100px）
 mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
--- 设置背景颜色：RGB(50, 50, 50) 深灰色
 mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
--- 将主框架放入 ScreenGui
-mainFrame.Parent = screenGui
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = Gui
 
--- 创建标题栏，这是用来拖拽的区域
-local titleBar = Instance.new("Frame")
--- 设置大小：宽度100%（与主框架同宽），高度30像素
-titleBar.Size = UDim2.new(1, 0, 0, 30)
--- 设置背景颜色：比主框架更深的灰色
-titleBar.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
--- 将标题栏放入主框架
-titleBar.Parent = mainFrame
+-- Add corner radius
+local uiCorner = Instance.new("UICorner")
+uiCorner.CornerRadius = UDim.new(0, 8)
+uiCorner.Parent = mainFrame
 
--- 确保标题栏可以接收输入
-titleBar.Active = true  -- 允许标题栏接收鼠标/触摸事件
-titleBar.Selectable = true  -- 允许标题栏被选中
+-- Create a title text
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, 0, 0, 40)
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "My Simple GUI"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 20
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = mainFrame
 
--- 定义拖拽状态变量
-local dragging = false      -- 是否正在拖拽
-local dragInput            -- 存储当前的输入信息
-local dragStart            -- 拖拽开始的鼠标位置
-local startPos             -- 拖拽开始时 GUI 的位置
+-- Create a button
+local myButton = Instance.new("TextButton")
+myButton.Size = UDim2.new(0.8, 0, 0, 40)
+myButton.Position = UDim2.new(0.1, 0, 0.5, 0)
+myButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+myButton.Text = "Click Me!"
+myButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+myButton.TextSize = 16
+myButton.Font = Enum.Font.Gotham
+myButton.Parent = mainFrame
 
--- 获取 UserInputService，用于处理用户输入（鼠标、触摸、键盘）
+-- Add corner radius to button
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 10)
+buttonCorner.Parent = myButton
+
+-- Button functionality
+myButton.MouseButton1Click:Connect(function()
+    print("Button clicked!")
+    myButton.Text = "Clicked!"
+    task.wait(0.5)
+    myButton.Text = "Click Me!"
+end)
+
+-- Create a close button
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 30, 0, 30)
+closeButton.Position = UDim2.new(1, -35, 0, 5)
+closeButton.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
+closeButton.Text = "X"
+closeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeButton.TextSize = 18
+closeButton.Font = Enum.Font.GothamBold
+closeButton.Parent = mainFrame
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(1, 0)
+closeCorner.Parent = closeButton
+
+closeButton.MouseButton1Click:Connect(function()
+    Gui:Destroy()
+end)
+
+-- Make the frame draggable (optional)
 local UserInputService = game:GetService("UserInputService")
+local dragging = false
+local dragStart = nil
+local startPos = nil
 
--- 当用户在标题栏开始输入时（点击鼠标或触摸）
-titleBar.InputBegan:Connect(function(input)
-    -- 检查是否是鼠标左键或触摸输入
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        -- 设置拖拽状态为 true
+titleLabel.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
         dragging = true
-        -- 记录拖拽开始的鼠标位置
         dragStart = input.Position
-        -- 记录拖拽开始时 GUI 的位置
         startPos = mainFrame.Position
-        
-        -- 捕获输入状态变化
-        local connection
-        connection = input.Changed:Connect(function()
-            -- 当输入状态变为结束（松开鼠标或抬起手指）
-            if input.UserInputState == Enum.UserInputState.End then
-                -- 停止拖拽
-                dragging = false
-                -- 断开事件监听，避免内存泄漏
-                connection:Disconnect()
-            end
-        end)
     end
 end)
 
--- 当用户在标题栏上的输入发生变化时
-titleBar.InputChanged:Connect(function(input)
-    -- 检查是否是鼠标移动或触摸移动
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        -- 保存当前的输入信息，用于后续的拖拽计算
-        dragInput = input
+titleLabel.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = false
     end
 end)
 
--- 当用户的输入发生变化时（全局监听）
 UserInputService.InputChanged:Connect(function(input)
-    -- 检查是否正在拖拽，并且当前输入是之前记录的拖拽输入
-    if dragging and (input == dragInput) then
-        -- 计算鼠标移动的距离
+    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
         local delta = input.Position - dragStart
-        
-        -- 更新 GUI 的位置
         mainFrame.Position = UDim2.new(
-            startPos.X.Scale,      -- 保持原来的相对比例（0.5）
-            startPos.X.Offset + delta.X,  -- 原来的偏移量 + 鼠标移动的X距离
-            startPos.Y.Scale,      -- 保持原来的相对比例（0.5）
-            startPos.Y.Offset + delta.Y   -- 原来的偏移量 + 鼠标移动的Y距离
+            startPos.X.Scale, 
+            startPos.X.Offset + delta.X, 
+            startPos.Y.Scale, 
+            startPos.Y.Offset + delta.Y
         )
     end
 end)
--- UDim2 包含两个部分：Scale（比例）和 Offset（偏移量）
--- 格式：UDim2.new(XScale, XOffset, YScale, YOffset)
-
--- 例子：
--- local position = UDim2.new(0.5, -150, 0.5, -100)
--- 这表示：
--- X 位置 = 屏幕宽度的50% - 150像素
--- Y 位置 = 屏幕高度的50% - 100像素
-
--- 假设：
--- 开始拖拽时鼠标位置：dragStart = (500, 300)
--- 开始拖拽时 GUI 位置：startPos = UDim2.new(0.5, -150, 0.5, -100)
--- 当前鼠标位置：input.Position = (600, 400)
-
--- 计算移动距离：
--- local delta = (600, 400) - (500, 300) = (100, 100)
-
--- 新位置计算：
--- X: startPos.X.Offset + delta.X = -150 + 100 = -50
--- Y: startPos.Y.Offset + delta.Y = -100 + 100 = 0
--- 最终位置：UDim2.new(0.5, -50, 0.5, 0)
--- {最简单的拖拽逻辑（伪代码）
-当标题栏被点击时:
-    记录开始位置
-    设置正在拖拽 = true
-
-当鼠标移动时:
-    如果正在拖拽:
-        计算移动距离 = 当前鼠标位置 - 开始位置
-        新位置 = 原始位置 + 移动距离
-        更新GUI位置 = 新位置
-
-当鼠标松开时:
-    设置正在拖拽 = false}
