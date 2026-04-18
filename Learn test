@@ -59,18 +59,26 @@ local function OpenServerHopper()
     local originalFrameSize = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT)
     local originalFramePosition = frame.Position
     
-    -- CLOSE BUTTON
     local CLOSE_SIZE = 28
-    local closeBtn = Instance.new("TextButton", frame)
+
+    -- Create title bar container
+    local titleBar = Instance.new("Frame", frame)
+    titleBar.Size = UDim2.new(1, 0, 0, 44)
+    titleBar.Position = UDim2.new(0, 0, 0, 0)
+    titleBar.BackgroundTransparency = 1
+
+    -- CLOSE BUTTON (Red - Leftmost, Circular)
+    local closeBtn = Instance.new("TextButton", titleBar)
     closeBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    closeBtn.Position = UDim2.new(1, -(CLOSE_SIZE + 8), 0, 8)
+    closeBtn.Position = UDim2.new(0, 8, 0.5, -CLOSE_SIZE/2)
     closeBtn.BackgroundColor3 = CLR_RED
     closeBtn.Text = "X"
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.TextSize = 16
-    closeBtn.TextColor3 = Color3.new(1, 1, 1)
+    closeBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
     closeBtn.AutoButtonColor = false
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+    local closeCorner = Instance.new("UICorner", closeBtn)
+    closeCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
  
     closeBtn.MouseEnter:Connect(function()
         closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
@@ -84,17 +92,18 @@ local function OpenServerHopper()
         gui:Destroy()
     end)
 
-    -- MINIMIZE BUTTON
-    local minBtn = Instance.new("TextButton", frame)
+    -- MINIMIZE BUTTON (Yellow - Middle, Circular)
+    local minBtn = Instance.new("TextButton", titleBar)
     minBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    minBtn.Position = UDim2.new(1, -(CLOSE_SIZE * 2 + 16), 0, 8)
+    minBtn.Position = UDim2.new(0, CLOSE_SIZE + 16, 0.5, -CLOSE_SIZE/2)
     minBtn.BackgroundColor3 = CLR_YELLOW
     minBtn.Text = "−"
     minBtn.Font = Enum.Font.GothamBold
     minBtn.TextSize = 20
-    minBtn.TextColor3 = Color3.new(0, 0, 0)
+    minBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
     minBtn.AutoButtonColor = false
-    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 8)
+    local minCorner = Instance.new("UICorner", minBtn)
+    minCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
 
     minBtn.MouseEnter:Connect(function()
         minBtn.BackgroundColor3 = Color3.fromRGB(255, 220, 50)
@@ -104,17 +113,18 @@ local function OpenServerHopper()
         minBtn.BackgroundColor3 = CLR_YELLOW
     end)
 
-    -- FULLSCREEN BUTTON
-    local fullscreenBtn = Instance.new("TextButton", frame)
+    -- FULLSCREEN BUTTON (Green - Rightmost of the three, Circular)
+    local fullscreenBtn = Instance.new("TextButton", titleBar)
     fullscreenBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    fullscreenBtn.Position = UDim2.new(1, -(CLOSE_SIZE * 3 + 24), 0, 8)
+    fullscreenBtn.Position = UDim2.new(0, (CLOSE_SIZE * 2) + 24, 0.5, -CLOSE_SIZE/2)
     fullscreenBtn.BackgroundColor3 = CLR_GREEN
     fullscreenBtn.Text = "+"
     fullscreenBtn.Font = Enum.Font.GothamBold
     fullscreenBtn.TextSize = 20
-    fullscreenBtn.TextColor3 = Color3.new(1, 1, 1)
+    fullscreenBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
     fullscreenBtn.AutoButtonColor = false
-    Instance.new("UICorner", fullscreenBtn).CornerRadius = UDim.new(0, 8)
+    local fullCorner = Instance.new("UICorner", fullscreenBtn)
+    fullCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
 
     fullscreenBtn.MouseEnter:Connect(function()
         fullscreenBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
@@ -124,16 +134,17 @@ local function OpenServerHopper()
         fullscreenBtn.BackgroundColor3 = CLR_GREEN
     end)
 
-    -- TITLE
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -(CLOSE_SIZE * 3 + 32), 0, 44)
+    -- TITLE (Full width, truly centered)
+    local title = Instance.new("TextLabel", titleBar)
+    title.Size = UDim2.new(1, 0, 1, 0)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
     title.TextColor3 = CLR_TEXT
     title.TextSize = 22
     title.Text = "Server Hopper"
-    Instance.new("UIPadding", title).PaddingLeft = UDim.new(0, 16)
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.TextYAlignment = Enum.TextYAlignment.Center
  
     -- LEFT PANEL (INFO)
     local info = Instance.new("Frame", frame)
@@ -490,30 +501,59 @@ local function OpenServerHopper()
             
             serverList.Size = originalServerListSize
             serverList.Position = originalServerListPosition
+            
+            -- Restore title bar size
+            titleBar.Size = UDim2.new(1, 0, 0, 44)
+            title.TextXAlignment = Enum.TextXAlignment.Center
         end
         
         -- Toggle minimize
         isMinimized = not isMinimized
         
         if isMinimized then
+            -- Save current state before minimizing
+            originalFrameSize = frame.Size
+            originalFramePosition = frame.Position
+            
+            -- Minimize the frame
             frame.Size = UDim2.fromOffset(300, 44)
             info.Visible = false
             serverList.Visible = false
+            
+            -- Ensure title bar takes full height of minimized frame
+            titleBar.Size = UDim2.new(1, 0, 1, 0)
+            
+            -- Move title to the right when minimized
+            title.TextXAlignment = Enum.TextXAlignment.Left
+            title.Position = UDim2.new(0, (CLOSE_SIZE * 3) + 32, 0, 0)
         else
+            -- Restore from minimize
             frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
             info.Visible = true
             serverList.Visible = true
+            
+            -- Restore title bar height
+            titleBar.Size = UDim2.new(1, 0, 0, 44)
+            
+            -- Restore title to center
+            title.TextXAlignment = Enum.TextXAlignment.Center
+            title.Position = UDim2.new(0, 0, 0, 0)
         end
     end)
 
-    -- FULLSCREEN FUNCTIONALITY (FIXED)
+    -- FULLSCREEN FUNCTIONALITY
     fullscreenBtn.MouseButton1Click:Connect(function()
         -- If minimized, restore first
         if isMinimized then
             isMinimized = false
             frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
             info.Visible = true
             serverList.Visible = true
+            titleBar.Size = UDim2.new(1, 0, 0, 44)
+            title.TextXAlignment = Enum.TextXAlignment.Center
+            title.Position = UDim2.new(0, 0, 0, 0)
         end
         
         -- Toggle fullscreen
