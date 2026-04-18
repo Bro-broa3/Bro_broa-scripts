@@ -31,6 +31,8 @@ local function OpenServerHopper()
     local CLR_ACCENT = Color3.fromRGB(130, 180, 255)
     local CLR_HOVER = Color3.fromRGB(200, 220, 255)
     local CLR_YELLOW = Color3.fromRGB(255, 200, 0)  -- Yellow color for minimize button
+    local CLR_GREEN = Color3.fromRGB(40, 167, 69)   -- Green color for fullscreen button
+    local CLR_RED = Color3.fromRGB(237, 66, 69)     -- Red color for close button
  
     -- Create GUI
     local gui = Instance.new("ScreenGui")
@@ -49,56 +51,74 @@ local function OpenServerHopper()
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
     Instance.new("UIStroke", frame).Color = Color3.fromRGB(80,80,80)
  
-    -- CLOSE BUTTON
+    -- CLOSE BUTTON (Red background, position: rightmost)
     local CLOSE_SIZE = 28
     local closeBtn = Instance.new("TextButton", frame)
     closeBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
     closeBtn.Position = UDim2.new(1, -(CLOSE_SIZE + 8), 0, 8)
-    closeBtn.BackgroundColor3 = CLR_SURFACE
+    closeBtn.BackgroundColor3 = CLR_RED
     closeBtn.Text = "X"
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.TextSize = 16
-    closeBtn.TextColor3 = CLR_TEXT_MUTED
+    closeBtn.TextColor3 = Color3.new(1, 1, 1)
     closeBtn.AutoButtonColor = false
     Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
  
     closeBtn.MouseEnter:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_DANGER
-        closeBtn.TextColor3 = Color3.new(1,1,1)
+        closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
     end)
  
     closeBtn.MouseLeave:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_SURFACE
-        closeBtn.TextColor3 = CLR_TEXT_MUTED
+        closeBtn.BackgroundColor3 = CLR_RED
     end)
  
     closeBtn.MouseButton1Click:Connect(function()
         gui:Destroy()
     end)
 
-    -- MINIMIZE BUTTON (Yellow background, always shows "-")
+    -- MINIMIZE BUTTON (Yellow background, position: middle)
     local minBtn = Instance.new("TextButton", frame)
     minBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
     minBtn.Position = UDim2.new(1, -(CLOSE_SIZE * 2 + 16), 0, 8)
-    minBtn.BackgroundColor3 = CLR_YELLOW  -- Yellow background
-    minBtn.Text = "−"  -- Always shows "-"
+    minBtn.BackgroundColor3 = CLR_YELLOW
+    minBtn.Text = "−"
     minBtn.Font = Enum.Font.GothamBold
     minBtn.TextSize = 20
-    minBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text for better contrast on yellow
+    minBtn.TextColor3 = Color3.new(0, 0, 0)
     minBtn.AutoButtonColor = false
     Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 8)
 
     minBtn.MouseEnter:Connect(function()
-        minBtn.BackgroundColor3 = Color3.fromRGB(255, 220, 50)  -- Lighter yellow on hover
+        minBtn.BackgroundColor3 = Color3.fromRGB(255, 220, 50)
     end)
 
     minBtn.MouseLeave:Connect(function()
-        minBtn.BackgroundColor3 = CLR_YELLOW  -- Back to yellow
+        minBtn.BackgroundColor3 = CLR_YELLOW
+    end)
+
+    -- FULLSCREEN BUTTON (Green background, position: leftmost of buttons, always shows "+")
+    local fullscreenBtn = Instance.new("TextButton", frame)
+    fullscreenBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
+    fullscreenBtn.Position = UDim2.new(1, -(CLOSE_SIZE * 3 + 24), 0, 8)
+    fullscreenBtn.BackgroundColor3 = CLR_GREEN
+    fullscreenBtn.Text = "+"  -- Always shows "+"
+    fullscreenBtn.Font = Enum.Font.GothamBold
+    fullscreenBtn.TextSize = 20
+    fullscreenBtn.TextColor3 = Color3.new(1, 1, 1)
+    fullscreenBtn.AutoButtonColor = false
+    Instance.new("UICorner", fullscreenBtn).CornerRadius = UDim.new(0, 8)
+
+    fullscreenBtn.MouseEnter:Connect(function()
+        fullscreenBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
+    end)
+
+    fullscreenBtn.MouseLeave:Connect(function()
+        fullscreenBtn.BackgroundColor3 = CLR_GREEN
     end)
 
     -- TITLE
     local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -(CLOSE_SIZE * 2 + 24), 0, 44)
+    title.Size = UDim2.new(1, -(CLOSE_SIZE * 3 + 32), 0, 44)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
@@ -418,9 +438,9 @@ local function OpenServerHopper()
         -- Apply sorting based on player count
         table.sort(servers, function(a, b)
             if sortAscending then
-                return a.playing < b.playing  -- Low to high
+                return a.playing < b.playing
             else
-                return a.playing > b.playing  -- High to low
+                return a.playing > b.playing
             end
         end)
 
@@ -442,24 +462,80 @@ local function OpenServerHopper()
     -- Initial load
     RefreshServerList()
 
-    -- MINIMIZE FUNCTIONALITY - FIXED (Only hides info and serverList)
+    -- Store original sizes and positions for fullscreen
+    local originalFrameSize = frame.Size
+    local originalFramePosition = frame.Position
+    local originalInfoSize = info.Size
+    local originalInfoPosition = info.Position
+    local originalServerListSize = serverList.Size
+    local originalServerListPosition = serverList.Position
+    
+    -- MINIMIZE FUNCTIONALITY
     local isMinimized = false
-    local originalSize = frame.Size
     local minimizedSize = UDim2.fromOffset(300, 44)
     
     minBtn.MouseButton1Click:Connect(function()
+        if isFullscreen then return end  -- Don't minimize if in fullscreen
+        
         isMinimized = not isMinimized
         
         if isMinimized then
-            -- Minimize: Shrink frame and hide only info and serverList
             frame.Size = minimizedSize
             info.Visible = false
             serverList.Visible = false
         else
-            -- Restore: Show info and serverList again
-            frame.Size = originalSize
+            frame.Size = originalFrameSize
             info.Visible = true
             serverList.Visible = true
+        end
+    end)
+
+    -- FULLSCREEN FUNCTIONALITY (Properly scales both frames)
+    local isFullscreen = false
+    
+    fullscreenBtn.MouseButton1Click:Connect(function()
+        if isMinimized then return end  -- Don't fullscreen if minimized
+        
+        isFullscreen = not isFullscreen
+        
+        if isFullscreen then
+            -- Save current sizes before going fullscreen
+            originalFrameSize = frame.Size
+            originalFramePosition = frame.Position
+            originalInfoSize = info.Size
+            originalInfoPosition = info.Position
+            originalServerListSize = serverList.Size
+            originalServerListPosition = serverList.Position
+            
+            -- Fullscreen mode - scale everything
+            local screenWidth = workspace.CurrentCamera.ViewportSize.X
+            local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+            
+            frame.Size = UDim2.new(0, screenWidth - 20, 0, screenHeight - 20)
+            frame.Position = UDim2.new(0, 10, 0, 10)
+            frame.Draggable = false
+            
+            -- Scale info panel (35% of width)
+            local newInfoWidth = (screenWidth - 60) * 0.35
+            info.Size = UDim2.new(0, newInfoWidth, 1, -58)
+            info.Position = UDim2.new(0, 12, 0, 46)
+            
+            -- Scale server list panel (60% of width)
+            local newListWidth = (screenWidth - 60) * 0.6
+            serverList.Size = UDim2.new(0, newListWidth, 1, -58)
+            serverList.Position = UDim2.new(0, newInfoWidth + 24, 0, 46)
+            
+        else
+            -- Exit fullscreen mode
+            frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
+            frame.Draggable = true
+            
+            info.Size = originalInfoSize
+            info.Position = originalInfoPosition
+            
+            serverList.Size = originalServerListSize
+            serverList.Position = originalServerListPosition
         end
     end)
  
