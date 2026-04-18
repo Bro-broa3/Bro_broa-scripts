@@ -30,6 +30,7 @@ local function OpenServerHopper()
     local CLR_TEXT_MUTED = Color3.fromRGB(170, 170, 170)
     local CLR_ACCENT = Color3.fromRGB(130, 180, 255)
     local CLR_HOVER = Color3.fromRGB(200, 220, 255)
+    local CLR_YELLOW = Color3.fromRGB(255, 200, 0)  -- Yellow color for minimize button
  
     -- Create GUI
     local gui = Instance.new("ScreenGui")
@@ -44,7 +45,7 @@ local function OpenServerHopper()
     frame.BackgroundColor3 = CLR_BACKGROUND
     frame.BorderSizePixel = 0
     frame.Active = true
-    frame.Draggable = true  -- <-- FIXED: Makes the GUI draggable
+    frame.Draggable = true
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
     Instance.new("UIStroke", frame).Color = Color3.fromRGB(80,80,80)
  
@@ -75,57 +76,29 @@ local function OpenServerHopper()
         gui:Destroy()
     end)
 
-    -- SMALL GUI BUTTON(sgb,minimize button)
-    local sgb_size = 28
-    local sgb = Instance.new("TextButton", frame)
-    sgb.Size = UDim2.fromOffset(sgb_size, sgb_size)
-    sgb.Position = UDim2.new(0.96, -(sgb_size + 8), 0, 8)
-    sgb.BackgroundColor3 = CLR_SURFACE
-    sgb.Text = "-"
-    sgb.Font = Enum.Font.GothamBold
-    sgb.TextSize = 16
-    sgb.TextColor3 = CLR_TEXT_MUTED
-    sgb.AutoButtonColor = false
-    Instance.new("UICorner", sgb).CornerRadius = UDim.new(0, 8)
+    -- MINIMIZE BUTTON (Yellow background, always shows "-")
+    local minBtn = Instance.new("TextButton", frame)
+    minBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
+    minBtn.Position = UDim2.new(1, -(CLOSE_SIZE * 2 + 16), 0, 8)
+    minBtn.BackgroundColor3 = CLR_YELLOW  -- Yellow background
+    minBtn.Text = "−"  -- Always shows "-"
+    minBtn.Font = Enum.Font.GothamBold
+    minBtn.TextSize = 20
+    minBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text for better contrast on yellow
+    minBtn.AutoButtonColor = false
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 8)
 
-    sgb.MouseEnter:Connect(function()
-        sgb.BackgroundColor3 = CLR_PRIMARY  -- Changed from DANGER to PRIMARY for better UX
-        sgb.TextColor3 = Color3.new(1,1,1)
+    minBtn.MouseEnter:Connect(function()
+        minBtn.BackgroundColor3 = Color3.fromRGB(255, 220, 50)  -- Lighter yellow on hover
     end)
 
-    sgb.MouseLeave:Connect(function()
-        sgb.BackgroundColor3 = CLR_SURFACE
-        sgb.TextColor3 = CLR_TEXT_MUTED
-    end)
-
-    -- MINIMIZE FUNCTIONALITY
-    local isMinimized = false
-    local originalSize = frame.Size
-    local minimizedSize = UDim2.fromOffset(300, 44)  -- Small bar when minimized
-
-    sgb.MouseButton1Click:Connect(function()
-        isMinimized = not isMinimized
-        
-        if isMinimized then
-            -- Minimize: hide content panels, shrink frame
-            frame.Size = minimizedSize
-            info.Visible = false
-            serverList.Visible = false
-            sgb.Text = "+"  -- Change to + to indicate expand
-            title.Text = "Server Hopper (Minimized)"
-        else
-            -- Restore: show content panels, restore size
-            frame.Size = originalSize
-            info.Visible = true
-            serverList.Visible = true
-            sgb.Text = "-"  -- Change back to -
-            title.Text = "Server Hopper"
-        end
+    minBtn.MouseLeave:Connect(function()
+        minBtn.BackgroundColor3 = CLR_YELLOW  -- Back to yellow
     end)
 
     -- TITLE
     local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -(CLOSE_SIZE + 20), 0, 44)
+    title.Size = UDim2.new(1, -(CLOSE_SIZE * 2 + 24), 0, 44)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
@@ -460,7 +433,7 @@ local function OpenServerHopper()
     filterBtn.MouseButton1Click:Connect(function()
         sortAscending = not sortAscending
         filterBtn.Text = sortAscending and "Filter: Low Players" or "Filter: High Players"
-        RefreshServerList()  -- Refresh with new filter
+        RefreshServerList()
     end)
  
     -- Refresh button functionality
@@ -468,6 +441,27 @@ local function OpenServerHopper()
  
     -- Initial load
     RefreshServerList()
+
+    -- MINIMIZE FUNCTIONALITY - FIXED (Only hides info and serverList)
+    local isMinimized = false
+    local originalSize = frame.Size
+    local minimizedSize = UDim2.fromOffset(300, 44)
+    
+    minBtn.MouseButton1Click:Connect(function()
+        isMinimized = not isMinimized
+        
+        if isMinimized then
+            -- Minimize: Shrink frame and hide only info and serverList
+            frame.Size = minimizedSize
+            info.Visible = false
+            serverList.Visible = false
+        else
+            -- Restore: Show info and serverList again
+            frame.Size = originalSize
+            info.Visible = true
+            serverList.Visible = true
+        end
+    end)
  
     -- Cleanup
     gui.Destroying:Connect(function()
