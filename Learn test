@@ -231,7 +231,7 @@ local function OpenServerHopper()
     infoTitle.Text = "SERVER INFO"
     infoTitle.LayoutOrder = 6
  
-    -- Create info labels
+    -- Create info labels (modified to return both container and label for updating)
     local function createInfoLabel(parent, label, value, color, copyable)
         local container = Instance.new("Frame", parent)
         container.Size = UDim2.new(1, 0, 0, 20)
@@ -254,35 +254,118 @@ local function OpenServerHopper()
  
             btn.MouseButton1Click:Connect(function()
                 if setclipboard then
-                    setclipboard(value)
+                    -- Extract just the value part (after ": ")
+                    local fullText = labelObj.Text
+                    local copyValue = fullText:match(": (.+)$") or fullText
+                    setclipboard(copyValue)
                 end
             end)
         end
  
-        return container
+        return container, labelObj
     end
  
     -- UPTIME LABEL
-    local uptimeLabel = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
-    uptimeLabel.LayoutOrder = 7
+    local uptimeContainer, uptimeLabelText = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
+    uptimeContainer.LayoutOrder = 7
  
     -- Version label
-    local verLabel = createInfoLabel(info, "Version", tostring(game.PlaceVersion), CLR_TEXT, false)
-    verLabel.LayoutOrder = 8
+    local verContainer, verLabelText = createInfoLabel(info, "Version", tostring(game.PlaceVersion), CLR_TEXT, false)
+    verContainer.LayoutOrder = 8
  
     -- Players label
-    local playersLabel = createInfoLabel(info, "Players", 
+    local playersContainer, playersLabelText = createInfoLabel(info, "Players", 
         tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers), 
         CLR_TEXT, false)
-    playersLabel.LayoutOrder = 9
+    playersContainer.LayoutOrder = 9
  
+    -- PLACE NAME LABEL (English version, blue, click to copy)
+    local placeNameContainer, placeNameLabelText = createInfoLabel(info, "Place Name", "Loading...", CLR_ACCENT, true)
+    placeNameContainer.LayoutOrder = 10
+    
     -- Place ID label
-    local placeLabel = createInfoLabel(info, "Place ID", tostring(game.PlaceId), CLR_ACCENT, true)
-    placeLabel.LayoutOrder = 10
+    local placeContainer, placeLabelText = createInfoLabel(info, "Place ID", tostring(game.PlaceId), CLR_ACCENT, true)
+    placeContainer.LayoutOrder = 11
  
     -- Server ID label
-    local jobLabel = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
-    jobLabel.LayoutOrder = 11
+    local jobContainer, jobLabelText = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
+    jobContainer.LayoutOrder = 12
+
+    -- Store the actual place name value for copying
+    local actualPlaceName = "Loading..."
+    
+    -- Update the click-to-copy button for place name
+    local placeNameBtn = placeNameContainer:FindFirstChildOfClass("TextButton")
+    if placeNameBtn then
+        -- Disconnect old connection and create new one
+        placeNameBtn.MouseButton1Click:Connect(function()
+            if setclipboard then
+                setclipboard(actualPlaceName)
+            end
+        end)
+    end
+
+    -- FUNCTION TO GET ENGLISH PLACE NAME (from your ScriptBlox searcher)
+    local function getEnglishPlaceName()
+        local universeId = game.GameId
+        local placeId = game.PlaceId
+        
+        -- Check for request function (syn.request, http_request, etc.)
+        local requestFunc = syn and syn.request or http_request or request
+        
+        if requestFunc then
+            -- Try to get universe details with English language header
+            local success, response = pcall(function()
+                return requestFunc({
+                    Url = "https://games.roblox.com/v1/games?universeIds=" .. universeId,
+                    Method = "GET",
+                    Headers = {
+                        ["Accept-Language"] = "en-US,en;q=0.9",
+                        ["Content-Type"] = "application/json"
+                    }
+                })
+            end)
+            
+            if success and response.Body then
+                local data = HttpService:JSONDecode(response.Body)
+                if data.data and data.data[1] and data.data[1].name then
+                    return data.data[1].name
+                end
+            end
+        end
+        
+        -- Fallback: Try direct HttpGet (may still return translated)
+        local success2, response2 = pcall(function()
+            return game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. universeId)
+        end)
+        
+        if success2 and response2 then
+            local data = HttpService:JSONDecode(response2)
+            if data.data and data.data[1] and data.data[1].name then
+                return data.data[1].name
+            end
+        end
+        
+        -- Last resort: Marketplace service
+        local success3, result = pcall(function()
+            return game:GetService("MarketplaceService"):GetProductInfo(placeId, Enum.InfoType.Asset)
+        end)
+        
+        if success3 and result then
+            return result.Name
+        end
+        
+        return "Unknown Place"
+    end
+    
+    -- Fetch place name in English
+    local function fetchPlaceName()
+        actualPlaceName = getEnglishPlaceName()
+        placeNameLabelText.Text = "Place Name: " .. actualPlaceName
+    end
+    
+    -- Fetch place name immediately
+    fetchPlaceName()
  
     -- UPTIME FUNCTIONALITY
     local startTime = tick()
@@ -292,8 +375,7 @@ local function OpenServerHopper()
         local minutes = math.floor((elapsed % 3600) / 60)
         local seconds = math.floor(elapsed % 60)
  
-        uptimeLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Uptime: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
+        uptimeLabelText.Text = "Uptime: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
     end)
  
     -- BUTTON FUNCTIONALITY
@@ -315,13 +397,11 @@ local function OpenServerHopper()
  
     -- Update players count
     Players.PlayerAdded:Connect(function()
-        playersLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
+        playersLabelText.Text = "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
     end)
  
     Players.PlayerRemoving:Connect(function()
-        playersLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
+        playersLabelText.Text = "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
     end)
  
     -- RIGHT PANEL (SERVER LIST)
@@ -487,7 +567,11 @@ local function OpenServerHopper()
     local originalServerListSize = serverList.Size
     local originalServerListPosition = serverList.Position
     
-    -- MINIMIZE FUNCTIONALITY (FIXED)
+    -- Store original title position
+    local originalTitlePosition = title.Position
+    local originalTitleSize = title.Size
+    
+    -- MINIMIZE FUNCTIONALITY (FIXED WITH TITLE MOVEMENT)
     minBtn.MouseButton1Click:Connect(function()
         -- If we're in fullscreen mode, exit fullscreen first
         if isFullscreen then
@@ -504,6 +588,10 @@ local function OpenServerHopper()
             
             -- Restore title bar size
             titleBar.Size = UDim2.new(1, 0, 0, 44)
+            
+            -- Restore title to center
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
             title.TextXAlignment = Enum.TextXAlignment.Center
         end
         
@@ -523,9 +611,10 @@ local function OpenServerHopper()
             -- Ensure title bar takes full height of minimized frame
             titleBar.Size = UDim2.new(1, 0, 1, 0)
             
-            -- Move title to the right when minimized
+            -- Move title to the right to avoid buttons
+            title.Position = UDim2.new(0, 120, 0, 0)
+            title.Size = UDim2.new(1, -130, 1, 0)
             title.TextXAlignment = Enum.TextXAlignment.Left
-            title.Position = UDim2.new(0, (CLOSE_SIZE * 3) + 32, 0, 0)
         else
             -- Restore from minimize
             frame.Size = originalFrameSize
@@ -537,8 +626,9 @@ local function OpenServerHopper()
             titleBar.Size = UDim2.new(1, 0, 0, 44)
             
             -- Restore title to center
-            title.TextXAlignment = Enum.TextXAlignment.Center
             title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
         end
     end)
 
@@ -552,8 +642,11 @@ local function OpenServerHopper()
             info.Visible = true
             serverList.Visible = true
             titleBar.Size = UDim2.new(1, 0, 0, 44)
-            title.TextXAlignment = Enum.TextXAlignment.Center
+            
+            -- Restore title to center
             title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
         end
         
         -- Toggle fullscreen
@@ -584,6 +677,11 @@ local function OpenServerHopper()
             local newListWidth = (screenWidth - 60) * 0.6
             serverList.Size = UDim2.new(0, newListWidth, 1, -58)
             serverList.Position = UDim2.new(0, newInfoWidth + 24, 0, 46)
+            
+            -- Ensure title is centered in fullscreen
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
         else
             -- Exit fullscreen
             frame.Size = originalFrameSize
@@ -595,6 +693,11 @@ local function OpenServerHopper()
             
             serverList.Size = originalServerListSize
             serverList.Position = originalServerListPosition
+            
+            -- Restore title to center
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
         end
     end)
  
