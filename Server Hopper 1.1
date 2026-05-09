@@ -30,6 +30,9 @@ local function OpenServerHopper()
     local CLR_TEXT_MUTED = Color3.fromRGB(170, 170, 170)
     local CLR_ACCENT = Color3.fromRGB(130, 180, 255)
     local CLR_HOVER = Color3.fromRGB(200, 220, 255)
+    local CLR_YELLOW = Color3.fromRGB(255, 200, 0)
+    local CLR_GREEN = Color3.fromRGB(40, 167, 69)
+    local CLR_RED = Color3.fromRGB(237, 66, 69)
  
     -- Create GUI
     local gui = Instance.new("ScreenGui")
@@ -44,47 +47,104 @@ local function OpenServerHopper()
     frame.BackgroundColor3 = CLR_BACKGROUND
     frame.BorderSizePixel = 0
     frame.Active = true
-    frame.Draggable = true  -- <-- FIXED: Makes the GUI draggable
+    frame.Draggable = true
     Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
     Instance.new("UIStroke", frame).Color = Color3.fromRGB(80,80,80)
  
-    -- CLOSE BUTTON
+    -- State tracking
+    local isMinimized = false
+    local isFullscreen = false
+    
+    -- Store original dimensions
+    local originalFrameSize = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT)
+    local originalFramePosition = frame.Position
+    
     local CLOSE_SIZE = 28
-    local closeBtn = Instance.new("TextButton", frame)
+
+    -- Create title bar container
+    local titleBar = Instance.new("Frame", frame)
+    titleBar.Size = UDim2.new(1, 0, 0, 44)
+    titleBar.Position = UDim2.new(0, 0, 0, 0)
+    titleBar.BackgroundTransparency = 1
+
+    -- CLOSE BUTTON (Red - Leftmost, Circular)
+    local closeBtn = Instance.new("TextButton", titleBar)
     closeBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    closeBtn.Position = UDim2.new(1, -(CLOSE_SIZE + 8), 0, 8)
-    closeBtn.BackgroundColor3 = CLR_SURFACE
+    closeBtn.Position = UDim2.new(0, 8, 0.5, -CLOSE_SIZE/2)
+    closeBtn.BackgroundColor3 = CLR_RED
     closeBtn.Text = "X"
     closeBtn.Font = Enum.Font.GothamBold
     closeBtn.TextSize = 16
-    closeBtn.TextColor3 = CLR_TEXT_MUTED
+    closeBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
     closeBtn.AutoButtonColor = false
-    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+    local closeCorner = Instance.new("UICorner", closeBtn)
+    closeCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
  
     closeBtn.MouseEnter:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_DANGER
-        closeBtn.TextColor3 = Color3.new(1,1,1)
+        closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
     end)
  
     closeBtn.MouseLeave:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_SURFACE
-        closeBtn.TextColor3 = CLR_TEXT_MUTED
+        closeBtn.BackgroundColor3 = CLR_RED
     end)
  
     closeBtn.MouseButton1Click:Connect(function()
         gui:Destroy()
     end)
- 
-    -- TITLE
-    local title = Instance.new("TextLabel", frame)
-    title.Size = UDim2.new(1, -(CLOSE_SIZE + 20), 0, 44)
+
+    -- MINIMIZE BUTTON (Yellow - Middle, Circular)
+    local minBtn = Instance.new("TextButton", titleBar)
+    minBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
+    minBtn.Position = UDim2.new(0, CLOSE_SIZE + 16, 0.5, -CLOSE_SIZE/2)
+    minBtn.BackgroundColor3 = CLR_YELLOW
+    minBtn.Text = "−"
+    minBtn.Font = Enum.Font.GothamBold
+    minBtn.TextSize = 20
+    minBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
+    minBtn.AutoButtonColor = false
+    local minCorner = Instance.new("UICorner", minBtn)
+    minCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
+
+    minBtn.MouseEnter:Connect(function()
+        minBtn.BackgroundColor3 = Color3.fromRGB(255, 220, 50)
+    end)
+
+    minBtn.MouseLeave:Connect(function()
+        minBtn.BackgroundColor3 = CLR_YELLOW
+    end)
+
+    -- FULLSCREEN BUTTON (Green - Rightmost of the three, Circular)
+    local fullscreenBtn = Instance.new("TextButton", titleBar)
+    fullscreenBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
+    fullscreenBtn.Position = UDim2.new(0, (CLOSE_SIZE * 2) + 24, 0.5, -CLOSE_SIZE/2)
+    fullscreenBtn.BackgroundColor3 = CLR_GREEN
+    fullscreenBtn.Text = "+"
+    fullscreenBtn.Font = Enum.Font.GothamBold
+    fullscreenBtn.TextSize = 20
+    fullscreenBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
+    fullscreenBtn.AutoButtonColor = false
+    local fullCorner = Instance.new("UICorner", fullscreenBtn)
+    fullCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
+
+    fullscreenBtn.MouseEnter:Connect(function()
+        fullscreenBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
+    end)
+
+    fullscreenBtn.MouseLeave:Connect(function()
+        fullscreenBtn.BackgroundColor3 = CLR_GREEN
+    end)
+
+    -- TITLE (Full width, truly centered)
+    local title = Instance.new("TextLabel", titleBar)
+    title.Size = UDim2.new(1, 0, 1, 0)
     title.Position = UDim2.new(0, 0, 0, 0)
     title.BackgroundTransparency = 1
     title.Font = Enum.Font.GothamBold
     title.TextColor3 = CLR_TEXT
     title.TextSize = 22
     title.Text = "Server Hopper"
-    Instance.new("UIPadding", title).PaddingLeft = UDim.new(0, 16)
+    title.TextXAlignment = Enum.TextXAlignment.Center
+    title.TextYAlignment = Enum.TextYAlignment.Center
  
     -- LEFT PANEL (INFO)
     local info = Instance.new("Frame", frame)
@@ -171,7 +231,7 @@ local function OpenServerHopper()
     infoTitle.Text = "SERVER INFO"
     infoTitle.LayoutOrder = 6
  
-    -- Create info labels
+    -- Create info labels (modified to return both container and label for updating)
     local function createInfoLabel(parent, label, value, color, copyable)
         local container = Instance.new("Frame", parent)
         container.Size = UDim2.new(1, 0, 0, 20)
@@ -194,35 +254,118 @@ local function OpenServerHopper()
  
             btn.MouseButton1Click:Connect(function()
                 if setclipboard then
-                    setclipboard(value)
+                    -- Extract just the value part (after ": ")
+                    local fullText = labelObj.Text
+                    local copyValue = fullText:match(": (.+)$") or fullText
+                    setclipboard(copyValue)
                 end
             end)
         end
  
-        return container
+        return container, labelObj
     end
  
     -- UPTIME LABEL
-    local uptimeLabel = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
-    uptimeLabel.LayoutOrder = 7
+    local uptimeContainer, uptimeLabelText = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
+    uptimeContainer.LayoutOrder = 7
  
     -- Version label
-    local verLabel = createInfoLabel(info, "Version", tostring(game.PlaceVersion), CLR_TEXT, false)
-    verLabel.LayoutOrder = 8
+    local verContainer, verLabelText = createInfoLabel(info, "Version", tostring(game.PlaceVersion), CLR_TEXT, false)
+    verContainer.LayoutOrder = 8
  
     -- Players label
-    local playersLabel = createInfoLabel(info, "Players", 
+    local playersContainer, playersLabelText = createInfoLabel(info, "Players", 
         tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers), 
         CLR_TEXT, false)
-    playersLabel.LayoutOrder = 9
+    playersContainer.LayoutOrder = 9
  
+    -- PLACE NAME LABEL (English version, blue, click to copy)
+    local placeNameContainer, placeNameLabelText = createInfoLabel(info, "Place Name", "Loading...", CLR_ACCENT, true)
+    placeNameContainer.LayoutOrder = 10
+    
     -- Place ID label
-    local placeLabel = createInfoLabel(info, "Place ID", tostring(game.PlaceId), CLR_ACCENT, true)
-    placeLabel.LayoutOrder = 10
+    local placeContainer, placeLabelText = createInfoLabel(info, "Place ID", tostring(game.PlaceId), CLR_ACCENT, true)
+    placeContainer.LayoutOrder = 11
  
     -- Server ID label
-    local jobLabel = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
-    jobLabel.LayoutOrder = 11
+    local jobContainer, jobLabelText = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
+    jobContainer.LayoutOrder = 12
+
+    -- Store the actual place name value for copying
+    local actualPlaceName = "Loading..."
+    
+    -- Update the click-to-copy button for place name
+    local placeNameBtn = placeNameContainer:FindFirstChildOfClass("TextButton")
+    if placeNameBtn then
+        -- Disconnect old connection and create new one
+        placeNameBtn.MouseButton1Click:Connect(function()
+            if setclipboard then
+                setclipboard(actualPlaceName)
+            end
+        end)
+    end
+
+    -- FUNCTION TO GET ENGLISH PLACE NAME (from your ScriptBlox searcher)
+    local function getEnglishPlaceName()
+        local universeId = game.GameId
+        local placeId = game.PlaceId
+        
+        -- Check for request function (syn.request, http_request, etc.)
+        local requestFunc = syn and syn.request or http_request or request
+        
+        if requestFunc then
+            -- Try to get universe details with English language header
+            local success, response = pcall(function()
+                return requestFunc({
+                    Url = "https://games.roblox.com/v1/games?universeIds=" .. universeId,
+                    Method = "GET",
+                    Headers = {
+                        ["Accept-Language"] = "en-US,en;q=0.9",
+                        ["Content-Type"] = "application/json"
+                    }
+                })
+            end)
+            
+            if success and response.Body then
+                local data = HttpService:JSONDecode(response.Body)
+                if data.data and data.data[1] and data.data[1].name then
+                    return data.data[1].name
+                end
+            end
+        end
+        
+        -- Fallback: Try direct HttpGet (may still return translated)
+        local success2, response2 = pcall(function()
+            return game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. universeId)
+        end)
+        
+        if success2 and response2 then
+            local data = HttpService:JSONDecode(response2)
+            if data.data and data.data[1] and data.data[1].name then
+                return data.data[1].name
+            end
+        end
+        
+        -- Last resort: Marketplace service
+        local success3, result = pcall(function()
+            return game:GetService("MarketplaceService"):GetProductInfo(placeId, Enum.InfoType.Asset)
+        end)
+        
+        if success3 and result then
+            return result.Name
+        end
+        
+        return "Unknown Place"
+    end
+    
+    -- Fetch place name in English
+    local function fetchPlaceName()
+        actualPlaceName = getEnglishPlaceName()
+        placeNameLabelText.Text = "Place Name: " .. actualPlaceName
+    end
+    
+    -- Fetch place name immediately
+    fetchPlaceName()
  
     -- UPTIME FUNCTIONALITY
     local startTime = tick()
@@ -232,8 +375,7 @@ local function OpenServerHopper()
         local minutes = math.floor((elapsed % 3600) / 60)
         local seconds = math.floor(elapsed % 60)
  
-        uptimeLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Uptime: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
+        uptimeLabelText.Text = "Uptime: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
     end)
  
     -- BUTTON FUNCTIONALITY
@@ -255,13 +397,11 @@ local function OpenServerHopper()
  
     -- Update players count
     Players.PlayerAdded:Connect(function()
-        playersLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
+        playersLabelText.Text = "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
     end)
  
     Players.PlayerRemoving:Connect(function()
-        playersLabel:FindFirstChildOfClass("TextLabel").Text = 
-            "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
+        playersLabelText.Text = "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
     end)
  
     -- RIGHT PANEL (SERVER LIST)
@@ -397,9 +537,9 @@ local function OpenServerHopper()
         -- Apply sorting based on player count
         table.sort(servers, function(a, b)
             if sortAscending then
-                return a.playing < b.playing  -- Low to high
+                return a.playing < b.playing
             else
-                return a.playing > b.playing  -- High to low
+                return a.playing > b.playing
             end
         end)
 
@@ -412,7 +552,7 @@ local function OpenServerHopper()
     filterBtn.MouseButton1Click:Connect(function()
         sortAscending = not sortAscending
         filterBtn.Text = sortAscending and "Filter: Low Players" or "Filter: High Players"
-        RefreshServerList()  -- Refresh with new filter
+        RefreshServerList()
     end)
  
     -- Refresh button functionality
@@ -420,6 +560,146 @@ local function OpenServerHopper()
  
     -- Initial load
     RefreshServerList()
+    
+    -- Store original panel dimensions for restore operations
+    local originalInfoSize = info.Size
+    local originalInfoPosition = info.Position
+    local originalServerListSize = serverList.Size
+    local originalServerListPosition = serverList.Position
+    
+    -- Store original title position
+    local originalTitlePosition = title.Position
+    local originalTitleSize = title.Size
+    
+    -- MINIMIZE FUNCTIONALITY (FIXED WITH TITLE MOVEMENT)
+    minBtn.MouseButton1Click:Connect(function()
+        -- If we're in fullscreen mode, exit fullscreen first
+        if isFullscreen then
+            isFullscreen = false
+            frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
+            frame.Draggable = true
+            
+            info.Size = originalInfoSize
+            info.Position = originalInfoPosition
+            
+            serverList.Size = originalServerListSize
+            serverList.Position = originalServerListPosition
+            
+            -- Restore title bar size
+            titleBar.Size = UDim2.new(1, 0, 0, 44)
+            
+            -- Restore title to center
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
+        end
+        
+        -- Toggle minimize
+        isMinimized = not isMinimized
+        
+        if isMinimized then
+            -- Save current state before minimizing
+            originalFrameSize = frame.Size
+            originalFramePosition = frame.Position
+            
+            -- Minimize the frame
+            frame.Size = UDim2.fromOffset(300, 44)
+            info.Visible = false
+            serverList.Visible = false
+            
+            -- Ensure title bar takes full height of minimized frame
+            titleBar.Size = UDim2.new(1, 0, 1, 0)
+            
+            -- Move title to the right to avoid buttons
+            title.Position = UDim2.new(0, 120, 0, 0)
+            title.Size = UDim2.new(1, -130, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Left
+        else
+            -- Restore from minimize
+            frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
+            info.Visible = true
+            serverList.Visible = true
+            
+            -- Restore title bar height
+            titleBar.Size = UDim2.new(1, 0, 0, 44)
+            
+            -- Restore title to center
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
+        end
+    end)
+
+    -- FULLSCREEN FUNCTIONALITY
+    fullscreenBtn.MouseButton1Click:Connect(function()
+        -- If minimized, restore first
+        if isMinimized then
+            isMinimized = false
+            frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
+            info.Visible = true
+            serverList.Visible = true
+            titleBar.Size = UDim2.new(1, 0, 0, 44)
+            
+            -- Restore title to center
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
+        end
+        
+        -- Toggle fullscreen
+        isFullscreen = not isFullscreen
+        
+        if isFullscreen then
+            -- Save current state before going fullscreen
+            originalFrameSize = frame.Size
+            originalFramePosition = frame.Position
+            originalInfoSize = info.Size
+            originalInfoPosition = info.Position
+            originalServerListSize = serverList.Size
+            originalServerListPosition = serverList.Position
+            
+            -- Fullscreen mode
+            local screenWidth = workspace.CurrentCamera.ViewportSize.X
+            local screenHeight = workspace.CurrentCamera.ViewportSize.Y
+            
+            frame.Size = UDim2.new(0, screenWidth - 20, 0, screenHeight - 20)
+            frame.Position = UDim2.new(0, 10, 0, 10)
+            frame.Draggable = false
+            
+            -- Scale panels
+            local newInfoWidth = (screenWidth - 60) * 0.35
+            info.Size = UDim2.new(0, newInfoWidth, 1, -58)
+            info.Position = UDim2.new(0, 12, 0, 46)
+            
+            local newListWidth = (screenWidth - 60) * 0.6
+            serverList.Size = UDim2.new(0, newListWidth, 1, -58)
+            serverList.Position = UDim2.new(0, newInfoWidth + 24, 0, 46)
+            
+            -- Ensure title is centered in fullscreen
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
+        else
+            -- Exit fullscreen
+            frame.Size = originalFrameSize
+            frame.Position = originalFramePosition
+            frame.Draggable = true
+            
+            info.Size = originalInfoSize
+            info.Position = originalInfoPosition
+            
+            serverList.Size = originalServerListSize
+            serverList.Position = originalServerListPosition
+            
+            -- Restore title to center
+            title.Position = UDim2.new(0, 0, 0, 0)
+            title.Size = UDim2.new(1, 0, 1, 0)
+            title.TextXAlignment = Enum.TextXAlignment.Center
+        end
+    end)
  
     -- Cleanup
     gui.Destroying:Connect(function()
