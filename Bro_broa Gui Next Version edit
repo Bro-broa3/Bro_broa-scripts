@@ -1870,7 +1870,7 @@ local function CreateGUI()
     })
 
     ServerTab:CreateButton({
-        Name = "Server hopper",
+        Name = "Server hopper 1.1",
         Callback = function()
             local loadNotify = Rayfield:Notify({
                 Title = "Loading",
@@ -1880,7 +1880,7 @@ local function CreateGUI()
             })
             
             local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Server%20Hopper", true))()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Server%20Hopper%201.1", true))()
             end)
             
             loadNotify:Destroy()
