@@ -1,1 +1,78 @@
+-- IYAI Loader - Works as Plugin, Script, or LocalScript
+local GITHUB_BASE_URL = "https://raw.githubusercontent.com/imluri/IYAI/main/IYAI"
 
+local function httpGet(url)
+	local p = { Url = url, Method = "GET" }
+	local ok, res
+	if syn and syn.request then
+		ok, res = pcall(syn.request, p)
+	elseif request then
+		ok, res = pcall(request, p)
+	elseif http_request then
+		ok, res = pcall(http_request, p)
+	elseif game:HttpGet then
+		ok, res = pcall(game.HttpGet, game, url)
+	else
+		return nil, "No HTTP function available"
+	end
+	if not ok then return nil, "Request error: " .. tostring(res) end
+	
+	-- Handle different response formats
+	if type(res) == "string" then return res, nil end
+	if type(res) == "table" then
+		if res.Body then return res.Body, nil end
+		if res.body then return res.body, nil end
+		if res.StatusCode and res.StatusCode ~= 200 then 
+			return nil, "HTTP " .. tostring(res.StatusCode) 
+		end
+	end
+	return nil, "Invalid response format"
+end
+
+local src, err = httpGet(GITHUB_BASE_URL .. "/IYAI_Core.iy")
+if not src then error("[IYAI] Failed to fetch core: " .. tostring(err)) end
+
+local fn, ce = loadstring(src)
+if not fn then error("[IYAI] Compile error: " .. tostring(ce)) end
+
+local coreFn = fn()
+if type(coreFn) ~= "function" then error("[IYAI] Core must return a function.") end
+
+-- Create mock plugin environment if not running as a plugin
+local Plugin = coreFn(GITHUB_BASE_URL)
+if type(Plugin) ~= "table" then error("[IYAI] Core did not return a Plugin table.") end
+
+-- Auto-execute if not a plugin (for script/localScript usage)
+if not plugin then
+	-- Create a minimal plugin-like environment
+	local fakePlugin = {
+		Name = "IYAI",
+		PluginId = "IYAI_Standalone",
+		OpenScript = function(script)
+			print("[IYAI] Script opened in standalone mode")
+		end,
+		Activate = function() end,
+		Deactivation = function() end
+	}
+	
+	-- If Plugin has an Init or Start function, call it
+	if type(Plugin.Init) == "function" then
+		Plugin:Init(fakePlugin)
+	elseif type(Plugin.Start) == "function" then
+		Plugin:Start(fakePlugin)
+	elseif type(Plugin.OnLoad) == "function" then
+		Plugin:OnLoad(fakePlugin)
+	end
+	
+	-- Create GUI if exists
+	if type(Plugin.CreateGUI) == "function" then
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "IYAI"
+		gui.Parent = game:GetService("CoreGui") or game:GetService("StarterGui")
+		Plugin:CreateGUI(gui)
+	end
+	
+	print("[IYAI] Loaded in standalone mode")
+else
+	return Plugin
+end
