@@ -365,11 +365,11 @@ TitleText.Font = Enum.Font.GothamBold
 TitleText.TextSize = 16
 TitleText.Parent = TitleBar
 
--- Search button (moved before close button to match original layout)
+-- Search button
 local SearchButton = Instance.new("TextButton")
 SearchButton.Name = "SearchButton"
 SearchButton.Size = UDim2.new(0, 35, 0, 35)
-SearchButton.Position = UDim2.new(1, -115, 0, 0)
+SearchButton.Position = UDim2.new(1, -120, 0, 0)
 SearchButton.BackgroundColor3 = Color3.fromRGB(100, 150, 255)
 SearchButton.BorderSizePixel = 0
 SearchButton.Text = "🔍"
@@ -386,10 +386,10 @@ SearchUICorner.Parent = SearchButton
 local MinimizeButton = Instance.new("TextButton")
 MinimizeButton.Name = "MinimizeButton"
 MinimizeButton.Size = UDim2.new(0, 35, 0, 35)
-MinimizeButton.Position = UDim2.new(1, -75, 0, 0)
+MinimizeButton.Position = UDim2.new(1, -80, 0, 0)
 MinimizeButton.BackgroundColor3 = Color3.fromRGB(255, 180, 60)
 MinimizeButton.BorderSizePixel = 0
-MinimizeButton.Text = "—" -- FIXED: Using em dash instead of hyphen for better display
+MinimizeButton.Text = "-"
 MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinimizeButton.Font = Enum.Font.GothamBold
 MinimizeButton.TextSize = 18
@@ -399,17 +399,18 @@ local MinimizeUICorner = Instance.new("UICorner")
 MinimizeUICorner.CornerRadius = UDim.new(0, 8)
 MinimizeUICorner.Parent = MinimizeButton
 
--- Close button
+-- Close button - FIXED square bug
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
-CloseButton.Size = UDim2.new(0, 35, 0, 35)
-CloseButton.Position = UDim2.new(1, -35, 0, 0)
+CloseButton.Size = UDim2.new(0, 40, 0, 35)
+CloseButton.Position = UDim2.new(1, -40, 0, 0)
 CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
 CloseButton.BorderSizePixel = 0
-CloseButton.Text = "✕" -- FIXED: Using multiplication sign instead of X to avoid square bug
+CloseButton.Text = "X"
 CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseButton.Font = Enum.Font.GothamBold
-CloseButton.TextSize = 18 -- Increased text size for better visibility
+CloseButton.TextSize = 14
+CloseButton.TextWrapped = false
 CloseButton.Parent = TitleBar
 
 local CloseUICorner = Instance.new("UICorner")
@@ -539,7 +540,7 @@ local StopButtonUICorner = Instance.new("UICorner")
 StopButtonUICorner.CornerRadius = UDim.new(0, 6)
 StopButtonUICorner.Parent = StopButton
 
--- History button (KEEP ORIGINAL POSITION)
+-- History button (ORIGINAL POSITION)
 local HistoryButton = Instance.new("TextButton")
 HistoryButton.Name = "HistoryButton"
 HistoryButton.Size = UDim2.new(1, 0, 0, 30)
@@ -552,7 +553,7 @@ HistoryButton.Font = Enum.Font.GothamBold
 HistoryButton.TextSize = 12
 HistoryButton.Parent = ControlButtons
 
--- Toggle buttons frame (KEEP ORIGINAL POSITION)
+-- Toggle buttons frame (ORIGINAL POSITION)
 local ToggleFrame = Instance.new("Frame")
 ToggleFrame.Name = "ToggleFrame"
 ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
@@ -594,7 +595,7 @@ local LoopUICorner = Instance.new("UICorner")
 LoopUICorner.CornerRadius = UDim.new(0, 6)
 LoopUICorner.Parent = LoopToggle
 
--- Volume control (KEEP ORIGINAL POSITION)
+-- Volume control (ORIGINAL POSITION)
 local VolumeFrame = Instance.new("Frame")
 VolumeFrame.Name = "VolumeFrame"
 VolumeFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -639,7 +640,7 @@ local VolumeFillCorner = Instance.new("UICorner")
 VolumeFillCorner.CornerRadius = UDim.new(0, 10)
 VolumeFillCorner.Parent = VolumeFill
 
--- ========== SPEED CONTROL (ADDED AFTER VOLUME) ==========
+-- ========== SPEED CONTROL ==========
 local SpeedFrame = Instance.new("Frame")
 SpeedFrame.Name = "SpeedFrame"
 SpeedFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -659,7 +660,7 @@ SpeedLabel.Font = Enum.Font.Gotham
 SpeedLabel.TextSize = 12
 SpeedLabel.Parent = SpeedFrame
 
--- Speed textbox with buttons
+-- Speed textbox
 SpeedTextBox = Instance.new("TextBox")
 SpeedTextBox.Name = "SpeedTextBox"
 SpeedTextBox.Size = UDim2.new(1, -130, 0, 25)
@@ -686,10 +687,10 @@ SpeedDownButton.Size = UDim2.new(0, 20, 0, 25)
 SpeedDownButton.Position = UDim2.new(1, -40, 0, 7)
 SpeedDownButton.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
 SpeedDownButton.BorderSizePixel = 0
-SpeedDownButton.Text = "◄"
+SpeedDownButton.Text = "<"
 SpeedDownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedDownButton.Font = Enum.Font.GothamBold
-SpeedDownButton.TextSize = 12
+SpeedDownButton.TextSize = 14
 SpeedDownButton.AutoButtonColor = true
 SpeedDownButton.Parent = SpeedFrame
 
@@ -704,10 +705,10 @@ SpeedUpButton.Size = UDim2.new(0, 20, 0, 25)
 SpeedUpButton.Position = UDim2.new(1, -15, 0, 7)
 SpeedUpButton.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
 SpeedUpButton.BorderSizePixel = 0
-SpeedUpButton.Text = "►"
+SpeedUpButton.Text = ">"
 SpeedUpButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedUpButton.Font = Enum.Font.GothamBold
-SpeedUpButton.TextSize = 12
+SpeedUpButton.TextSize = 14
 SpeedUpButton.AutoButtonColor = true
 SpeedUpButton.Parent = SpeedFrame
 
@@ -715,7 +716,7 @@ local SpeedUpCorner = Instance.new("UICorner")
 SpeedUpCorner.CornerRadius = UDim.new(0, 5)
 SpeedUpCorner.Parent = SpeedUpButton
 
--- Status label (KEEP ORIGINAL POSITION at bottom)
+-- Status label (BOTTOM)
 StatusLabel = Instance.new("TextLabel")
 StatusLabel.Name = "StatusLabel"
 StatusLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -821,9 +822,7 @@ SearchPanel.ZIndex = 10
 
 local SearchPanelCorner = Instance.new("UICorner")
 SearchPanelCorner.CornerRadius = UDim.new(0, 8)
-SearchPanelCorner.Parent = SearchPanel
-
--- Add stroke to search panel
+SearchPanelCorner.Parent = SearchPanel-- Add stroke to search panel
 local SearchPanelStroke = Instance.new("UIStroke")
 SearchPanelStroke.Thickness = 2
 SearchPanelStroke.Color = Color3.fromRGB(100, 150, 255)
