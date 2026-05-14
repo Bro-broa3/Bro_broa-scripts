@@ -1,9 +1,10 @@
--- Roblox Exploit MP3 Player GUI - Fixed Mute Button & History Issues + Search Feature + Speed Control
+-- Roblox Exploit MP3 Player GUI - Fixed Mute, Pause Button, Search by Name, Minimize Fix
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -19,10 +20,12 @@ local isHistoryOpen = false
 local isSearchOpen = false
 local downloadHistory = {}
 local isPlaying = false
+local isPaused = false
+local pausedTimePosition = 0
 local HISTORY_FILE = "mp3_history.json"
 
--- Base URL for music search
-local BASE_SEARCH_URL = "https://github.com/Bro-broa3/PrimeMusic/raw/main/"
+-- Store original volumes for all sounds
+local originalSoundVolumes = {}
 
 -- ========== CORE FUNCTIONS ==========
 
@@ -90,54 +93,116 @@ local function stopMusic()
         currentSound = nil
     end
     isPlaying = false
+    isPaused = false
+    pausedTimePosition = 0
 end
 
--- Function to mute ALL game sounds - FIXED VERSION
-local function muteAllGameSounds(mute)
-    isMuted = mute
-    
-    -- Mute all sounds in workspace
-    for _, sound in pairs(workspace:GetDescendants()) do
-        if sound:IsA("Sound") then
+-- Helper function to recursively find and mute ALL sounds in a container
+local function muteSoundsInContainer(container, mute)
+    for _, obj in pairs(container:GetDescendants()) do
+        if obj:IsA("Sound") then
             pcall(function()
                 if mute then
-                    sound.Volume = 0
+                    -- Store original volume if not already stored
+                    if originalSoundVolumes[obj] == nil then
+                        originalSoundVolumes[obj] = obj.Volume
+                    end
+                    obj.Volume = 0
                 else
-                    -- Only restore volume for non-player sounds
-                    if sound ~= currentSound then
-                        sound.Volume = 0.5
+                    -- Restore original volume
+                    local originalVol = originalSoundVolumes[obj]
+                    if originalVol ~= nil then
+                        obj.Volume = originalVol
+                        originalSoundVolumes[obj] = nil
+                    else
+                        obj.Volume = 0.5
+                    end
+                end
+            end)
+        elseif obj:IsA("SoundGroup") then
+            pcall(function()
+                if mute then
+                    if originalSoundVolumes[obj] == nil then
+                        originalSoundVolumes[obj] = obj.Volume
+                    end
+                    obj.Volume = 0
+                else
+                    local originalVol = originalSoundVolumes[obj]
+                    if originalVol ~= nil then
+                        obj.Volume = originalVol
+                        originalSoundVolumes[obj] = nil
+                    else
+                        obj.Volume = 1
                     end
                 end
             end)
         end
     end
+end
+
+-- FIXED: Complete mute function that covers ALL services
+local function muteAllGameSounds(mute)
+    isMuted = mute
     
-    -- Mute all sounds in lighting
-    local lighting = game:GetService("Lighting")
-    for _, sound in pairs(lighting:GetDescendants()) do
-        if sound:IsA("Sound") then
-            pcall(function()
-                if mute then
-                    sound.Volume = 0
-                else
-                    sound.Volume = 0.5
-                end
-            end)
+    -- Method 1: Global mute via SoundService
+    pcall(function()
+        SoundService.RespectFilteringEnabled = false
+        SoundService.Muted = mute
+    end)
+    
+    -- Method 2: Mute ALL sounds in EVERY possible service
+    local servicesToCheck = {
+        workspace,
+        game:GetService("Lighting"),
+        game:GetService("ReplicatedStorage"),
+        game:GetService("ServerStorage"),
+        game:GetService("StarterGui"),
+        game:GetService("StarterPack"),
+        game:GetService("StarterPlayer"),
+        game:GetService("SoundService"),
+        game:GetService("Players")
+    }
+    
+    -- Also check player's character and backpack
+    if player.Character then
+        table.insert(servicesToCheck, player.Character)
+    end
+    if player.Backpack then
+        table.insert(servicesToCheck, player.Backpack)
+    end
+    
+    for _, service in ipairs(servicesToCheck) do
+        pcall(function()
+            muteSoundsInContainer(service, mute)
+        end)
+    end
+    
+    -- Also check current camera
+    pcall(function()
+        if workspace.CurrentCamera then
+            muteSoundsInContainer(workspace.CurrentCamera, mute)
         end
-    end
+    end)
     
-    -- Handle current player sound
+    -- Handle current player sound (keep it playing if not muted)
     if currentSound then
-        currentSound.Volume = mute and 0 or currentVolume
+        pcall(function()
+            currentSound.Volume = mute and 0 or currentVolume
+        end)
     end
     
-    -- FIXED: Correct colors for mute button
+    -- If unmuting, clear the stored volumes table
+    if not mute then
+        originalSoundVolumes = {}
+    end
+    
+    -- Update mute button appearance
     if MuteToggle then
         if mute then
-            MuteToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)  -- Green when ON
+            MuteToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
             MuteToggle.Text = "🔇 GAME MUTE: ON"
         else
-            MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)  -- Red when OFF
+            MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
             MuteToggle.Text = "🔊 GAME MUTE: OFF"
         end
     end
@@ -184,6 +249,39 @@ local function updateSpeed(speed)
     end
 end
 
+-- Pause/Resume function
+local function togglePause()
+    if not currentSound then return end
+    
+    if isPaused then
+        -- Resume
+        currentSound.TimePosition = pausedTimePosition
+        currentSound:Resume()
+        isPaused = false
+        isPlaying = true
+        if PauseButton then
+            PauseButton.Text = "⏸ PAUSE"
+        end
+        if StatusLabel then
+            StatusLabel.Text = "▶ Resumed"
+            StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+        end
+    else
+        -- Pause
+        pausedTimePosition = currentSound.TimePosition
+        currentSound:Pause()
+        isPaused = true
+        isPlaying = false
+        if PauseButton then
+            PauseButton.Text = "▶ RESUME"
+        end
+        if StatusLabel then
+            StatusLabel.Text = "⏸ Paused"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        end
+    end
+end
+
 -- FIXED: Function to play music from URL with unique filenames
 local function playMusicFromUrl(url, fileName)
     -- Stop current music first
@@ -215,6 +313,12 @@ local function playMusicFromUrl(url, fileName)
         
         currentSound:Play()
         isPlaying = true
+        isPaused = false
+        pausedTimePosition = 0
+        
+        if PauseButton then
+            PauseButton.Text = "⏸ PAUSE"
+        end
         
         -- Clean up old audio files (keep only last 10)
         pcall(function()
@@ -267,18 +371,17 @@ local function playMusicFromUrl(url, fileName)
     end
 end
 
--- ========== GUI CREATION (CREATE ALL ELEMENTS FIRST) ==========
+-- ========== GUI CREATION ==========
 
--- Create main GUI with proper parenting to avoid character death issues
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "MusicPlayerGUI"
-ScreenGui.ResetOnSpawn = false -- This prevents GUI from disappearing on respawn
+ScreenGui.ResetOnSpawn = false
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.Parent = player:WaitForChild("PlayerGui")
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 400, 0, 320) -- Slightly taller for speed control
+MainFrame.Size = UDim2.new(0, 400, 0, 320)
 MainFrame.Position = UDim2.new(0.5, -200, 0.5, -160)
 MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 MainFrame.BorderSizePixel = 0
@@ -399,7 +502,7 @@ local MinimizeUICorner = Instance.new("UICorner")
 MinimizeUICorner.CornerRadius = UDim.new(0, 8)
 MinimizeUICorner.Parent = MinimizeButton
 
--- Close button - FIXED square bug
+-- Close button
 local CloseButton = Instance.new("TextButton")
 CloseButton.Name = "CloseButton"
 CloseButton.Size = UDim2.new(0, 40, 0, 35)
@@ -483,10 +586,8 @@ local function updateScrollingFrame()
     
     if textWidth > frameWidth - 10 then
         UrlScrollingFrame.CanvasSize = UDim2.new(0, textWidth + 20, 0, 0)
-        UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
     else
         UrlScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-        UrlScrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
     end
 end
 
@@ -498,7 +599,7 @@ local TextBoxUICorner = Instance.new("UICorner")
 TextBoxUICorner.CornerRadius = UDim.new(0, 6)
 TextBoxUICorner.Parent = UrlContainer
 
--- Control buttons frame
+-- Control buttons frame (3 buttons: Play, Pause, Stop)
 local ControlButtons = Instance.new("Frame")
 ControlButtons.Name = "ControlButtons"
 ControlButtons.Size = UDim2.new(1, 0, 0, 40)
@@ -506,41 +607,58 @@ ControlButtons.Position = UDim2.new(0, 0, 0, 70)
 ControlButtons.BackgroundTransparency = 1
 ControlButtons.Parent = ContentFrame
 
--- Play button
+-- Play button (31% width)
 local PlayButton = Instance.new("TextButton")
 PlayButton.Name = "PlayButton"
-PlayButton.Size = UDim2.new(0.48, 0, 1, 0)
+PlayButton.Size = UDim2.new(0.31, 0, 1, 0)
 PlayButton.Position = UDim2.new(0, 0, 0, 0)
 PlayButton.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
 PlayButton.BorderSizePixel = 0
 PlayButton.Text = "▶ PLAY"
 PlayButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 PlayButton.Font = Enum.Font.GothamBold
-PlayButton.TextSize = 14
+PlayButton.TextSize = 13
 PlayButton.Parent = ControlButtons
 
 local PlayButtonUICorner = Instance.new("UICorner")
 PlayButtonUICorner.CornerRadius = UDim.new(0, 6)
 PlayButtonUICorner.Parent = PlayButton
 
--- Stop button
+-- Pause button (31% width, middle)
+PauseButton = Instance.new("TextButton")
+PauseButton.Name = "PauseButton"
+PauseButton.Size = UDim2.new(0.31, 0, 1, 0)
+PauseButton.Position = UDim2.new(0.345, 0, 0, 0)
+PauseButton.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
+PauseButton.BorderSizePixel = 0
+PauseButton.Text = "⏸ PAUSE"
+PauseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+PauseButton.Font = Enum.Font.GothamBold
+PauseButton.TextSize = 13
+PauseButton.Parent = ControlButtons
+
+local PauseButtonUICorner = Instance.new("UICorner")
+PauseButtonUICorner.CornerRadius = UDim.new(0, 6)
+PauseButtonUICorner.Parent = PauseButton
+
+-- Stop button (31% width)
 local StopButton = Instance.new("TextButton")
 StopButton.Name = "StopButton"
-StopButton.Size = UDim2.new(0.48, 0, 1, 0)
-StopButton.Position = UDim2.new(0.52, 0, 0, 0)
+StopButton.Size = UDim2.new(0.31, 0, 1, 0)
+StopButton.Position = UDim2.new(0.69, 0, 0, 0)
 StopButton.BackgroundColor3 = Color3.fromRGB(200, 70, 70)
 StopButton.BorderSizePixel = 0
 StopButton.Text = "⏹ STOP"
 StopButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 StopButton.Font = Enum.Font.GothamBold
-StopButton.TextSize = 14
+StopButton.TextSize = 13
 StopButton.Parent = ControlButtons
 
 local StopButtonUICorner = Instance.new("UICorner")
 StopButtonUICorner.CornerRadius = UDim.new(0, 6)
 StopButtonUICorner.Parent = StopButton
 
--- History button (ORIGINAL POSITION)
+-- History button (ADDED UICorner)
 local HistoryButton = Instance.new("TextButton")
 HistoryButton.Name = "HistoryButton"
 HistoryButton.Size = UDim2.new(1, 0, 0, 30)
@@ -553,7 +671,12 @@ HistoryButton.Font = Enum.Font.GothamBold
 HistoryButton.TextSize = 12
 HistoryButton.Parent = ControlButtons
 
--- Toggle buttons frame (ORIGINAL POSITION)
+-- ADDED: History button corner
+local HistoryButtonUICorner = Instance.new("UICorner")
+HistoryButtonUICorner.CornerRadius = UDim.new(0, 6)
+HistoryButtonUICorner.Parent = HistoryButton
+
+-- Toggle buttons frame
 local ToggleFrame = Instance.new("Frame")
 ToggleFrame.Name = "ToggleFrame"
 ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
@@ -561,7 +684,7 @@ ToggleFrame.Position = UDim2.new(0, 0, 0, 120)
 ToggleFrame.BackgroundTransparency = 1
 ToggleFrame.Parent = ContentFrame
 
--- Mute toggle
+-- Mute toggle (ALREADY HAS UICorner - keeping it)
 MuteToggle = Instance.new("TextButton")
 MuteToggle.Name = "MuteToggle"
 MuteToggle.Size = UDim2.new(0, 120, 0, 30)
@@ -578,7 +701,7 @@ local MuteUICorner = Instance.new("UICorner")
 MuteUICorner.CornerRadius = UDim.new(0, 6)
 MuteUICorner.Parent = MuteToggle
 
--- Loop toggle
+-- Loop toggle (ALREADY HAS UICorner - keeping it)
 LoopToggle = Instance.new("TextButton")
 LoopToggle.Name = "LoopToggle"
 LoopToggle.Size = UDim2.new(0, 100, 0, 30)
@@ -595,7 +718,7 @@ local LoopUICorner = Instance.new("UICorner")
 LoopUICorner.CornerRadius = UDim.new(0, 6)
 LoopUICorner.Parent = LoopToggle
 
--- Volume control (ORIGINAL POSITION)
+-- Volume control
 local VolumeFrame = Instance.new("Frame")
 VolumeFrame.Name = "VolumeFrame"
 VolumeFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -640,7 +763,7 @@ local VolumeFillCorner = Instance.new("UICorner")
 VolumeFillCorner.CornerRadius = UDim.new(0, 10)
 VolumeFillCorner.Parent = VolumeFill
 
--- ========== SPEED CONTROL ==========
+-- Speed control
 local SpeedFrame = Instance.new("Frame")
 SpeedFrame.Name = "SpeedFrame"
 SpeedFrame.Size = UDim2.new(1, 0, 0, 40)
@@ -660,7 +783,6 @@ SpeedLabel.Font = Enum.Font.Gotham
 SpeedLabel.TextSize = 12
 SpeedLabel.Parent = SpeedFrame
 
--- Speed textbox
 SpeedTextBox = Instance.new("TextBox")
 SpeedTextBox.Name = "SpeedTextBox"
 SpeedTextBox.Size = UDim2.new(1, -130, 0, 25)
@@ -680,7 +802,6 @@ local SpeedTextBoxCorner = Instance.new("UICorner")
 SpeedTextBoxCorner.CornerRadius = UDim.new(0, 5)
 SpeedTextBoxCorner.Parent = SpeedTextBox
 
--- Decrease speed button
 local SpeedDownButton = Instance.new("TextButton")
 SpeedDownButton.Name = "SpeedDownButton"
 SpeedDownButton.Size = UDim2.new(0, 20, 0, 25)
@@ -698,7 +819,6 @@ local SpeedDownCorner = Instance.new("UICorner")
 SpeedDownCorner.CornerRadius = UDim.new(0, 5)
 SpeedDownCorner.Parent = SpeedDownButton
 
--- Increase speed button
 local SpeedUpButton = Instance.new("TextButton")
 SpeedUpButton.Name = "SpeedUpButton"
 SpeedUpButton.Size = UDim2.new(0, 20, 0, 25)
@@ -716,7 +836,7 @@ local SpeedUpCorner = Instance.new("UICorner")
 SpeedUpCorner.CornerRadius = UDim.new(0, 5)
 SpeedUpCorner.Parent = SpeedUpButton
 
--- Status label (BOTTOM)
+-- Status label
 StatusLabel = Instance.new("TextLabel")
 StatusLabel.Name = "StatusLabel"
 StatusLabel.Size = UDim2.new(1, 0, 0, 20)
@@ -743,7 +863,6 @@ local HistoryPanelCorner = Instance.new("UICorner")
 HistoryPanelCorner.CornerRadius = UDim.new(0, 8)
 HistoryPanelCorner.Parent = HistoryPanel
 
--- History title
 local HistoryTitle = Instance.new("TextLabel")
 HistoryTitle.Name = "HistoryTitle"
 HistoryTitle.Size = UDim2.new(1, 0, 0, 30)
@@ -760,7 +879,6 @@ local HistoryTitleCorner = Instance.new("UICorner")
 HistoryTitleCorner.CornerRadius = UDim.new(0, 8)
 HistoryTitleCorner.Parent = HistoryTitle
 
--- Back button
 local BackButton = Instance.new("TextButton")
 BackButton.Name = "BackButton"
 BackButton.Size = UDim2.new(0, 80, 0, 25)
@@ -777,7 +895,6 @@ local BackButtonCorner = Instance.new("UICorner")
 BackButtonCorner.CornerRadius = UDim.new(0, 6)
 BackButtonCorner.Parent = BackButton
 
--- History list scroll frame
 HistoryScrollFrame = Instance.new("ScrollingFrame")
 HistoryScrollFrame.Name = "HistoryScrollFrame"
 HistoryScrollFrame.Size = UDim2.new(1, -20, 1, -70)
@@ -793,7 +910,6 @@ local HistoryScrollCorner = Instance.new("UICorner")
 HistoryScrollCorner.CornerRadius = UDim.new(0, 6)
 HistoryScrollCorner.Parent = HistoryScrollFrame
 
--- No history label
 NoHistoryLabel = Instance.new("TextLabel")
 NoHistoryLabel.Name = "NoHistoryLabel"
 NoHistoryLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -806,8 +922,6 @@ NoHistoryLabel.TextSize = 12
 NoHistoryLabel.TextWrapped = true
 NoHistoryLabel.Visible = true
 NoHistoryLabel.Parent = HistoryScrollFrame
-
--- ========== SEARCH GUI ==========
 
 -- Search Panel
 SearchPanel = Instance.new("Frame")
@@ -822,13 +936,13 @@ SearchPanel.ZIndex = 10
 
 local SearchPanelCorner = Instance.new("UICorner")
 SearchPanelCorner.CornerRadius = UDim.new(0, 8)
-SearchPanelCorner.Parent = SearchPanel-- Add stroke to search panel
+SearchPanelCorner.Parent = SearchPanel
+
 local SearchPanelStroke = Instance.new("UIStroke")
 SearchPanelStroke.Thickness = 2
 SearchPanelStroke.Color = Color3.fromRGB(100, 150, 255)
 SearchPanelStroke.Parent = SearchPanel
 
--- Search title
 local SearchTitle = Instance.new("TextLabel")
 SearchTitle.Name = "SearchTitle"
 SearchTitle.Size = UDim2.new(1, 0, 0, 30)
@@ -845,7 +959,6 @@ local SearchTitleCorner = Instance.new("UICorner")
 SearchTitleCorner.CornerRadius = UDim.new(0, 8)
 SearchTitleCorner.Parent = SearchTitle
 
--- Search input frame
 local SearchInputFrame = Instance.new("Frame")
 SearchInputFrame.Name = "SearchInputFrame"
 SearchInputFrame.Size = UDim2.new(1, -20, 0, 40)
@@ -858,14 +971,13 @@ local SearchInputCorner = Instance.new("UICorner")
 SearchInputCorner.CornerRadius = UDim.new(0, 6)
 SearchInputCorner.Parent = SearchInputFrame
 
--- Search textbox
 SearchTextBox = Instance.new("TextBox")
 SearchTextBox.Name = "SearchTextBox"
 SearchTextBox.Size = UDim2.new(1, -40, 1, 0)
 SearchTextBox.Position = UDim2.new(0, 10, 0, 0)
 SearchTextBox.BackgroundTransparency = 1
 SearchTextBox.Text = ""
-SearchTextBox.PlaceholderText = "🔍 search music now!"
+SearchTextBox.PlaceholderText = "🔍 search by name or paste URL"
 SearchTextBox.PlaceholderColor3 = Color3.fromRGB(180, 180, 180)
 SearchTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 SearchTextBox.Font = Enum.Font.Gotham
@@ -874,7 +986,6 @@ SearchTextBox.ClearTextOnFocus = false
 SearchTextBox.TextXAlignment = Enum.TextXAlignment.Left
 SearchTextBox.Parent = SearchInputFrame
 
--- Search button inside panel
 local SearchPanelButton = Instance.new("TextButton")
 SearchPanelButton.Name = "SearchPanelButton"
 SearchPanelButton.Size = UDim2.new(0, 30, 0, 30)
@@ -891,13 +1002,12 @@ local SearchPanelButtonCorner = Instance.new("UICorner")
 SearchPanelButtonCorner.CornerRadius = UDim.new(0, 4)
 SearchPanelButtonCorner.Parent = SearchPanelButton
 
--- Instruction label
 local SearchInstruction = Instance.new("TextLabel")
 SearchInstruction.Name = "SearchInstruction"
 SearchInstruction.Size = UDim2.new(1, -20, 0, 30)
 SearchInstruction.Position = UDim2.new(0, 10, 0, 85)
 SearchInstruction.BackgroundTransparency = 1
-SearchInstruction.Text = "Enter full GitHub raw URL or search by name"
+SearchInstruction.Text = "Enter song name or full GitHub raw URL"
 SearchInstruction.TextColor3 = Color3.fromRGB(200, 200, 220)
 SearchInstruction.TextXAlignment = Enum.TextXAlignment.Left
 SearchInstruction.TextWrapped = true
@@ -905,7 +1015,6 @@ SearchInstruction.Font = Enum.Font.Gotham
 SearchInstruction.TextSize = 10
 SearchInstruction.Parent = SearchPanel
 
--- Search results scroll frame
 SearchScrollFrame = Instance.new("ScrollingFrame")
 SearchScrollFrame.Name = "SearchScrollFrame"
 SearchScrollFrame.Size = UDim2.new(1, -20, 1, -130)
@@ -921,7 +1030,6 @@ local SearchScrollCorner = Instance.new("UICorner")
 SearchScrollCorner.CornerRadius = UDim.new(0, 6)
 SearchScrollCorner.Parent = SearchScrollFrame
 
--- No results label
 SearchNoResultsLabel = Instance.new("TextLabel")
 SearchNoResultsLabel.Name = "SearchNoResultsLabel"
 SearchNoResultsLabel.Size = UDim2.new(1, 0, 0, 50)
@@ -937,31 +1045,25 @@ SearchNoResultsLabel.Parent = SearchScrollFrame
 
 -- ========== SPEED FUNCTIONS ==========
 
--- Validate and apply speed from textbox
 local function applySpeedFromTextBox()
     local text = SpeedTextBox.Text
-    -- Remove 'x' if present
     text = string.gsub(text, "x", "")
     text = string.gsub(text, "X", "")
     
     local speed = tonumber(text)
     
     if speed then
-        -- Clamp between 0 and 100
         speed = math.clamp(speed, 0, 100)
         updateSpeed(speed)
     else
-        -- Reset to current speed if invalid input
         SpeedTextBox.Text = string.format("%.2f", currentSpeed) .. "x"
     end
 end
 
--- Speed textbox events
 SpeedTextBox.FocusLost:Connect(function(enterPressed)
     applySpeedFromTextBox()
 end)
 
--- Speed buttons
 SpeedUpButton.MouseButton1Click:Connect(function()
     local newSpeed = math.min(currentSpeed + 0.25, 100)
     updateSpeed(newSpeed)
@@ -972,14 +1074,11 @@ SpeedDownButton.MouseButton1Click:Connect(function()
     updateSpeed(newSpeed)
 end)
 
--- ========== GUI FUNCTIONS ==========
+-- ========== IMPROVED SEARCH FUNCTION ==========
 
--- Real GitHub HTTP search function
 local function searchMusic(searchTerm)
-    -- Clear previous results safely
     if not SearchScrollFrame then return end
     
-    -- Safely clear children
     for _, child in pairs(SearchScrollFrame:GetChildren()) do
         if child.Name == "SearchResultItem" then
             child:Destroy()
@@ -997,19 +1096,26 @@ local function searchMusic(searchTerm)
     
     SearchNoResultsLabel.Visible = false
     
-    -- Check if it's a full URL
     local isFullUrl = string.find(searchTerm, "http") and string.find(searchTerm, ".mp3")
     
     if isFullUrl then
-        -- Try to check if the URL exists by attempting to get headers
         local success, result = pcall(function()
-            -- Try to get just the headers to check if file exists
             local response = game:HttpGet(searchTerm)
             return response
         end)
         
         if success and result and #result > 0 then
-            -- URL exists, show it as a result
+            local fileName = "audio.mp3"
+            local urlParts = string.split(searchTerm, "/")
+            if #urlParts > 0 then
+                local lastPart = urlParts[#urlParts]
+                if string.find(lastPart, ".mp3") then
+                    fileName = lastPart
+                    fileName = string.gsub(fileName, "%%20", " ")
+                    fileName = string.gsub(fileName, "%%25", "%%")
+                end
+            end
+            
             local resultItem = Instance.new("Frame")
             resultItem.Name = "SearchResultItem"
             resultItem.Size = UDim2.new(1, -10, 0, 50)
@@ -1021,17 +1127,6 @@ local function searchMusic(searchTerm)
             local itemCorner = Instance.new("UICorner")
             itemCorner.CornerRadius = UDim.new(0, 4)
             itemCorner.Parent = resultItem
-            
-            -- Extract filename from URL
-            local fileName = "audio.mp3"
-            local urlParts = string.split(searchTerm, "/")
-            if #urlParts > 0 then
-                local lastPart = urlParts[#urlParts]
-                if string.find(lastPart, ".mp3") then
-                    fileName = lastPart
-                    fileName = string.gsub(fileName, "%%20", " ")
-                end
-            end
             
             local urlLabel = Instance.new("TextLabel")
             urlLabel.Size = UDim2.new(1, -70, 0, 20)
@@ -1049,7 +1144,7 @@ local function searchMusic(searchTerm)
             pathLabel.Size = UDim2.new(1, -70, 0, 15)
             pathLabel.Position = UDim2.new(0, 5, 0, 25)
             pathLabel.BackgroundTransparency = 1
-            pathLabel.Text = "✓ File exists on GitHub"
+            pathLabel.Text = "✓ Direct URL"
             pathLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
             pathLabel.TextXAlignment = Enum.TextXAlignment.Left
             pathLabel.Font = Enum.Font.Gotham
@@ -1079,24 +1174,119 @@ local function searchMusic(searchTerm)
             end)
             
             SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 60)
-            SearchNoResultsLabel.Visible = false
         else
-            -- URL doesn't exist
             SearchNoResultsLabel.Visible = true
-            SearchNoResultsLabel.Text = "❌ File not found on GitHub"
+            SearchNoResultsLabel.Text = "❌ URL not found or inaccessible"
             SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
         end
     else
-        -- Search by name (show message that you need full URL)
-        SearchNoResultsLabel.Visible = true
-        SearchNoResultsLabel.Text = "Please enter the full GitHub raw URL\nExample: https://github.com/.../song.mp3"
-        SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        local searchLower = string.lower(searchTerm)
+        local foundResults = {}
+        
+        pcall(function()
+            local baseUrl = "https://github.com/Bro-broa3/PrimeMusic/raw/main/"
+            local possibleFiles = {}
+            
+            local encodedName = string.gsub(searchTerm, " ", "%%20")
+            local encodedNameLower = string.gsub(string.lower(searchTerm), " ", "%%20")
+            
+            table.insert(possibleFiles, encodedName .. ".mp3")
+            table.insert(possibleFiles, encodedNameLower .. ".mp3")
+            table.insert(possibleFiles, string.gsub(searchTerm, " ", "") .. ".mp3")
+            table.insert(possibleFiles, string.gsub(string.lower(searchTerm), " ", "_") .. ".mp3")
+            table.insert(possibleFiles, string.gsub(string.lower(searchTerm), " ", "-") .. ".mp3")
+            table.insert(possibleFiles, string.lower(string.gsub(searchTerm, " ", "")) .. ".mp3")
+            
+            for _, fileName in ipairs(possibleFiles) do
+                local fullUrl = baseUrl .. fileName
+                local success = pcall(function()
+                    local response = game:HttpGet(fullUrl)
+                    if response and #response > 1000 then
+                        table.insert(foundResults, {
+                            url = fullUrl,
+                            fileName = string.gsub(fileName, "%%20", " ")
+                        })
+                    end
+                end)
+            end
+        end)
+        
+        if #foundResults > 0 then
+            local totalHeight = 0
+            for _, result in ipairs(foundResults) do
+                local resultItem = Instance.new("Frame")
+                resultItem.Name = "SearchResultItem"
+                resultItem.Size = UDim2.new(1, -10, 0, 50)
+                resultItem.Position = UDim2.new(0, 5, 0, totalHeight)
+                resultItem.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                resultItem.BorderSizePixel = 0
+                resultItem.Parent = SearchScrollFrame
+                
+                local itemCorner = Instance.new("UICorner")
+                itemCorner.CornerRadius = UDim.new(0, 4)
+                itemCorner.Parent = resultItem
+                
+                local urlLabel = Instance.new("TextLabel")
+                urlLabel.Size = UDim2.new(1, -70, 0, 20)
+                urlLabel.Position = UDim2.new(0, 5, 0, 5)
+                urlLabel.BackgroundTransparency = 1
+                urlLabel.Text = result.fileName
+                urlLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+                urlLabel.TextXAlignment = Enum.TextXAlignment.Left
+                urlLabel.Font = Enum.Font.GothamBold
+                urlLabel.TextSize = 12
+                urlLabel.TextTruncate = Enum.TextTruncate.AtEnd
+                urlLabel.Parent = resultItem
+                
+                local pathLabel = Instance.new("TextLabel")
+                pathLabel.Size = UDim2.new(1, -70, 0, 15)
+                pathLabel.Position = UDim2.new(0, 5, 0, 25)
+                pathLabel.BackgroundTransparency = 1
+                pathLabel.Text = "✓ Found by name"
+                pathLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+                pathLabel.TextXAlignment = Enum.TextXAlignment.Left
+                pathLabel.Font = Enum.Font.Gotham
+                pathLabel.TextSize = 9
+                pathLabel.Parent = resultItem
+                
+                local playButton = Instance.new("TextButton")
+                playButton.Size = UDim2.new(0, 60, 0, 30)
+                playButton.Position = UDim2.new(1, -65, 0, 10)
+                playButton.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
+                playButton.BorderSizePixel = 0
+                playButton.Text = "PLAY"
+                playButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+                playButton.Font = Enum.Font.GothamBold
+                playButton.TextSize = 10
+                playButton.Parent = resultItem
+                
+                local playButtonCorner = Instance.new("UICorner")
+                playButtonCorner.CornerRadius = UDim.new(0, 4)
+                playButtonCorner.Parent = playButton
+                
+                local resultUrl = result.url
+                local resultFileName = result.fileName
+                
+                playButton.MouseButton1Click:Connect(function()
+                    if isSearchOpen then
+                        toggleSearchPanel()
+                    end
+                    playMusicFromUrl(resultUrl, resultFileName)
+                end)
+                
+                totalHeight = totalHeight + 55
+            end
+            
+            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, totalHeight)
+        else
+            SearchNoResultsLabel.Visible = true
+            SearchNoResultsLabel.Text = "❌ No results found for: " .. searchTerm .. "\nTry a full GitHub raw URL"
+            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        end
     end
 end
 
--- Toggle search panel function
 function toggleSearchPanel()
-    -- Close history if open
     if isHistoryOpen then
         toggleHistoryPanel()
     end
@@ -1105,31 +1295,26 @@ function toggleSearchPanel()
     
     if isSearchOpen then
         SearchPanel.Visible = true
-        -- Slide in animation
         local tween = TweenService:Create(SearchPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(1, 10, 0, 0)})
         tween:Play()
         SearchTextBox.Text = ""
         SearchTextBox:CaptureFocus()
-        -- Clear previous results
         for _, child in pairs(SearchScrollFrame:GetChildren()) do
             if child.Name == "SearchResultItem" then
                 child:Destroy()
             end
         end
         SearchNoResultsLabel.Visible = true
-        SearchNoResultsLabel.Text = "🔍 Enter a GitHub raw URL"
+        SearchNoResultsLabel.Text = "🔍 Enter song name or paste URL"
     else
-        -- Slide out animation
-        local tween = TweenService:Create(SearchPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(1, -310, 0, 0)})
+        local tween = TweenService:Create(SearchPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(1, 310, 0, 0)})
         tween:Play()
         wait(0.3)
         SearchPanel.Visible = false
     end
 end
 
--- Toggle history panel function
 function toggleHistoryPanel()
-    -- Close search if open
     if isSearchOpen then
         toggleSearchPanel()
     end
@@ -1151,16 +1336,13 @@ function toggleHistoryPanel()
     end
 end
 
--- Update the history list display with fixed closure for buttons
 function updateHistoryList()
-    -- Clear existing history items
     for _, child in pairs(HistoryScrollFrame:GetChildren()) do
         if child.Name == "HistoryItem" then
             child:Destroy()
         end
     end
     
-    -- Show/hide no history label
     NoHistoryLabel.Visible = #downloadHistory == 0
     
     if #downloadHistory == 0 then
@@ -1172,15 +1354,13 @@ function updateHistoryList()
     local spacing = 5
     local totalHeight = 0
     
-    -- Create history items
     for i, entry in ipairs(downloadHistory) do
-        -- Create a local copy of the entry for this iteration to fix closure issue
         local currentEntry = {
             url = entry.url,
             fileName = entry.fileName,
             date = entry.date
         }
-        local currentIndex = i -- Store the index for delete button
+        local currentIndex = i
         
         local historyItem = Instance.new("Frame")
         historyItem.Name = "HistoryItem"
@@ -1194,7 +1374,6 @@ function updateHistoryList()
         itemCorner.CornerRadius = UDim.new(0, 4)
         itemCorner.Parent = historyItem
         
-        -- File name label
         local fileNameLabel = Instance.new("TextLabel")
         fileNameLabel.Name = "FileNameLabel"
         fileNameLabel.Size = UDim2.new(0.6, -5, 0, 20)
@@ -1208,7 +1387,6 @@ function updateHistoryList()
         fileNameLabel.TextTruncate = Enum.TextTruncate.AtEnd
         fileNameLabel.Parent = historyItem
         
-        -- Date label
         local dateLabel = Instance.new("TextLabel")
         dateLabel.Name = "DateLabel"
         dateLabel.Size = UDim2.new(0.6, -5, 0, 15)
@@ -1221,7 +1399,6 @@ function updateHistoryList()
         dateLabel.TextSize = 9
         dateLabel.Parent = historyItem
         
-        -- Play button for history item
         local playHistoryButton = Instance.new("TextButton")
         playHistoryButton.Name = "PlayHistoryButton"
         playHistoryButton.Size = UDim2.new(0.15, -5, 0, 25)
@@ -1238,7 +1415,6 @@ function updateHistoryList()
         playButtonCorner.CornerRadius = UDim.new(0, 4)
         playButtonCorner.Parent = playHistoryButton
         
-        -- Delete button for history item
         local deleteHistoryButton = Instance.new("TextButton")
         deleteHistoryButton.Name = "DeleteHistoryButton"
         deleteHistoryButton.Size = UDim2.new(0.15, -5, 0, 25)
@@ -1255,18 +1431,13 @@ function updateHistoryList()
         deleteButtonCorner.CornerRadius = UDim.new(0, 4)
         deleteButtonCorner.Parent = deleteHistoryButton
         
-        -- FIXED: Play button functionality with proper closure (uses currentEntry, not loop variable)
         playHistoryButton.MouseButton1Click:Connect(function()
             if currentEntry and currentEntry.url then
                 StatusLabel.Text = "⏬ Loading from history..."
                 StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
-                
-                -- Auto-close history panel
                 if isHistoryOpen then
                     toggleHistoryPanel()
                 end
-                
-                -- Play the music immediately with the correct URL
                 playMusicFromUrl(currentEntry.url, currentEntry.fileName or "audio.mp3")
             else
                 StatusLabel.Text = "❌ Error: Invalid history entry"
@@ -1274,12 +1445,11 @@ function updateHistoryList()
             end
         end)
         
-        -- FIXED: Delete button functionality with proper index
         deleteHistoryButton.MouseButton1Click:Connect(function()
             if removeFromHistory(currentIndex) then
                 StatusLabel.Text = "🗑️ Removed from history"
                 StatusLabel.TextColor3 = Color3.fromRGB(255, 150, 150)
-                updateHistoryList() -- Refresh the list
+                updateHistoryList()
             end
         end)
         
@@ -1291,7 +1461,6 @@ end
 
 -- ========== EVENT CONNECTIONS ==========
 
--- Custom drag functionality
 local dragInput, dragStart, startPos
 
 local function update(input)
@@ -1324,7 +1493,6 @@ UserInputService.InputChanged:Connect(function(input)
     end
 end)
 
--- Volume slider interaction
 VolumeSlider.MouseButton1Down:Connect(function()
     local connection
     connection = RunService.Heartbeat:Connect(function()
@@ -1347,7 +1515,6 @@ VolumeSlider.MouseButton1Click:Connect(function()
     updateVolumeSlider(volume)
 end)
 
--- Button functions
 CloseButton.MouseButton1Click:Connect(function()
     if isMuted then
         muteAllGameSounds(false)
@@ -1363,6 +1530,10 @@ MinimizeButton.MouseButton1Click:Connect(function()
         OutlineFrame.Visible = true
         isMinimized = false
     else
+        if isSearchOpen then
+            isSearchOpen = false
+            SearchPanel.Visible = false
+        end
         MainFrame.Size = minimizedSize
         ContentFrame.Visible = false
         OutlineFrame.Visible = false
@@ -1370,12 +1541,10 @@ MinimizeButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Search button functionality
 SearchButton.MouseButton1Click:Connect(function()
     toggleSearchPanel()
 end)
 
--- Search panel search
 SearchPanelButton.MouseButton1Click:Connect(function()
     local searchTerm = SearchTextBox.Text
     searchMusic(searchTerm)
@@ -1388,7 +1557,6 @@ SearchTextBox.FocusLost:Connect(function(enterPressed)
     end
 end)
 
--- History button functionality
 HistoryButton.MouseButton1Click:Connect(function()
     toggleHistoryPanel()
 end)
@@ -1397,7 +1565,6 @@ BackButton.MouseButton1Click:Connect(function()
     toggleHistoryPanel()
 end)
 
--- Global mute
 MuteToggle.MouseButton1Click:Connect(function()
     muteAllGameSounds(not isMuted)
 end)
@@ -1419,7 +1586,6 @@ LoopToggle.MouseButton1Click:Connect(function()
     end
 end)
 
--- Music playback
 PlayButton.MouseButton1Click:Connect(function()
     local url = UrlTextBox.Text
     
@@ -1429,14 +1595,12 @@ PlayButton.MouseButton1Click:Connect(function()
         return
     end
     
-    -- Fixed URL validation
     if string.sub(string.lower(url), -4) ~= ".mp3" then
         StatusLabel.Text = "❌ Error: URL must end with .mp3"
         StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         return
     end
     
-    -- Extract file name from URL
     local fileName = "audio.mp3"
     local urlParts = string.split(url, "/")
     if #urlParts > 0 then
@@ -1451,22 +1615,31 @@ PlayButton.MouseButton1Click:Connect(function()
     playMusicFromUrl(url, fileName)
 end)
 
--- Stop button
+PauseButton.MouseButton1Click:Connect(function()
+    if not currentSound then
+        StatusLabel.Text = "❌ No music playing"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+        return
+    end
+    togglePause()
+end)
+
 StopButton.MouseButton1Click:Connect(function()
     stopMusic()
+    if PauseButton then
+        PauseButton.Text = "⏸ PAUSE"
+    end
     StatusLabel.Text = "⏹ Music Stopped"
     StatusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
 end)
 
 -- ========== INITIALIZATION ==========
 
--- Initialize
 updateVolumeSlider(currentVolume)
 updateSpeed(currentSpeed)
 downloadHistory = loadHistory()
 updateHistoryList()
 
--- Handle character respawning
 local function onCharacterAdded(character)
     if currentSound and isPlaying then
         currentSound.Parent = workspace
@@ -1478,7 +1651,6 @@ end
 
 player.CharacterAdded:Connect(onCharacterAdded)
 
--- Auto-cleanup when player leaves
 Players.PlayerRemoving:Connect(function(leavingPlayer)
     if leavingPlayer == player then
         if isMuted then
