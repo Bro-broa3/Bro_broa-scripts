@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - Ultimate Mute, Info Button, All Features
+-- Roblox Exploit MP3 Player GUI - With Music Cache System + All Features
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -24,12 +24,61 @@ local isPlaying = false
 local isPaused = false
 local pausedTimePosition = 0
 local HISTORY_FILE = "mp3_history.json"
+local CACHE_FILE = "mp3_cache.json"
+
+-- Music cache system
+local musicCache = {} -- {url = {fileName = "audio_xxx.mp3", soundId = "rbxassetid://..."}}
 
 local originalSoundVolumes = {}
 local originalSoundGroupVolumes = {}
 local originalSoundServiceMuted = false
 
 -- ========== CORE FUNCTIONS ==========
+
+-- Load cache from file
+local function loadCache()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(CACHE_FILE) then
+            local jsonData = readfile(CACHE_FILE)
+            return HttpService:JSONDecode(jsonData)
+        end
+    end)
+    return success and result or {}
+end
+
+-- Save cache to file
+local function saveCache()
+    local success, errorMsg = pcall(function()
+        if writefile then
+            local jsonData = HttpService:JSONEncode(musicCache)
+            writefile(CACHE_FILE, jsonData)
+        end
+    end)
+    if not success then
+        warn("Failed to save cache: " .. tostring(errorMsg))
+    end
+end
+
+-- Clean old cache files (keep only last 20)
+local function cleanOldCache()
+    pcall(function()
+        if listfiles then
+            local files = listfiles()
+            local cacheFiles = {}
+            for _, file in ipairs(files) do
+                if string.find(file, "cache_") and string.find(file, ".mp3") then
+                    table.insert(cacheFiles, file)
+                end
+            end
+            -- Sort by name (newest first)
+            table.sort(cacheFiles, function(a, b) return a > b end)
+            -- Delete old cache files (keep last 20)
+            for i = 21, #cacheFiles do
+                delfile(cacheFiles[i])
+            end
+        end
+    end)
+end
 
 local function loadHistory()
     local success, result = pcall(function()
@@ -54,6 +103,24 @@ local function saveHistory()
 end
 
 local function addToHistory(url, fileName)
+    -- Check if already in history
+    for _, entry in ipairs(downloadHistory) do
+        if entry.url == url then
+            -- Move to top
+            local idx = nil
+            for i, e in ipairs(downloadHistory) do
+                if e.url == url then
+                    idx = i
+                    break
+                end
+            end
+            if idx then
+                table.remove(downloadHistory, idx)
+            end
+            break
+        end
+    end
+    
     local historyEntry = {
         url = url,
         fileName = fileName,
@@ -81,8 +148,6 @@ end
 local function stopMusic()
     if currentSound then
         currentSound:Stop()
-        wait(0.1)
-        currentSound:Destroy()
         currentSound = nil
     end
     isPlaying = false
@@ -252,59 +317,101 @@ local function togglePause()
     end
 end
 
+-- NEW: Play music with caching system
 local function playMusicFromUrl(url, fileName)
     stopMusic()
+    
     if StatusLabel then
-        StatusLabel.Text = "⏬ Downloading..."
+        StatusLabel.Text = "⏬ Loading..."
         StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
     end
+    
+    -- Check if URL is already cached
+    if musicCache[url] and musicCache[url].fileName then
+        local cachedFile = musicCache[url].fileName
+        
+        -- Verify cached file still exists
+        if isfile and isfile(cachedFile) then
+            -- Use cached file
+            if StatusLabel then
+                StatusLabel.Text = "📦 Using cached file..."
+                StatusLabel.TextColor3 = Color3.fromRGB(100, 200, 255)
+            end
+            
+            currentSound = Instance.new("Sound")
+            currentSound.SoundId = getcustomasset(cachedFile)
+            currentSound.Volume = isMuted and 0 or currentVolume
+            currentSound.Looped = isLooping
+            currentSound.PlaybackSpeed = currentSpeed
+            currentSound.Parent = workspace
+            
+            currentSound:Play()
+            isPlaying = true
+            isPaused = false
+            pausedTimePosition = 0
+            
+            if PauseButton then PauseButton.Text = "⏸ PAUSE" end
+            
+            if StatusLabel then
+                StatusLabel.Text = "🎵 Now Playing: " .. (fileName or "Unknown")
+                StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
+            end
+            
+            addToHistory(url, fileName)
+            return true
+        else
+            -- Cache entry exists but file is missing, remove from cache
+            musicCache[url] = nil
+            saveCache()
+        end
+    end
+    
+    -- Download new file
+    if StatusLabel then
+        StatusLabel.Text = "⏬ Downloading... (one time)"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+    end
+    
     local timestamp = os.time()
-    local uniqueFileName = "audio_" .. timestamp .. ".mp3"
+    local cachedFileName = "cache_" .. timestamp .. ".mp3"
+    
     local success, errorMessage = pcall(function()
         local audioData = game:HttpGet(url)
-        writefile(uniqueFileName, audioData)
+        writefile(cachedFileName, audioData)
+        
+        -- Add to cache
+        musicCache[url] = {
+            fileName = cachedFileName,
+            timestamp = timestamp
+        }
+        saveCache()
+        
         currentSound = Instance.new("Sound")
-        currentSound.SoundId = getcustomasset(uniqueFileName)
+        currentSound.SoundId = getcustomasset(cachedFileName)
         currentSound.Volume = isMuted and 0 or currentVolume
         currentSound.Looped = isLooping
         currentSound.PlaybackSpeed = currentSpeed
         currentSound.Parent = workspace
+        
         currentSound:Play()
         isPlaying = true
         isPaused = false
         pausedTimePosition = 0
+        
         if PauseButton then PauseButton.Text = "⏸ PAUSE" end
-        pcall(function()
-            if listfiles then
-                local files = listfiles()
-                local audioFiles = {}
-                for _, file in ipairs(files) do
-                    if string.find(file, "audio_") and string.find(file, ".mp3") then
-                        table.insert(audioFiles, file)
-                    end
-                end
-                table.sort(audioFiles, function(a, b) return a > b end)
-                for i = 11, #audioFiles do
-                    delfile(audioFiles[i])
-                end
-            end
-        end)
-        local alreadyInHistory = false
-        for _, entry in ipairs(downloadHistory) do
-            if entry.url == url then
-                alreadyInHistory = true
-                break
-            end
-        end
-        if not alreadyInHistory then
-            addToHistory(url, fileName)
-        end
     end)
+    
     if success and currentSound then
         if StatusLabel then
             StatusLabel.Text = "🎵 Now Playing: " .. (fileName or "Unknown")
             StatusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         end
+        
+        addToHistory(url, fileName)
+        
+        -- Clean old cache files
+        cleanOldCache()
+        
         return true
     else
         if StatusLabel then
@@ -464,7 +571,7 @@ local CloseUICorner = Instance.new("UICorner")
 CloseUICorner.CornerRadius = UDim.new(0, 8)
 CloseUICorner.Parent = CloseButton
 
--- Info Panel (LEFT SIDE - Same height as main GUI)
+-- Info Panel
 InfoPanel = Instance.new("Frame")
 InfoPanel.Size = UDim2.new(0, 280, 1, 0)
 InfoPanel.Position = UDim2.new(0, -290, 0, 0)
@@ -483,7 +590,6 @@ InfoPanelStroke.Thickness = 2
 InfoPanelStroke.Color = Color3.fromRGB(100, 180, 255)
 InfoPanelStroke.Parent = InfoPanel
 
--- Info title
 local InfoTitle = Instance.new("TextLabel")
 InfoTitle.Size = UDim2.new(1, 0, 0, 30)
 InfoTitle.BackgroundColor3 = Color3.fromRGB(40, 45, 50)
@@ -498,7 +604,6 @@ local InfoTitleCorner = Instance.new("UICorner")
 InfoTitleCorner.CornerRadius = UDim.new(0, 8)
 InfoTitleCorner.Parent = InfoTitle
 
--- Info scroll frame
 InfoScrollFrame = Instance.new("ScrollingFrame")
 InfoScrollFrame.Size = UDim2.new(1, -20, 1, -40)
 InfoScrollFrame.Position = UDim2.new(0, 10, 0, 40)
@@ -513,7 +618,6 @@ local InfoScrollCorner = Instance.new("UICorner")
 InfoScrollCorner.CornerRadius = UDim.new(0, 6)
 InfoScrollCorner.Parent = InfoScrollFrame
 
--- Info text container (using RichText for colored text)
 InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(1, -20, 0, 500)
 InfoText.Position = UDim2.new(0, 10, 0, 10)
@@ -543,7 +647,6 @@ InfoText.TextWrapped = true
 InfoText.RichText = true
 InfoText.Parent = InfoScrollFrame
 
--- Update canvas size based on text
 local function updateInfoCanvas()
     local textHeight = InfoText.TextBounds.Y
     if textHeight > 0 then
@@ -630,7 +733,6 @@ ControlButtons.Position = UDim2.new(0, 0, 0, 70)
 ControlButtons.BackgroundTransparency = 1
 ControlButtons.Parent = ContentFrame
 
--- Play button
 local PlayButton = Instance.new("TextButton")
 PlayButton.Size = UDim2.new(0.31, 0, 1, 0)
 PlayButton.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
@@ -644,7 +746,6 @@ local PlayButtonUICorner = Instance.new("UICorner")
 PlayButtonUICorner.CornerRadius = UDim.new(0, 6)
 PlayButtonUICorner.Parent = PlayButton
 
--- Pause button
 PauseButton = Instance.new("TextButton")
 PauseButton.Size = UDim2.new(0.31, 0, 1, 0)
 PauseButton.Position = UDim2.new(0.345, 0, 0, 0)
@@ -659,7 +760,6 @@ local PauseButtonUICorner = Instance.new("UICorner")
 PauseButtonUICorner.CornerRadius = UDim.new(0, 6)
 PauseButtonUICorner.Parent = PauseButton
 
--- Stop button
 local StopButton = Instance.new("TextButton")
 StopButton.Size = UDim2.new(0.31, 0, 1, 0)
 StopButton.Position = UDim2.new(0.69, 0, 0, 0)
@@ -674,7 +774,6 @@ local StopButtonUICorner = Instance.new("UICorner")
 StopButtonUICorner.CornerRadius = UDim.new(0, 6)
 StopButtonUICorner.Parent = StopButton
 
--- History button
 local HistoryButton = Instance.new("TextButton")
 HistoryButton.Size = UDim2.new(1, 0, 0, 30)
 HistoryButton.Position = UDim2.new(0, 0, 0, 50)
@@ -689,7 +788,6 @@ local HistoryButtonUICorner = Instance.new("UICorner")
 HistoryButtonUICorner.CornerRadius = UDim.new(0, 6)
 HistoryButtonUICorner.Parent = HistoryButton
 
--- Toggle frame
 local ToggleFrame = Instance.new("Frame")
 ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
 ToggleFrame.Position = UDim2.new(0, 0, 0, 120)
@@ -723,7 +821,6 @@ local LoopUICorner = Instance.new("UICorner")
 LoopUICorner.CornerRadius = UDim.new(0, 6)
 LoopUICorner.Parent = LoopToggle
 
--- Volume
 local VolumeFrame = Instance.new("Frame")
 VolumeFrame.Size = UDim2.new(1, 0, 0, 40)
 VolumeFrame.Position = UDim2.new(0, 0, 0, 160)
@@ -762,7 +859,6 @@ local VolumeFillCorner = Instance.new("UICorner")
 VolumeFillCorner.CornerRadius = UDim.new(0, 10)
 VolumeFillCorner.Parent = VolumeFill
 
--- Speed
 local SpeedFrame = Instance.new("Frame")
 SpeedFrame.Size = UDim2.new(1, 0, 0, 40)
 SpeedFrame.Position = UDim2.new(0, 0, 0, 210)
@@ -826,7 +922,6 @@ local SpeedUpCorner = Instance.new("UICorner")
 SpeedUpCorner.CornerRadius = UDim.new(0, 5)
 SpeedUpCorner.Parent = SpeedUpButton
 
--- Status label
 StatusLabel = Instance.new("TextLabel")
 StatusLabel.Size = UDim2.new(1, 0, 0, 20)
 StatusLabel.Position = UDim2.new(0, 0, 1, -25)
@@ -1497,8 +1592,10 @@ end)
 
 updateVolumeSlider(currentVolume)
 updateSpeed(currentSpeed)
+musicCache = loadCache()
 downloadHistory = loadHistory()
 updateHistoryList()
+cleanOldCache()
 
 local function onCharacterAdded(character)
     if currentSound and isPlaying then
