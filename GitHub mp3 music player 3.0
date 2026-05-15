@@ -483,7 +483,7 @@ InfoPanelStroke.Thickness = 2
 InfoPanelStroke.Color = Color3.fromRGB(100, 180, 255)
 InfoPanelStroke.Parent = InfoPanel
 
--- Info title (NO close button)
+-- Info title
 local InfoTitle = Instance.new("TextLabel")
 InfoTitle.Size = UDim2.new(1, 0, 0, 30)
 InfoTitle.BackgroundColor3 = Color3.fromRGB(40, 45, 50)
@@ -513,19 +513,44 @@ local InfoScrollCorner = Instance.new("UICorner")
 InfoScrollCorner.CornerRadius = UDim.new(0, 6)
 InfoScrollCorner.Parent = InfoScrollFrame
 
--- Info text
+-- Info text container (using RichText for colored text)
 InfoText = Instance.new("TextLabel")
 InfoText.Size = UDim2.new(1, -20, 0, 500)
 InfoText.Position = UDim2.new(0, 10, 0, 10)
 InfoText.BackgroundTransparency = 1
-InfoText.Text = "Soon"
+InfoText.Text = [[
+<b>STEPS TO PLAY MUSIC:</b>
+
+<font color="#ff4444">1. UPLOAD</font> <font color="#ffffff">a music from</font> <font color="#ff4444">GitHub</font>
+<font color="#ff4444">2. RAW</font> <font color="#ffffff">the uploaded music link</font>
+<font color="#ff4444">3. PASTE</font> <font color="#ffffff">the raw GitHub link</font>
+
+<b>NOTES:</b>
+
+<font color="#ff4444">SEARCH</font> <font color="#ffffff">function is only from my GitHub</font>
+
+<font color="#9b59b6">DISCORD LINK:</font>
+<font color="#3498db">https://discord.gg/hTEvZ3nkZd</font>
+
+<font color="#f1c40f">KEY:</font> <font color="#ff4444">NOT EXIST</font>
+]]
 InfoText.TextColor3 = Color3.fromRGB(200, 220, 240)
 InfoText.TextXAlignment = Enum.TextXAlignment.Left
 InfoText.TextYAlignment = Enum.TextYAlignment.Top
 InfoText.Font = Enum.Font.Gotham
 InfoText.TextSize = 13
 InfoText.TextWrapped = true
+InfoText.RichText = true
 InfoText.Parent = InfoScrollFrame
+
+-- Update canvas size based on text
+local function updateInfoCanvas()
+    local textHeight = InfoText.TextBounds.Y
+    if textHeight > 0 then
+        InfoScrollFrame.CanvasSize = UDim2.new(0, 0, 0, textHeight + 20)
+    end
+end
+InfoText:GetPropertyChangedSignal("TextBounds"):Connect(updateInfoCanvas)
 
 -- Content frame
 local ContentFrame = Instance.new("Frame")
