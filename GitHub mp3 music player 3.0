@@ -230,6 +230,7 @@ local function applyTheme(themeName)
     SearchButton.BackgroundColor3 = theme.searchColor
     InfoButton.BackgroundColor3 = theme.infoColor
     SettingsButton.BackgroundColor3 = theme.settingColor
+    ToggleSettingsButton.BackgroundColor3 = theme.settingColor
     
     -- Volume
     VolumeFill.BackgroundColor3 = theme.volumeFill
@@ -263,6 +264,7 @@ local function applyTheme(themeName)
     SearchButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     InfoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     SettingsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ToggleSettingsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 end
 
 -- ========== FORMAT TIME FUNCTION ==========
@@ -410,8 +412,8 @@ local function muteAllGameSounds(mute)
     if not mute then originalSoundVolumes = {}; originalSoundGroupVolumes = {} end
     if MuteToggle then
         local theme = themes[currentTheme] or themes["Default"]
-        if mute then MuteToggle.BackgroundColor3 = theme.muteOnColor; MuteToggle.Text = "🔇 GAME MUTE: ON"
-        else MuteToggle.BackgroundColor3 = theme.muteColor; MuteToggle.Text = "🔊 GAME MUTE: OFF" end
+        if mute then MuteToggle.BackgroundColor3 = theme.muteOnColor; MuteToggle.Text = "🔇 MUTE: ON"
+        else MuteToggle.BackgroundColor3 = theme.muteColor; MuteToggle.Text = "🔊 MUTE: OFF" end
     end
 end
 
@@ -584,7 +586,7 @@ InfoButton.TextSize = 18
 InfoButton.Parent = TitleBar
 local InfoUICorner = Instance.new("UICorner"); InfoUICorner.CornerRadius = UDim.new(0, 8); InfoUICorner.Parent = InfoButton
 
--- Settings button (new)
+-- Settings button (in title bar)
 SettingsButton = Instance.new("TextButton")
 SettingsButton.Name = "SettingsButton"
 SettingsButton.Size = UDim2.new(0, 35, 0, 35)
@@ -955,29 +957,36 @@ HistoryButton.TextSize = 12
 HistoryButton.Parent = ContentFrame
 local HistoryButtonUICorner = Instance.new("UICorner"); HistoryButtonUICorner.CornerRadius = UDim.new(0, 6); HistoryButtonUICorner.Parent = HistoryButton
 
--- Toggle frame (now has Settings button in middle)
+-- Toggle frame (three equal-width buttons: Mute, Settings, Loop)
 local ToggleFrame = Instance.new("Frame")
 ToggleFrame.Size = UDim2.new(1, 0, 0, 28)
 ToggleFrame.Position = UDim2.new(0, 0, 0, 170)
 ToggleFrame.BackgroundTransparency = 1
 ToggleFrame.Parent = ContentFrame
 
+-- Calculate equal widths: 3 buttons with spacing
+-- Using UDim2 scale-based widths for three equal buttons
+-- Each button takes ~0.32 of the width, with ~0.02 spacing between them
+local buttonWidthScale = 0.32
+local spacingScale = 0.02
+
+-- Mute button (left, below history button)
 MuteToggle = Instance.new("TextButton")
-MuteToggle.Size = UDim2.new(0, 115, 0, 28)
+MuteToggle.Size = UDim2.new(buttonWidthScale, 0, 0, 28)
 MuteToggle.Position = UDim2.new(0, 0, 0, 0)
 MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
 MuteToggle.BorderSizePixel = 0
-MuteToggle.Text = "🔊 GAME MUTE: OFF"
+MuteToggle.Text = "🔊 MUTE: OFF"
 MuteToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 MuteToggle.Font = Enum.Font.Gotham
 MuteToggle.TextSize = 10
 MuteToggle.Parent = ToggleFrame
 local MuteUICorner = Instance.new("UICorner"); MuteUICorner.CornerRadius = UDim.new(0, 6); MuteUICorner.Parent = MuteToggle
 
--- Settings button in toggle bar (middle)
-local ToggleSettingsButton = Instance.new("TextButton")
-ToggleSettingsButton.Size = UDim2.new(0, 80, 0, 28)
-ToggleSettingsButton.Position = UDim2.new(0.5, -40, 0, 0)
+-- Settings button (middle, below history button)
+ToggleSettingsButton = Instance.new("TextButton")
+ToggleSettingsButton.Size = UDim2.new(buttonWidthScale, 0, 0, 28)
+ToggleSettingsButton.Position = UDim2.new(buttonWidthScale + spacingScale, 0, 0, 0)
 ToggleSettingsButton.BackgroundColor3 = Color3.fromRGB(150, 150, 150)
 ToggleSettingsButton.BorderSizePixel = 0
 ToggleSettingsButton.Text = "⚙ SETTING"
@@ -987,9 +996,10 @@ ToggleSettingsButton.TextSize = 10
 ToggleSettingsButton.Parent = ToggleFrame
 local ToggleSettingsCorner = Instance.new("UICorner"); ToggleSettingsCorner.CornerRadius = UDim.new(0, 6); ToggleSettingsCorner.Parent = ToggleSettingsButton
 
+-- Loop button (right, below history button)
 LoopToggle = Instance.new("TextButton")
-LoopToggle.Size = UDim2.new(0, 95, 0, 28)
-LoopToggle.Position = UDim2.new(1, -95, 0, 0)
+LoopToggle.Size = UDim2.new(buttonWidthScale, 0, 0, 28)
+LoopToggle.Position = UDim2.new(buttonWidthScale * 2 + spacingScale * 2, 0, 0, 0)
 LoopToggle.BackgroundColor3 = Color3.fromRGB(80, 130, 200)
 LoopToggle.BorderSizePixel = 0
 LoopToggle.Text = "🔁 LOOP: ON"
@@ -1103,7 +1113,7 @@ StatusLabel.Font = Enum.Font.Gotham
 StatusLabel.TextSize = 11
 StatusLabel.Parent = ContentFrame
 
--- History Panel (same as before, abbreviated for length)
+-- History Panel
 local HistoryPanel = Instance.new("Frame")
 HistoryPanel.Size = UDim2.new(1, 0, 1, 0)
 HistoryPanel.Position = UDim2.new(1, 0, 0, 0)
@@ -1300,7 +1310,6 @@ local function searchMusic(searchTerm)
             if #urlParts > 0 then local lastPart = urlParts[#urlParts]
                 if string.find(lastPart, ".mp3") then fileName = string.gsub(string.gsub(lastPart, "%%20", " "), "%%25", "%%") end
             end
-            -- Create result item (abbreviated for space)
             local resultItem = Instance.new("Frame"); resultItem.Name = "SearchResultItem"; resultItem.Size = UDim2.new(1, -10, 0, 50); resultItem.Position = UDim2.new(0, 5, 0, 0); resultItem.BackgroundColor3 = Color3.fromRGB(50, 50, 60); resultItem.BorderSizePixel = 0; resultItem.Parent = SearchScrollFrame
             local itemCorner = Instance.new("UICorner"); itemCorner.CornerRadius = UDim.new(0, 4); itemCorner.Parent = resultItem
             local urlLabel = Instance.new("TextLabel"); urlLabel.Size = UDim2.new(1, -70, 0, 20); urlLabel.Position = UDim2.new(0, 5, 0, 5); urlLabel.BackgroundTransparency = 1; urlLabel.Text = fileName; urlLabel.TextColor3 = Color3.fromRGB(255, 255, 255); urlLabel.Font = Enum.Font.GothamBold; urlLabel.TextSize = 12; urlLabel.Parent = resultItem
