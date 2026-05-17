@@ -41,9 +41,11 @@ local isPaused = false
 local pausedTimePosition = 0
 local HISTORY_FILE = "mp3_history.json"
 local CACHE_FILE = "mp3_cache.json"
+local SETTINGS_FILE = "mp3_settings.json"
 local isDraggingTimeSlider = false
 local currentTheme = "Default"
 local currentSongName = ""
+local saveThemeEnabled = false
 
 -- Music cache system
 local musicCache = {}
@@ -210,6 +212,44 @@ local themes = {
     },
 }
 
+-- ========== SETTINGS SAVE/LOAD ==========
+local function loadSettings()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(SETTINGS_FILE) then
+            return HttpService:JSONDecode(readfile(SETTINGS_FILE))
+        end
+    end)
+    if success and result then
+        if result.theme then currentTheme = result.theme end
+        if result.saveThemeEnabled ~= nil then saveThemeEnabled = result.saveThemeEnabled end
+    end
+end
+
+local function saveSettings()
+    if not saveThemeEnabled then return end
+    pcall(function()
+        if writefile then
+            local settings = {
+                theme = currentTheme,
+                saveThemeEnabled = saveThemeEnabled
+            }
+            writefile(SETTINGS_FILE, HttpService:JSONEncode(settings))
+        end
+    end)
+end
+
+-- ========== CLEAN SONG NAME FUNCTION (ONLY REMOVES .mp3) ==========
+local function cleanSongName(fileName)
+    if not fileName then return "Unknown" end
+    local name = fileName
+    -- Only remove .mp3 extension
+    name = string.gsub(name, "%.mp3$", "")
+    name = string.gsub(name, "%.MP3$", "")
+    -- Replace URL encoding
+    name = string.gsub(name, "%%20", " ")
+    return name
+end
+
 -- ========== APPLY THEME FUNCTION ==========
 local function applyTheme(themeName)
     local theme = themes[themeName]
@@ -263,7 +303,7 @@ local function applyTheme(themeName)
     -- Time slider
     TimeSlider.BackgroundColor3 = theme.timeSlider
     TimeSliderBg.BackgroundColor3 = theme.inputBg
-    -- TimeLabel is now animated with rainbow colors, so we don't set it here
+    -- TimeLabel text color is managed by the rainbow animation for song name part
     
     -- Status
     StatusLabel.TextColor3 = theme.textColor
@@ -281,6 +321,8 @@ local function applyTheme(themeName)
     InfoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     SettingsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     ToggleSettingsButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    
+    saveSettings()
 end
 
 -- ========== FORMAT TIME FUNCTION ==========
@@ -291,30 +333,7 @@ local function formatTime(seconds)
     return string.format("%d:%02d", mins, secs)
 end
 
-local function updateTimeDisplay()
-    if not currentSound then
-        if TimeLabel then TimeLabel.Text = "0:00 / 0:00" end
-        if TimeSlider then TimeSlider.Size = UDim2.new(0, 0, 1, 0) end
-        return
-    end
-    local timePos = currentSound.TimePosition
-    local timeLength = currentSound.TimeLength
-    if timePos ~= timePos then timePos = 0 end
-    if timeLength ~= timeLength or timeLength <= 0 then timeLength = 1 end
-    if TimeLabel then
-        local displayText = formatTime(timePos) .. " / " .. formatTime(timeLength)
-        if currentSongName ~= "" then
-            displayText = displayText .. "   " .. currentSongName
-        end
-        TimeLabel.Text = displayText
-    end
-    if TimeSlider and not isDraggingTimeSlider then
-        local fraction = math.clamp(timePos / timeLength, 0, 1)
-        TimeSlider.Size = UDim2.new(fraction, 0, 1, 0)
-    end
-end
-
--- ========== RAINBOW TEXT ANIMATION FOR TIME LABEL ==========
+-- ========== RAINBOW COLORS FOR SONG NAME ==========
 local rainbowColors = {
     Color3.fromRGB(255, 50, 50),
     Color3.fromRGB(255, 150, 50),
@@ -325,11 +344,47 @@ local rainbowColors = {
     Color3.fromRGB(255, 50, 255),
 }
 
+local function updateTimeDisplay()
+    if not currentSound then
+        if TimeLabel then 
+            TimeLabel.Text = "0:00 / 0:00"
+            TimeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+        if TimeSlider then TimeSlider.Size = UDim2.new(0, 0, 1, 0) end
+        return
+    end
+    local timePos = currentSound.TimePosition
+    local timeLength = currentSound.TimeLength
+    if timePos ~= timePos then timePos = 0 end
+    if timeLength ~= timeLength or timeLength <= 0 then timeLength = 1 end
+    if TimeLabel then
+        local timeText = formatTime(timePos) .. " / " .. formatTime(timeLength)
+        local displayText = timeText
+        if currentSongName ~= "" then
+            displayText = timeText .. "   " .. currentSongName
+        end
+        TimeLabel.Text = displayText
+        
+        -- Only animate the song name part color if there is a song playing
+        if currentSongName ~= "" then
+            -- Don't set color here, the rainbow animation handles it
+        else
+            TimeLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+        end
+    end
+    if TimeSlider and not isDraggingTimeSlider then
+        local fraction = math.clamp(timePos / timeLength, 0, 1)
+        TimeSlider.Size = UDim2.new(fraction, 0, 1, 0)
+    end
+end
+
+-- ========== RAINBOW ANIMATION FOR SONG NAME COLOR IN TIME LABEL ==========
 local function animateTimeLabelColor()
     local colorIndex = 1
     while TimeLabel and TimeLabel.Parent do
         if currentSongName ~= "" then
             local nextColor = rainbowColors[colorIndex]
+            -- Smooth transition to next rainbow color
             local tweenInfo = TweenInfo.new(0.5, Enum.EasingStyle.Linear)
             local tween = TweenService:Create(TimeLabel, tweenInfo, {TextColor3 = nextColor})
             tween:Play()
@@ -499,7 +554,7 @@ end
 
 local function playMusicFromUrl(url, fileName)
     stopMusic()
-    currentSongName = fileName or "Unknown"
+    currentSongName = cleanSongName(fileName)
     if StatusLabel then StatusLabel.Text = "⏬ Loading..."; StatusLabel.TextColor3 = Color3.fromRGB(255, 200, 100) end
     if musicCache[url] and musicCache[url].fileName then
         local cachedFile = musicCache[url].fileName
@@ -694,8 +749,8 @@ local CloseUICorner = Instance.new("UICorner"); CloseUICorner.CornerRadius = UDi
 
 -- Settings Panel
 SettingsPanel = Instance.new("Frame")
-SettingsPanel.Size = UDim2.new(1, 0, 0, 180)
-SettingsPanel.Position = UDim2.new(0, 0, 0, -190)
+SettingsPanel.Size = UDim2.new(1, 0, 0, 230)
+SettingsPanel.Position = UDim2.new(0, 0, 0, -240)
 SettingsPanel.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 SettingsPanel.BorderSizePixel = 0
 SettingsPanel.Visible = false
@@ -720,7 +775,7 @@ local SettingsTitleCorner = Instance.new("UICorner"); SettingsTitleCorner.Corner
 
 local ThemeLabel = Instance.new("TextLabel")
 ThemeLabel.Size = UDim2.new(0, 120, 0, 25)
-ThemeLabel.Position = UDim2.new(0, 15, 0, 50)
+ThemeLabel.Position = UDim2.new(0, 15, 0, 40)
 ThemeLabel.BackgroundTransparency = 1
 ThemeLabel.Text = "Theme:"
 ThemeLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
@@ -731,10 +786,10 @@ ThemeLabel.Parent = SettingsPanel
 
 local ThemeDropdown = Instance.new("TextButton")
 ThemeDropdown.Size = UDim2.new(1, -30, 0, 30)
-ThemeDropdown.Position = UDim2.new(0, 15, 0, 80)
+ThemeDropdown.Position = UDim2.new(0, 15, 0, 70)
 ThemeDropdown.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 ThemeDropdown.BorderSizePixel = 0
-ThemeDropdown.Text = "Default ▼"
+ThemeDropdown.Text = currentTheme .. " ▼"
 ThemeDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
 ThemeDropdown.Font = Enum.Font.GothamBold
 ThemeDropdown.TextSize = 13
@@ -743,7 +798,7 @@ local ThemeDropdownCorner = Instance.new("UICorner"); ThemeDropdownCorner.Corner
 
 local ThemeList = Instance.new("ScrollingFrame")
 ThemeList.Size = UDim2.new(1, -30, 0, 55)
-ThemeList.Position = UDim2.new(0, 15, 0, 115)
+ThemeList.Position = UDim2.new(0, 15, 0, 105)
 ThemeList.BackgroundColor3 = Color3.fromRGB(50, 50, 58)
 ThemeList.BorderSizePixel = 0
 ThemeList.ScrollBarThickness = 6
@@ -779,6 +834,52 @@ ThemeList.CanvasSize = UDim2.new(0, 0, 0, #themeNames * 30 + 6)
 
 ThemeDropdown.MouseButton1Click:Connect(function()
     ThemeList.Visible = not ThemeList.Visible
+end)
+
+-- Save theme toggle
+local SaveThemeLabel = Instance.new("TextLabel")
+SaveThemeLabel.Size = UDim2.new(0, 200, 0, 25)
+SaveThemeLabel.Position = UDim2.new(0, 15, 0, 170)
+SaveThemeLabel.BackgroundTransparency = 1
+SaveThemeLabel.Text = "Save Theme Config:"
+SaveThemeLabel.TextColor3 = Color3.fromRGB(220, 220, 230)
+SaveThemeLabel.TextXAlignment = Enum.TextXAlignment.Left
+SaveThemeLabel.Font = Enum.Font.GothamBold
+SaveThemeLabel.TextSize = 13
+SaveThemeLabel.Parent = SettingsPanel
+
+local SaveThemeToggle = Instance.new("TextButton")
+SaveThemeToggle.Size = UDim2.new(0, 60, 0, 28)
+SaveThemeToggle.Position = UDim2.new(0, 220, 0, 168)
+SaveThemeToggle.BorderSizePixel = 0
+SaveThemeToggle.Font = Enum.Font.GothamBold
+SaveThemeToggle.TextSize = 12
+SaveThemeToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
+SaveThemeToggle.Parent = SettingsPanel
+local SaveThemeToggleCorner = Instance.new("UICorner"); SaveThemeToggleCorner.CornerRadius = UDim.new(0, 6); SaveThemeToggleCorner.Parent = SaveThemeToggle
+
+local function updateSaveThemeToggle()
+    if saveThemeEnabled then
+        SaveThemeToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+        SaveThemeToggle.Text = "ON"
+    else
+        SaveThemeToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+        SaveThemeToggle.Text = "OFF"
+    end
+end
+
+SaveThemeToggle.MouseButton1Click:Connect(function()
+    saveThemeEnabled = not saveThemeEnabled
+    updateSaveThemeToggle()
+    if saveThemeEnabled then
+        saveSettings()
+    else
+        pcall(function()
+            if isfile and isfile(SETTINGS_FILE) then
+                delfile(SETTINGS_FILE)
+            end
+        end)
+    end
 end)
 
 -- Info Panel
@@ -1395,14 +1496,14 @@ end
 
 function toggleSettingsPanel()
     if isSettingsOpen then
-        local tween = TweenService:Create(SettingsPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(0, 0, 0, -190)})
+        local tween = TweenService:Create(SettingsPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In), {Position = UDim2.new(0, 0, 0, -240)})
         tween:Play(); wait(0.3); SettingsPanel.Visible = false; isSettingsOpen = false
     else
         if isSearchOpen then toggleSearchPanel() end
         if isHistoryOpen then toggleHistoryPanel() end
         if isInfoOpen then toggleInfoPanel() end
         SettingsPanel.Visible = true; isSettingsOpen = true
-        local tween = TweenService:Create(SettingsPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, -190)})
+        local tween = TweenService:Create(SettingsPanel, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Position = UDim2.new(0, 0, 0, -240)})
         tween:Play()
     end
 end
@@ -1530,11 +1631,13 @@ StopButton.MouseButton1Click:Connect(function() stopMusic(); if PauseButton then
 -- ========== TIME UPDATE LOOP ==========
 spawn(function() while true do if currentSound and isPlaying and not isDraggingTimeSlider then updateTimeDisplay() end; wait(0.1) end end)
 
--- ========== START RAINBOW ANIMATION FOR TIME LABEL ==========
+-- ========== START RAINBOW ANIMATION FOR SONG NAME COLOR ==========
 spawn(animateTimeLabelColor)
 
 -- ========== INITIALIZATION ==========
+loadSettings()
 applyTheme(currentTheme)
+updateSaveThemeToggle()
 updateVolumeSlider(currentVolume)
 updateSpeed(currentSpeed)
 updateTimeDisplay()
