@@ -1,0 +1,589 @@
+-- Roblox Exploit MP3 Player GUI - Enhanced V4 (Fixed) - PART 1
+-- Data, Utilities, and Core Functions
+
+shared.MP3Player = shared.MP3Player or {}
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+
+-- Check existing
+local existingGui = player.PlayerGui:FindFirstChild("MusicPlayerGUI")
+if existingGui then
+    pcall(function()
+        for _, sound in pairs(workspace:GetDescendants()) do
+            if sound:IsA("Sound") and sound.Name == "MusicPlayerSound" then
+                sound:Stop()
+                sound:Destroy()
+            end
+        end
+    end)
+    existingGui:Destroy()
+end
+
+-- State
+shared.MP3Player.currentSound = nil
+shared.MP3Player.isMuted = false
+shared.MP3Player.loopMode = "single"
+shared.MP3Player.currentVolume = 1.0
+shared.MP3Player.currentSpeed = 1.0
+shared.MP3Player.isMinimized = false
+shared.MP3Player.isHistoryOpen = false
+shared.MP3Player.isSearchOpen = false
+shared.MP3Player.isInfoOpen = false
+shared.MP3Player.isSettingsOpen = false
+shared.MP3Player.isQueueOpen = false
+shared.MP3Player.isFavoritesOpen = false
+shared.MP3Player.downloadHistory = {}
+shared.MP3Player.playQueue = {}
+shared.MP3Player.favoriteSongs = {}
+shared.MP3Player.currentQueueIndex = 0
+shared.MP3Player.isPlaying = false
+shared.MP3Player.isPaused = false
+shared.MP3Player.pausedTimePosition = 0
+shared.MP3Player.isDraggingTimeSlider = false
+shared.MP3Player.currentTheme = "Default"
+shared.MP3Player.currentSongName = ""
+shared.MP3Player.saveThemeEnabled = false
+shared.MP3Player.customAccentColor = nil
+shared.MP3Player.screenGui = nil
+shared.MP3Player.heartbeatConnections = {}
+shared.MP3Player.sleepTimer = 0
+shared.MP3Player.sleepTimerRunning = false
+shared.MP3Player.sleepTimerEnd = 0
+shared.MP3Player.miniPlayerFrame = nil
+shared.MP3Player.miniPlayerVisible = false
+shared.MP3Player.musicCache = {}
+shared.MP3Player.originalSoundVolumes = {}
+shared.MP3Player.originalSoundGroupVolumes = {}
+shared.MP3Player.originalSoundServiceMuted = false
+
+-- File paths
+shared.MP3Player.HISTORY_FILE = "mp3_history.json"
+shared.MP3Player.CACHE_FILE = "mp3_cache.json"
+shared.MP3Player.SETTINGS_FILE = "mp3_settings.json"
+shared.MP3Player.STATE_FILE = "mp3_state.json"
+shared.MP3Player.FAVORITES_FILE = "mp3_favorites.json"
+
+-- Themes
+shared.MP3Player.themes = {
+    Default = {
+        mainBg = Color3.fromRGB(40, 40, 40), titleBg = Color3.fromRGB(30, 30, 30),
+        contentBg = Color3.fromRGB(40, 40, 40), outlineColor = Color3.fromRGB(80, 80, 80),
+        inputBg = Color3.fromRGB(60, 60, 60), playColor = Color3.fromRGB(70, 180, 70),
+        pauseColor = Color3.fromRGB(255, 180, 50), stopColor = Color3.fromRGB(200, 70, 70),
+        historyColor = Color3.fromRGB(100, 100, 200), muteColor = Color3.fromRGB(180, 80, 80),
+        muteOnColor = Color3.fromRGB(80, 180, 80), loopColor = Color3.fromRGB(80, 130, 200),
+        searchColor = Color3.fromRGB(100, 150, 255), infoColor = Color3.fromRGB(100, 180, 255),
+        settingColor = Color3.fromRGB(150, 150, 150), volumeFill = Color3.fromRGB(70, 180, 70),
+        timeSlider = Color3.fromRGB(100, 180, 255), speedBtnColor = Color3.fromRGB(100, 100, 180),
+        textColor = Color3.fromRGB(255, 255, 255), labelColor = Color3.fromRGB(255, 255, 255),
+        miniBg = Color3.fromRGB(30, 30, 30),
+    },
+    ["Dark Blue"] = {
+        mainBg = Color3.fromRGB(15, 25, 45), titleBg = Color3.fromRGB(10, 18, 35),
+        contentBg = Color3.fromRGB(15, 25, 45), outlineColor = Color3.fromRGB(40, 80, 140),
+        inputBg = Color3.fromRGB(25, 40, 65), playColor = Color3.fromRGB(50, 140, 200),
+        pauseColor = Color3.fromRGB(200, 150, 40), stopColor = Color3.fromRGB(180, 60, 60),
+        historyColor = Color3.fromRGB(60, 80, 160), muteColor = Color3.fromRGB(160, 70, 70),
+        muteOnColor = Color3.fromRGB(60, 160, 80), loopColor = Color3.fromRGB(50, 100, 170),
+        searchColor = Color3.fromRGB(70, 120, 220), infoColor = Color3.fromRGB(70, 140, 220),
+        settingColor = Color3.fromRGB(80, 100, 150), volumeFill = Color3.fromRGB(50, 140, 200),
+        timeSlider = Color3.fromRGB(70, 150, 230), speedBtnColor = Color3.fromRGB(60, 80, 150),
+        textColor = Color3.fromRGB(220, 230, 255), labelColor = Color3.fromRGB(200, 215, 245),
+        miniBg = Color3.fromRGB(10, 18, 35),
+    },
+    Light = {
+        mainBg = Color3.fromRGB(235, 235, 240), titleBg = Color3.fromRGB(220, 220, 225),
+        contentBg = Color3.fromRGB(235, 235, 240), outlineColor = Color3.fromRGB(180, 180, 190),
+        inputBg = Color3.fromRGB(210, 210, 215), playColor = Color3.fromRGB(80, 200, 80),
+        pauseColor = Color3.fromRGB(255, 170, 40), stopColor = Color3.fromRGB(220, 80, 80),
+        historyColor = Color3.fromRGB(130, 130, 220), muteColor = Color3.fromRGB(200, 100, 100),
+        muteOnColor = Color3.fromRGB(100, 200, 100), loopColor = Color3.fromRGB(100, 150, 220),
+        searchColor = Color3.fromRGB(120, 170, 255), infoColor = Color3.fromRGB(120, 190, 255),
+        settingColor = Color3.fromRGB(170, 170, 180), volumeFill = Color3.fromRGB(80, 200, 80),
+        timeSlider = Color3.fromRGB(120, 190, 255), speedBtnColor = Color3.fromRGB(130, 130, 200),
+        textColor = Color3.fromRGB(30, 30, 35), labelColor = Color3.fromRGB(40, 40, 45),
+        miniBg = Color3.fromRGB(220, 220, 225),
+    },
+    ["Neon Light"] = {
+        mainBg = Color3.fromRGB(20, 20, 20), titleBg = Color3.fromRGB(10, 10, 10),
+        contentBg = Color3.fromRGB(20, 20, 20), outlineColor = Color3.fromRGB(0, 255, 128),
+        inputBg = Color3.fromRGB(35, 35, 35), playColor = Color3.fromRGB(0, 255, 100),
+        pauseColor = Color3.fromRGB(255, 180, 0), stopColor = Color3.fromRGB(255, 50, 100),
+        historyColor = Color3.fromRGB(128, 0, 255), muteColor = Color3.fromRGB(255, 60, 60),
+        muteOnColor = Color3.fromRGB(0, 255, 60), loopColor = Color3.fromRGB(0, 180, 255),
+        searchColor = Color3.fromRGB(255, 0, 255), infoColor = Color3.fromRGB(0, 255, 255),
+        settingColor = Color3.fromRGB(180, 180, 180), volumeFill = Color3.fromRGB(0, 255, 100),
+        timeSlider = Color3.fromRGB(0, 255, 200), speedBtnColor = Color3.fromRGB(200, 100, 255),
+        textColor = Color3.fromRGB(255, 255, 255), labelColor = Color3.fromRGB(200, 255, 220),
+        miniBg = Color3.fromRGB(10, 10, 10),
+    },
+    ["Dark Light"] = {
+        mainBg = Color3.fromRGB(50, 50, 55), titleBg = Color3.fromRGB(40, 40, 45),
+        contentBg = Color3.fromRGB(50, 50, 55), outlineColor = Color3.fromRGB(100, 100, 110),
+        inputBg = Color3.fromRGB(70, 70, 75), playColor = Color3.fromRGB(90, 190, 90),
+        pauseColor = Color3.fromRGB(240, 170, 50), stopColor = Color3.fromRGB(210, 80, 80),
+        historyColor = Color3.fromRGB(120, 120, 210), muteColor = Color3.fromRGB(190, 90, 90),
+        muteOnColor = Color3.fromRGB(90, 190, 90), loopColor = Color3.fromRGB(90, 140, 210),
+        searchColor = Color3.fromRGB(110, 160, 255), infoColor = Color3.fromRGB(110, 190, 255),
+        settingColor = Color3.fromRGB(160, 160, 170), volumeFill = Color3.fromRGB(90, 190, 90),
+        timeSlider = Color3.fromRGB(110, 190, 255), speedBtnColor = Color3.fromRGB(120, 120, 190),
+        textColor = Color3.fromRGB(240, 240, 245), labelColor = Color3.fromRGB(220, 220, 230),
+        miniBg = Color3.fromRGB(40, 40, 45),
+    },
+    Bright = {
+        mainBg = Color3.fromRGB(255, 255, 255), titleBg = Color3.fromRGB(240, 240, 245),
+        contentBg = Color3.fromRGB(255, 255, 255), outlineColor = Color3.fromRGB(200, 200, 210),
+        inputBg = Color3.fromRGB(230, 230, 235), playColor = Color3.fromRGB(60, 200, 60),
+        pauseColor = Color3.fromRGB(255, 160, 30), stopColor = Color3.fromRGB(255, 60, 60),
+        historyColor = Color3.fromRGB(100, 100, 255), muteColor = Color3.fromRGB(255, 80, 80),
+        muteOnColor = Color3.fromRGB(80, 255, 80), loopColor = Color3.fromRGB(80, 150, 255),
+        searchColor = Color3.fromRGB(100, 150, 255), infoColor = Color3.fromRGB(100, 200, 255),
+        settingColor = Color3.fromRGB(180, 180, 190), volumeFill = Color3.fromRGB(60, 200, 60),
+        timeSlider = Color3.fromRGB(100, 180, 255), speedBtnColor = Color3.fromRGB(120, 120, 220),
+        textColor = Color3.fromRGB(20, 20, 25), labelColor = Color3.fromRGB(30, 30, 35),
+        miniBg = Color3.fromRGB(240, 240, 245),
+    },
+    Blue = {
+        mainBg = Color3.fromRGB(20, 40, 80), titleBg = Color3.fromRGB(15, 30, 60),
+        contentBg = Color3.fromRGB(20, 40, 80), outlineColor = Color3.fromRGB(50, 100, 180),
+        inputBg = Color3.fromRGB(30, 55, 100), playColor = Color3.fromRGB(50, 160, 220),
+        pauseColor = Color3.fromRGB(220, 160, 40), stopColor = Color3.fromRGB(200, 70, 70),
+        historyColor = Color3.fromRGB(80, 100, 200), muteColor = Color3.fromRGB(180, 80, 80),
+        muteOnColor = Color3.fromRGB(80, 200, 100), loopColor = Color3.fromRGB(60, 120, 200),
+        searchColor = Color3.fromRGB(80, 140, 240), infoColor = Color3.fromRGB(80, 160, 240),
+        settingColor = Color3.fromRGB(100, 120, 180), volumeFill = Color3.fromRGB(50, 160, 220),
+        timeSlider = Color3.fromRGB(80, 170, 250), speedBtnColor = Color3.fromRGB(80, 100, 180),
+        textColor = Color3.fromRGB(230, 240, 255), labelColor = Color3.fromRGB(210, 225, 250),
+        miniBg = Color3.fromRGB(15, 30, 60),
+    },
+}
+
+-- Cleanup
+function shared.MP3Player.cleanup()
+    for _, conn in pairs(shared.MP3Player.heartbeatConnections) do
+        pcall(function() conn:Disconnect() end)
+    end
+    shared.MP3Player.heartbeatConnections = {}
+    shared.MP3Player.sleepTimerRunning = false
+end
+
+-- Clean song name
+function shared.MP3Player.cleanSongName(fileName)
+    if not fileName then return "Unknown" end
+    local name = fileName
+    name = string.gsub(name, "%.mp3$", ""); name = string.gsub(name, "%.MP3$", "")
+    name = string.gsub(name, "%.wav$", ""); name = string.gsub(name, "%.ogg$", "")
+    name = string.gsub(name, "%.flac$", ""); name = string.gsub(name, "%.m4a$", "")
+    name = string.gsub(name, "%%20", " "); name = string.gsub(name, "%%25", "%%")
+    name = string.gsub(name, "_", " "); name = string.gsub(name, "%-", " ")
+    return name
+end
+
+-- Format time
+function shared.MP3Player.formatTime(seconds)
+    if seconds < 0 then seconds = 0 end
+    local mins = math.floor(seconds / 60)
+    local secs = math.floor(seconds % 60)
+    return string.format("%d:%02d", mins, secs)
+end
+
+-- Volume icon
+function shared.MP3Player.getVolumeIcon(vol)
+    if vol <= 0 then return "🔇"
+    elseif vol <= 0.33 then return "🔈"
+    elseif vol <= 0.66 then return "🔉"
+    else return "🔊" end
+end
+
+-- Hover animation
+function shared.MP3Player.addHoverAnimation(button)
+    local originalSize = button.Size
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalSize + UDim2.new(0, 4, 0, 4)}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalSize}):Play()
+    end)
+    button.MouseButton1Down:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.05), {Size = originalSize - UDim2.new(0, 2, 0, 2)}):Play()
+    end)
+    button.MouseButton1Up:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {Size = originalSize}):Play()
+    end)
+end
+
+-- Cache functions
+function shared.MP3Player.loadCache()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(shared.MP3Player.CACHE_FILE) then
+            return HttpService:JSONDecode(readfile(shared.MP3Player.CACHE_FILE))
+        end
+    end)
+    return success and result or {}
+end
+
+function shared.MP3Player.saveCache()
+    pcall(function()
+        if writefile then writefile(shared.MP3Player.CACHE_FILE, HttpService:JSONEncode(shared.MP3Player.musicCache)) end
+    end)
+end
+
+function shared.MP3Player.cleanOldCache()
+    pcall(function()
+        if listfiles then
+            local files = listfiles()
+            local cacheFiles = {}
+            for _, file in ipairs(files) do
+                if string.find(file, "cache_") and string.find(file, ".mp3") then
+                    table.insert(cacheFiles, file)
+                end
+            end
+            table.sort(cacheFiles, function(a, b) return a > b end)
+            for i = 21, #cacheFiles do delfile(cacheFiles[i]) end
+        end
+    end)
+end
+
+-- History
+function shared.MP3Player.loadHistory()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(shared.MP3Player.HISTORY_FILE) then
+            return HttpService:JSONDecode(readfile(shared.MP3Player.HISTORY_FILE))
+        end
+    end)
+    return success and result or {}
+end
+
+function shared.MP3Player.saveHistory()
+    pcall(function()
+        if writefile then writefile(shared.MP3Player.HISTORY_FILE, HttpService:JSONEncode(shared.MP3Player.downloadHistory)) end
+    end)
+end
+
+function shared.MP3Player.addToHistory(url, fileName)
+    for i, entry in ipairs(shared.MP3Player.downloadHistory) do
+        if entry.url == url then table.remove(shared.MP3Player.downloadHistory, i); break end
+    end
+    table.insert(shared.MP3Player.downloadHistory, 1, {url = url, fileName = fileName, timestamp = os.time(), date = os.date("%Y-%m-%d %H:%M:%S")})
+    if #shared.MP3Player.downloadHistory > 50 then
+        for i = 51, #shared.MP3Player.downloadHistory do shared.MP3Player.downloadHistory[i] = nil end
+    end
+    shared.MP3Player.saveHistory()
+end
+
+function shared.MP3Player.removeFromHistory(index)
+    if shared.MP3Player.downloadHistory[index] then
+        table.remove(shared.MP3Player.downloadHistory, index)
+        shared.MP3Player.saveHistory()
+        return true
+    end
+    return false
+end
+
+-- Settings
+function shared.MP3Player.loadSettings()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(shared.MP3Player.SETTINGS_FILE) then
+            return HttpService:JSONDecode(readfile(shared.MP3Player.SETTINGS_FILE))
+        end
+    end)
+    if success and result then
+        if result.theme then shared.MP3Player.currentTheme = result.theme end
+        if result.saveThemeEnabled ~= nil then shared.MP3Player.saveThemeEnabled = result.saveThemeEnabled end
+        if result.customAccentColor then
+            shared.MP3Player.customAccentColor = Color3.new(result.customAccentColor.r, result.customAccentColor.g, result.customAccentColor.b)
+        end
+        if result.loopMode then shared.MP3Player.loopMode = result.loopMode end
+    end
+end
+
+function shared.MP3Player.saveSettings()
+    if not shared.MP3Player.saveThemeEnabled then return end
+    pcall(function()
+        if writefile then
+            local settings = {theme = shared.MP3Player.currentTheme, saveThemeEnabled = shared.MP3Player.saveThemeEnabled, loopMode = shared.MP3Player.loopMode}
+            if shared.MP3Player.customAccentColor then
+                settings.customAccentColor = {r = shared.MP3Player.customAccentColor.R, g = shared.MP3Player.customAccentColor.G, b = shared.MP3Player.customAccentColor.B}
+            end
+            writefile(shared.MP3Player.SETTINGS_FILE, HttpService:JSONEncode(settings))
+        end
+    end)
+end
+
+-- Favorites
+function shared.MP3Player.loadFavorites()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(shared.MP3Player.FAVORITES_FILE) then
+            return HttpService:JSONDecode(readfile(shared.MP3Player.FAVORITES_FILE))
+        end
+    end)
+    if success and result then shared.MP3Player.favoriteSongs = result end
+end
+
+function shared.MP3Player.saveFavorites()
+    pcall(function()
+        if writefile then writefile(shared.MP3Player.FAVORITES_FILE, HttpService:JSONEncode(shared.MP3Player.favoriteSongs)) end
+    end)
+end
+
+function shared.MP3Player.toggleFavorite(url, fileName)
+    for i, fav in ipairs(shared.MP3Player.favoriteSongs) do
+        if fav.url == url then table.remove(shared.MP3Player.favoriteSongs, i); shared.MP3Player.saveFavorites(); return false end
+    end
+    table.insert(shared.MP3Player.favoriteSongs, {url = url, fileName = fileName, date = os.date("%Y-%m-%d %H:%M:%S")})
+    shared.MP3Player.saveFavorites()
+    return true
+end
+
+function shared.MP3Player.isFavorite(url)
+    for _, fav in ipairs(shared.MP3Player.favoriteSongs) do
+        if fav.url == url then return true end
+    end
+    return false
+end
+
+-- State
+function shared.MP3Player.saveState()
+    pcall(function()
+        if writefile then
+            local state = {
+                volume = shared.MP3Player.currentVolume, speed = shared.MP3Player.currentSpeed,
+                muted = shared.MP3Player.isMuted, loopMode = shared.MP3Player.loopMode,
+                lastUrl = shared.MP3Player.playQueue[shared.MP3Player.currentQueueIndex] and shared.MP3Player.playQueue[shared.MP3Player.currentQueueIndex].url,
+                lastFileName = shared.MP3Player.currentSongName,
+                queue = shared.MP3Player.playQueue, queueIndex = shared.MP3Player.currentQueueIndex
+            }
+            writefile(shared.MP3Player.STATE_FILE, HttpService:JSONEncode(state))
+        end
+    end)
+end
+
+function shared.MP3Player.loadState()
+    local success, result = pcall(function()
+        if readfile and isfile and isfile(shared.MP3Player.STATE_FILE) then
+            return HttpService:JSONDecode(readfile(shared.MP3Player.STATE_FILE))
+        end
+    end)
+    if success and result then
+        if result.volume then shared.MP3Player.currentVolume = result.volume end
+        if result.speed then shared.MP3Player.currentSpeed = result.speed end
+        if result.muted ~= nil then shared.MP3Player.isMuted = result.muted end
+        if result.loopMode then shared.MP3Player.loopMode = result.loopMode end
+        if result.queue then shared.MP3Player.playQueue = result.queue end
+        if result.queueIndex then shared.MP3Player.currentQueueIndex = result.queueIndex end
+        return result.lastUrl, result.lastFileName
+    end
+    return nil, nil
+end
+
+-- Loop mode
+function shared.MP3Player.getLoopModeText()
+    if shared.MP3Player.loopMode == "single" then return "🔂 LOOP: ONE"
+    elseif shared.MP3Player.loopMode == "all" then return "🔄 LOOP: ALL"
+    else return "➡ NO LOOP" end
+end
+
+function shared.MP3Player.getLoopModeColor()
+    local theme = shared.MP3Player.themes[shared.MP3Player.currentTheme] or shared.MP3Player.themes["Default"]
+    if shared.MP3Player.loopMode == "none" then return Color3.fromRGB(130, 130, 130)
+    else return theme.loopColor end
+end
+
+function shared.MP3Player.cycleLoopMode()
+    if shared.MP3Player.loopMode == "single" then shared.MP3Player.loopMode = "all"
+    elseif shared.MP3Player.loopMode == "all" then shared.MP3Player.loopMode = "none"
+    else shared.MP3Player.loopMode = "single" end
+    if shared.MP3Player.currentSound then
+        shared.MP3Player.currentSound.Looped = (shared.MP3Player.loopMode == "single")
+    end
+    shared.MP3Player.saveSettings()
+    shared.MP3Player.saveState()
+end
+
+-- Sleep timer
+function shared.MP3Player.setSleepTimer(minutes)
+    if minutes <= 0 then
+        shared.MP3Player.sleepTimerRunning = false
+        shared.MP3Player.sleepTimer = 0
+        shared.MP3Player.sleepTimerEnd = 0
+        return
+    end
+    shared.MP3Player.sleepTimer = minutes
+    shared.MP3Player.sleepTimerEnd = os.time() + (minutes * 60)
+    shared.MP3Player.sleepTimerRunning = true
+end
+
+-- Queue
+function shared.MP3Player.addToQueue(url, fileName)
+    for _, entry in ipairs(shared.MP3Player.playQueue) do
+        if entry.url == url then return false end
+    end
+    table.insert(shared.MP3Player.playQueue, {url = url, fileName = fileName})
+    shared.MP3Player.saveState()
+    return true
+end
+
+function shared.MP3Player.removeFromQueue(index)
+    if shared.MP3Player.playQueue[index] then
+        table.remove(shared.MP3Player.playQueue, index)
+        if shared.MP3Player.currentQueueIndex > #shared.MP3Player.playQueue then
+            shared.MP3Player.currentQueueIndex = #shared.MP3Player.playQueue
+        elseif shared.MP3Player.currentQueueIndex >= index then
+            shared.MP3Player.currentQueueIndex = math.max(0, shared.MP3Player.currentQueueIndex - 1)
+        end
+        shared.MP3Player.saveState()
+        return true
+    end
+    return false
+end
+
+-- Core music functions
+function shared.MP3Player.stopMusic()
+    if shared.MP3Player.currentSound then
+        shared.MP3Player.currentSound:Stop()
+        shared.MP3Player.currentSound:Destroy()
+        shared.MP3Player.currentSound = nil
+    end
+    shared.MP3Player.isPlaying = false
+    shared.MP3Player.isPaused = false
+    shared.MP3Player.pausedTimePosition = 0
+    shared.MP3Player.currentSongName = ""
+end
+
+function shared.MP3Player.playNextInQueue()
+    if #shared.MP3Player.playQueue == 0 then return false end
+    if shared.MP3Player.loopMode == "none" and shared.MP3Player.currentQueueIndex >= #shared.MP3Player.playQueue then
+        shared.MP3Player.stopMusic()
+        return false
+    end
+    shared.MP3Player.currentQueueIndex = shared.MP3Player.currentQueueIndex + 1
+    if shared.MP3Player.currentQueueIndex > #shared.MP3Player.playQueue then
+        shared.MP3Player.currentQueueIndex = 1
+    end
+    local entry = shared.MP3Player.playQueue[shared.MP3Player.currentQueueIndex]
+    if entry then shared.MP3Player.playMusicFromUrl(entry.url, entry.fileName); return true end
+    return false
+end
+
+function shared.MP3Player.playPreviousInQueue()
+    if #shared.MP3Player.playQueue == 0 then return false end
+    shared.MP3Player.currentQueueIndex = shared.MP3Player.currentQueueIndex - 1
+    if shared.MP3Player.currentQueueIndex < 1 then shared.MP3Player.currentQueueIndex = #shared.MP3Player.playQueue end
+    local entry = shared.MP3Player.playQueue[shared.MP3Player.currentQueueIndex]
+    if entry then shared.MP3Player.playMusicFromUrl(entry.url, entry.fileName); return true end
+    return false
+end
+
+function shared.MP3Player.togglePause()
+    if not shared.MP3Player.currentSound then return end
+    if shared.MP3Player.isPaused then
+        shared.MP3Player.currentSound.TimePosition = shared.MP3Player.pausedTimePosition
+        shared.MP3Player.currentSound:Resume()
+        shared.MP3Player.isPaused = false; shared.MP3Player.isPlaying = true
+    else
+        shared.MP3Player.pausedTimePosition = shared.MP3Player.currentSound.TimePosition
+        shared.MP3Player.currentSound:Pause()
+        shared.MP3Player.isPaused = true; shared.MP3Player.isPlaying = false
+    end
+end
+
+function shared.MP3Player.playMusicFromUrl(url, fileName)
+    shared.MP3Player.stopMusic()
+    shared.MP3Player.currentSongName = shared.MP3Player.cleanSongName(fileName)
+
+    if shared.MP3Player.musicCache[url] and shared.MP3Player.musicCache[url].fileName then
+        local cachedFile = shared.MP3Player.musicCache[url].fileName
+        if isfile and isfile(cachedFile) then
+            shared.MP3Player.currentSound = Instance.new("Sound")
+            shared.MP3Player.currentSound.Name = "MusicPlayerSound"
+            shared.MP3Player.currentSound.SoundId = getcustomasset(cachedFile)
+            shared.MP3Player.currentSound.Volume = 0
+            shared.MP3Player.currentSound.Looped = (shared.MP3Player.loopMode == "single")
+            shared.MP3Player.currentSound.PlaybackSpeed = shared.MP3Player.currentSpeed
+            shared.MP3Player.currentSound.Parent = workspace
+            shared.MP3Player.currentSound:Play()
+            TweenService:Create(shared.MP3Player.currentSound, TweenInfo.new(0.3), {Volume = shared.MP3Player.isMuted and 0 or shared.MP3Player.currentVolume}):Play()
+            shared.MP3Player.isPlaying = true; shared.MP3Player.isPaused = false; shared.MP3Player.pausedTimePosition = 0
+            shared.MP3Player.addToHistory(url, fileName)
+            shared.MP3Player.saveState()
+            shared.MP3Player.currentSound.Ended:Connect(function()
+                if not shared.MP3Player.screenGui or not shared.MP3Player.screenGui.Parent then return end
+                shared.MP3Player.playNextInQueue()
+            end)
+            return true
+        else
+            shared.MP3Player.musicCache[url] = nil; shared.MP3Player.saveCache()
+        end
+    end
+
+    local timestamp = os.time()
+    local cachedFileName = "cache_" .. timestamp .. ".mp3"
+    local success, errorMessage = pcall(function()
+        local audioData = game:HttpGet(url)
+        writefile(cachedFileName, audioData)
+        shared.MP3Player.musicCache[url] = {fileName = cachedFileName, timestamp = timestamp}
+        shared.MP3Player.saveCache()
+        shared.MP3Player.currentSound = Instance.new("Sound")
+        shared.MP3Player.currentSound.Name = "MusicPlayerSound"
+        shared.MP3Player.currentSound.SoundId = getcustomasset(cachedFileName)
+        shared.MP3Player.currentSound.Volume = 0
+        shared.MP3Player.currentSound.Looped = (shared.MP3Player.loopMode == "single")
+        shared.MP3Player.currentSound.PlaybackSpeed = shared.MP3Player.currentSpeed
+        shared.MP3Player.currentSound.Parent = workspace
+        shared.MP3Player.currentSound:Play()
+        TweenService:Create(shared.MP3Player.currentSound, TweenInfo.new(0.3), {Volume = shared.MP3Player.isMuted and 0 or shared.MP3Player.currentVolume}):Play()
+        shared.MP3Player.isPlaying = true; shared.MP3Player.isPaused = false; shared.MP3Player.pausedTimePosition = 0
+    end)
+    if success and shared.MP3Player.currentSound then
+        shared.MP3Player.addToHistory(url, fileName)
+        shared.MP3Player.cleanOldCache()
+        shared.MP3Player.saveState()
+        shared.MP3Player.currentSound.Ended:Connect(function()
+            if not shared.MP3Player.screenGui or not shared.MP3Player.screenGui.Parent then return end
+            shared.MP3Player.playNextInQueue()
+        end)
+        return true
+    else
+        shared.MP3Player.currentSongName = ""
+        shared.MP3Player.stopMusic()
+        return false
+    end
+end
+
+function shared.MP3Player.muteAllGameSounds(mute)
+    shared.MP3Player.isMuted = mute
+    pcall(function()
+        SoundService.RespectFilteringEnabled = false
+        if mute then shared.MP3Player.originalSoundServiceMuted = SoundService.Muted; SoundService.Muted = true
+        else SoundService.Muted = shared.MP3Player.originalSoundServiceMuted end
+    end)
+    if not mute then shared.MP3Player.originalSoundVolumes = {}; shared.MP3Player.originalSoundGroupVolumes = {} end
+    if shared.MP3Player.currentSound then
+        pcall(function() shared.MP3Player.currentSound.Volume = mute and 0 or shared.MP3Player.currentVolume end)
+    end
+    shared.MP3Player.saveState()
+end
+
+function shared.MP3Player.updateVolumeSlider(volume)
+    shared.MP3Player.currentVolume = volume
+    if shared.MP3Player.currentSound and not shared.MP3Player.isMuted then
+        shared.MP3Player.currentSound.Volume = volume
+    end
+    shared.MP3Player.saveState()
+end
+
+function shared.MP3Player.updateSpeed(speed)
+    shared.MP3Player.currentSpeed = speed
+    if shared.MP3Player.currentSound then shared.MP3Player.currentSound.PlaybackSpeed = speed end
+    shared.MP3Player.saveState()
+end
+
+print("Part 1 loaded - Core functions ready")
