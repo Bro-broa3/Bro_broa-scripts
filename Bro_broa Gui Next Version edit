@@ -1610,14 +1610,18 @@ local function CreateGUI()
         
         return "Failed to fetch"
     end
-    
-    local englishName = getEnglishPlaceName()
-    setclipboard(englishName)
-    
+
     SettingsTab:CreateButton({
         Name = "Copy local place name(EN)",
         Callback = function()
-            setclipboard(englishName)
+            local englishName = getEnglishPlaceName()  -- Only fetch when clicked
+            setclipboard(englishName)  -- Only copy when clicked
+            Rayfield:Notify({
+                Title = "Copied!",
+                Content = "Game name copied: " .. englishName,
+                Duration = 3,
+                Image = 4483362458
+            })
         end
     })
 
