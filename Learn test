@@ -1,713 +1,859 @@
--- Add this function to your script
-local function OpenServerHopper()
-    -- SERVICES & PLAYER
-    local TS = game:GetService("TeleportService")
-    local Players = game:GetService("Players")
-    local UIS = game:GetService("UserInputService")
-    local RS = game:GetService("RunService")
-    local HttpService = game:GetService("HttpService")
-    local plr = Players.LocalPlayer
-    local guiParent = game:GetService("CoreGui")
- 
-    -- Clean up old instance
-    local existing = guiParent:FindFirstChild("JoinGui")
-    if existing then existing:Destroy() end
- 
-    -- STYLE CONFIG
-    local PANEL_WIDTH = 800
-    local PANEL_HEIGHT = 500
-    local INFO_WIDTH = 320
-    local LIST_WIDTH = 450
-    local BOX_HEIGHT = 38
- 
-    -- COLORS
-    local CLR_BACKGROUND = Color3.fromRGB(30, 32, 36)
-    local CLR_SURFACE = Color3.fromRGB(44, 46, 51)
-    local CLR_PRIMARY = Color3.fromRGB(0, 122, 255)
-    local CLR_SUCCESS = Color3.fromRGB(40, 167, 69)
-    local CLR_DANGER = Color3.fromRGB(237, 66, 69)
-    local CLR_TEXT = Color3.fromRGB(235, 235, 235)
-    local CLR_TEXT_MUTED = Color3.fromRGB(170, 170, 170)
-    local CLR_ACCENT = Color3.fromRGB(130, 180, 255)
-    local CLR_HOVER = Color3.fromRGB(200, 220, 255)
-    local CLR_YELLOW = Color3.fromRGB(255, 200, 0)
-    local CLR_GREEN = Color3.fromRGB(40, 167, 69)
-    local CLR_RED = Color3.fromRGB(237, 66, 69)
- 
-    -- Create GUI
-    local gui = Instance.new("ScreenGui")
-    gui.Name = "JoinGui"
-    gui.ResetOnSpawn = false
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    gui.Parent = guiParent
- 
-    local frame = Instance.new("Frame", gui)
-    frame.Size = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT)
-    frame.Position = UDim2.new(.5, -PANEL_WIDTH/2, .5, -PANEL_HEIGHT/2)
-    frame.BackgroundColor3 = CLR_BACKGROUND
-    frame.BorderSizePixel = 0
-    frame.Active = true
-    frame.Draggable = true
-    Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 12)
-    Instance.new("UIStroke", frame).Color = Color3.fromRGB(80,80,80)
- 
-    -- State tracking
-    local isMinimized = false
-    local isFullscreen = false
-    
-    -- Store original dimensions
-    local originalFrameSize = UDim2.fromOffset(PANEL_WIDTH, PANEL_HEIGHT)
-    local originalFramePosition = frame.Position
-    
-    local CLOSE_SIZE = 28
+-- Roblox Exploit MP3 Player GUI - With Settings/Themes + Time Slider + All Features
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
+local CoreGui = game:GetService("CoreGui")
 
-    -- Create title bar container
-    local titleBar = Instance.new("Frame", frame)
-    titleBar.Size = UDim2.new(1, 0, 0, 44)
-    titleBar.Position = UDim2.new(0, 0, 0, 0)
-    titleBar.BackgroundTransparency = 1
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
-    -- CLOSE BUTTON (Red - Leftmost, Circular)
-    local closeBtn = Instance.new("TextButton", titleBar)
-    closeBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    closeBtn.Position = UDim2.new(0, 8, 0.5, -CLOSE_SIZE/2)
-    closeBtn.BackgroundColor3 = CLR_RED
-    closeBtn.Text = "X"
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.TextSize = 16
-    closeBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
-    closeBtn.AutoButtonColor = false
-    local closeCorner = Instance.new("UICorner", closeBtn)
-    closeCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
- 
-    closeBtn.MouseEnter:Connect(function()
-        closeBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
-    end)
- 
-    closeBtn.MouseLeave:Connect(function()
-        closeBtn.BackgroundColor3 = CLR_RED
-    end)
- 
-    closeBtn.MouseButton1Click:Connect(function()
-        gui:Destroy()
-    end)
+-- ========== CREATE FOLDER STRUCTURE ==========
+local MUSIC_FOLDER = "MusicPlayerData"
+local CACHE_FOLDER = MUSIC_FOLDER .. "/Cache"
+pcall(function() if makefolder then makefolder(MUSIC_FOLDER) end end)
+pcall(function() if makefolder then makefolder(CACHE_FOLDER) end end)
 
-    -- MINIMIZE BUTTON (Yellow - Middle, Circular)
-    local minBtn = Instance.new("TextButton", titleBar)
-    minBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    minBtn.Position = UDim2.new(0, CLOSE_SIZE + 16, 0.5, -CLOSE_SIZE/2)
-    minBtn.BackgroundColor3 = CLR_YELLOW
-    minBtn.Text = "−"
-    minBtn.Font = Enum.Font.GothamBold
-    minBtn.TextSize = 20
-    minBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
-    minBtn.AutoButtonColor = false
-    local minCorner = Instance.new("UICorner", minBtn)
-    minCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
+local HISTORY_FILE = MUSIC_FOLDER .. "/mp3_history.json"
+local CACHE_FILE = MUSIC_FOLDER .. "/mp3_cache.json"
+local SETTINGS_FILE = MUSIC_FOLDER .. "/mp3_settings.json"
+local KEY_FILE = MUSIC_FOLDER .. "/mp3_key.txt"
 
-    minBtn.MouseEnter:Connect(function()
-        minBtn.BackgroundColor3 = Color3.fromRGB(255, 220, 50)
-    end)
-
-    minBtn.MouseLeave:Connect(function()
-        minBtn.BackgroundColor3 = CLR_YELLOW
-    end)
-
-    -- FULLSCREEN BUTTON (Green - Rightmost of the three, Circular)
-    local fullscreenBtn = Instance.new("TextButton", titleBar)
-    fullscreenBtn.Size = UDim2.fromOffset(CLOSE_SIZE, CLOSE_SIZE)
-    fullscreenBtn.Position = UDim2.new(0, (CLOSE_SIZE * 2) + 24, 0.5, -CLOSE_SIZE/2)
-    fullscreenBtn.BackgroundColor3 = CLR_GREEN
-    fullscreenBtn.Text = "+"
-    fullscreenBtn.Font = Enum.Font.GothamBold
-    fullscreenBtn.TextSize = 20
-    fullscreenBtn.TextColor3 = Color3.new(0, 0, 0)  -- Black text
-    fullscreenBtn.AutoButtonColor = false
-    local fullCorner = Instance.new("UICorner", fullscreenBtn)
-    fullCorner.CornerRadius = UDim.new(1, 0) -- Makes it circular
-
-    fullscreenBtn.MouseEnter:Connect(function()
-        fullscreenBtn.BackgroundColor3 = Color3.fromRGB(60, 200, 90)
-    end)
-
-    fullscreenBtn.MouseLeave:Connect(function()
-        fullscreenBtn.BackgroundColor3 = CLR_GREEN
-    end)
-
-    -- TITLE (Full width, truly centered)
-    local title = Instance.new("TextLabel", titleBar)
-    title.Size = UDim2.new(1, 0, 1, 0)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBold
-    title.TextColor3 = CLR_TEXT
-    title.TextSize = 22
-    title.Text = "Server Hopper"
-    title.TextXAlignment = Enum.TextXAlignment.Center
-    title.TextYAlignment = Enum.TextYAlignment.Center
- 
-    -- LEFT PANEL (INFO)
-    local info = Instance.new("Frame", frame)
-    info.Size = UDim2.fromOffset(INFO_WIDTH, PANEL_HEIGHT - 58)
-    info.Position = UDim2.new(0, 12, 0, 46)
-    info.BackgroundColor3 = CLR_SURFACE
-    info.BorderSizePixel = 0
-    Instance.new("UICorner", info).CornerRadius = UDim.new(0, 8)
- 
-    local infoList = Instance.new("UIListLayout", info)
-    infoList.FillDirection = Enum.FillDirection.Vertical
-    infoList.SortOrder = Enum.SortOrder.LayoutOrder
-    infoList.Padding = UDim.new(0, 8)
- 
-    local infoPad = Instance.new("UIPadding", info)
-    infoPad.PaddingLeft = UDim.new(0, 12)
-    infoPad.PaddingRight = UDim.new(0, 12)
-    infoPad.PaddingTop = UDim.new(0, 12)
-    infoPad.PaddingBottom = UDim.new(0, 12)
- 
-    -- MANUAL HOP SECTION
-    local manualTitle = Instance.new("TextLabel", info)
-    manualTitle.Size = UDim2.new(1, 0, 0, 24)
-    manualTitle.BackgroundTransparency = 1
-    manualTitle.Font = Enum.Font.GothamBold
-    manualTitle.TextColor3 = CLR_ACCENT
-    manualTitle.TextSize = 16
-    manualTitle.Text = "MANUAL HOP"
-    manualTitle.LayoutOrder = 1
- 
-    -- Place ID input
-    local placeBox = Instance.new("TextBox", info)
-    placeBox.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    placeBox.BackgroundColor3 = CLR_BACKGROUND
-    placeBox.PlaceholderText = "Place ID"
-    placeBox.Text = tostring(game.PlaceId)
-    placeBox.TextColor3 = CLR_TEXT
-    placeBox.ClearTextOnFocus = false
-    placeBox.LayoutOrder = 2
-    Instance.new("UICorner", placeBox).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIPadding", placeBox).PaddingLeft = UDim.new(0, 10)
- 
-    -- Job ID input
-    local jobBox = Instance.new("TextBox", info)
-    jobBox.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    jobBox.BackgroundColor3 = CLR_BACKGROUND
-    jobBox.PlaceholderText = "Job ID (optional)"
-    jobBox.Text = ""
-    jobBox.TextColor3 = CLR_TEXT
-    jobBox.ClearTextOnFocus = false
-    jobBox.LayoutOrder = 3
-    Instance.new("UICorner", jobBox).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIPadding", jobBox).PaddingLeft = UDim.new(0, 10)
- 
-    -- Hop button
-    local joinBtn = Instance.new("TextButton", info)
-    joinBtn.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    joinBtn.BackgroundColor3 = CLR_PRIMARY
-    joinBtn.Text = "Hop"
-    joinBtn.Font = Enum.Font.GothamBold
-    joinBtn.TextColor3 = Color3.new(1, 1, 1)
-    joinBtn.TextSize = 14
-    joinBtn.LayoutOrder = 4
-    Instance.new("UICorner", joinBtn).CornerRadius = UDim.new(0, 6)
- 
-    -- REJOIN BUTTON
-    local rejoinBtn = Instance.new("TextButton", info)
-    rejoinBtn.Size = UDim2.new(1, 0, 0, BOX_HEIGHT)
-    rejoinBtn.BackgroundColor3 = CLR_SUCCESS
-    rejoinBtn.Text = "Rejoin Server"
-    rejoinBtn.Font = Enum.Font.GothamBold
-    rejoinBtn.TextColor3 = Color3.new(1, 1, 1)
-    rejoinBtn.TextSize = 14
-    rejoinBtn.LayoutOrder = 5
-    Instance.new("UICorner", rejoinBtn).CornerRadius = UDim.new(0, 6)
- 
-    -- SERVER INFO SECTION
-    local infoTitle = Instance.new("TextLabel", info)
-    infoTitle.Size = UDim2.new(1, 0, 0, 24)
-    infoTitle.BackgroundTransparency = 1
-    infoTitle.Font = Enum.Font.GothamBold
-    infoTitle.TextColor3 = CLR_ACCENT
-    infoTitle.TextSize = 16
-    infoTitle.Text = "SERVER INFO"
-    infoTitle.LayoutOrder = 6
- 
-    -- Create info labels (modified to return both container and label for updating)
-    local function createInfoLabel(parent, label, value, color, copyable)
-        local container = Instance.new("Frame", parent)
-        container.Size = UDim2.new(1, 0, 0, 20)
-        container.BackgroundTransparency = 1
- 
-        local labelObj = Instance.new("TextLabel", container)
-        labelObj.Size = UDim2.new(1, 0, 1, 0)
-        labelObj.BackgroundTransparency = 1
-        labelObj.Font = Enum.Font.GothamMedium
-        labelObj.TextSize = 12
-        labelObj.Text = label .. ": " .. value
-        labelObj.TextColor3 = color
-        labelObj.TextXAlignment = Enum.TextXAlignment.Left
- 
-        if copyable then
-            local btn = Instance.new("TextButton", container)
-            btn.Size = UDim2.new(1, 0, 1, 0)
-            btn.BackgroundTransparency = 1
-            btn.Text = ""
- 
-            btn.MouseButton1Click:Connect(function()
-                if setclipboard then
-                    -- Extract just the value part (after ": ")
-                    local fullText = labelObj.Text
-                    local copyValue = fullText:match(": (.+)$") or fullText
-                    setclipboard(copyValue)
-                end
-            end)
-        end
- 
-        return container, labelObj
-    end
- 
-    -- UPTIME LABEL
-    local uptimeContainer, uptimeLabelText = createInfoLabel(info, "Uptime", "00:00:00", CLR_TEXT, false)
-    uptimeContainer.LayoutOrder = 7
- 
-    -- Version label
-    local verContainer, verLabelText = createInfoLabel(info, "Version", tostring(game.PlaceVersion), CLR_TEXT, false)
-    verContainer.LayoutOrder = 8
- 
-    -- Players label
-    local playersContainer, playersLabelText = createInfoLabel(info, "Players", 
-        tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers), 
-        CLR_TEXT, false)
-    playersContainer.LayoutOrder = 9
- 
-    -- PLACE NAME LABEL (English version, blue, click to copy)
-    local placeNameContainer, placeNameLabelText = createInfoLabel(info, "Place Name", "Loading...", CLR_ACCENT, true)
-    placeNameContainer.LayoutOrder = 10
-    
-    -- Place ID label
-    local placeContainer, placeLabelText = createInfoLabel(info, "Place ID", tostring(game.PlaceId), CLR_ACCENT, true)
-    placeContainer.LayoutOrder = 11
- 
-    -- Server ID label
-    local jobContainer, jobLabelText = createInfoLabel(info, "Job ID", tostring(game.JobId), CLR_ACCENT, true)
-    jobContainer.LayoutOrder = 12
-
-    -- Store the actual place name value for copying
-    local actualPlaceName = "Loading..."
-    
-    -- Update the click-to-copy button for place name
-    local placeNameBtn = placeNameContainer:FindFirstChildOfClass("TextButton")
-    if placeNameBtn then
-        -- Disconnect old connection and create new one
-        placeNameBtn.MouseButton1Click:Connect(function()
-            if setclipboard then
-                setclipboard(actualPlaceName)
-            end
-        end)
-    end
-
-    -- FUNCTION TO GET ENGLISH PLACE NAME (from your ScriptBlox searcher)
-    local function getEnglishPlaceName()
-        local universeId = game.GameId
-        local placeId = game.PlaceId
-        
-        -- Check for request function (syn.request, http_request, etc.)
-        local requestFunc = syn and syn.request or http_request or request
-        
-        if requestFunc then
-            -- Try to get universe details with English language header
-            local success, response = pcall(function()
-                return requestFunc({
-                    Url = "https://games.roblox.com/v1/games?universeIds=" .. universeId,
-                    Method = "GET",
-                    Headers = {
-                        ["Accept-Language"] = "en-US,en;q=0.9",
-                        ["Content-Type"] = "application/json"
-                    }
-                })
-            end)
-            
-            if success and response.Body then
-                local data = HttpService:JSONDecode(response.Body)
-                if data.data and data.data[1] and data.data[1].name then
-                    return data.data[1].name
-                end
+-- ========== CHECK FOR EXISTING GUI AND STOP MUSIC ==========
+local existingGui = CoreGui:FindFirstChild("MusicPlayerGUI")
+if existingGui then
+    pcall(function()
+        local sounds = workspace:GetDescendants()
+        for _, sound in pairs(sounds) do
+            if sound:IsA("Sound") and sound.Name == "MusicPlayerSound" then
+                sound:Stop()
+                sound:Destroy()
             end
         end
-        
-        -- Fallback: Try direct HttpGet (may still return translated)
-        local success2, response2 = pcall(function()
-            return game:HttpGet("https://games.roblox.com/v1/games?universeIds=" .. universeId)
-        end)
-        
-        if success2 and response2 then
-            local data = HttpService:JSONDecode(response2)
-            if data.data and data.data[1] and data.data[1].name then
-                return data.data[1].name
-            end
-        end
-        
-        -- Last resort: Marketplace service
-        local success3, result = pcall(function()
-            return game:GetService("MarketplaceService"):GetProductInfo(placeId, Enum.InfoType.Asset)
-        end)
-        
-        if success3 and result then
-            return result.Name
-        end
-        
-        return "Unknown Place"
-    end
-    
-    -- Fetch place name in English
-    local function fetchPlaceName()
-        actualPlaceName = getEnglishPlaceName()
-        placeNameLabelText.Text = "Place Name: " .. actualPlaceName
-    end
-    
-    -- Fetch place name immediately
-    fetchPlaceName()
- 
-    -- UPTIME FUNCTIONALITY
-    local startTime = tick()
-    local uptimeConnection = RS.Heartbeat:Connect(function()
-        local elapsed = tick() - startTime
-        local hours = math.floor(elapsed / 3600)
-        local minutes = math.floor((elapsed % 3600) / 60)
-        local seconds = math.floor(elapsed % 60)
- 
-        uptimeLabelText.Text = "Uptime: " .. string.format("%02d:%02d:%02d", hours, minutes, seconds)
     end)
- 
-    -- BUTTON FUNCTIONALITY
-    joinBtn.MouseButton1Click:Connect(function()
-        local placeNum = tonumber(placeBox.Text) or game.PlaceId
-        local jobId = jobBox.Text:gsub("%s", "")
- 
-        if jobId ~= "" then
-            TS:TeleportToPlaceInstance(placeNum, jobId, plr)
-        else
-            TS:Teleport(placeNum, plr)
-        end
-    end)
- 
-    -- REJOIN FUNCTIONALITY
-    rejoinBtn.MouseButton1Click:Connect(function()
-        TS:TeleportToPlaceInstance(game.PlaceId, game.JobId, plr)
-    end)
- 
-    -- Update players count
-    Players.PlayerAdded:Connect(function()
-        playersLabelText.Text = "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
-    end)
- 
-    Players.PlayerRemoving:Connect(function()
-        playersLabelText.Text = "Players: " .. tostring(#Players:GetPlayers()) .. "/" .. tostring(game:GetService("Players").MaxPlayers)
-    end)
- 
-    -- RIGHT PANEL (SERVER LIST)
-    local serverList = Instance.new("Frame", frame)
-    serverList.Size = UDim2.fromOffset(LIST_WIDTH, PANEL_HEIGHT - 58)
-    serverList.Position = UDim2.new(0, INFO_WIDTH + 24, 0, 46)
-    serverList.BackgroundColor3 = CLR_SURFACE
-    serverList.BorderSizePixel = 0
-    Instance.new("UICorner", serverList).CornerRadius = UDim.new(0, 8)
- 
-    -- Server list header
-    local listHeader = Instance.new("Frame", serverList)
-    listHeader.Size = UDim2.new(1, 0, 0, 50)
-    listHeader.BackgroundTransparency = 1
- 
-    local listTitle = Instance.new("TextLabel", listHeader)
-    listTitle.Size = UDim2.new(0.4, 0, 1, 0)
-    listTitle.Position = UDim2.new(0, 12, 0, 0)
-    listTitle.BackgroundTransparency = 1
-    listTitle.Font = Enum.Font.GothamBold
-    listTitle.TextColor3 = CLR_ACCENT
-    listTitle.TextSize = 16
-    listTitle.TextXAlignment = Enum.TextXAlignment.Left
-    listTitle.Text = "SERVER LIST"
- 
-    -- Filter button
-    local filterBtn = Instance.new("TextButton", listHeader)
-    filterBtn.Size = UDim2.new(0.3, 0, 0, 24)
-    filterBtn.Position = UDim2.new(0.4, 0, 0.5, -12)
-    filterBtn.BackgroundColor3 = CLR_PRIMARY
-    filterBtn.Text = "Filter: High Players"
-    filterBtn.Font = Enum.Font.GothamMedium
-    filterBtn.TextColor3 = CLR_TEXT
-    filterBtn.TextSize = 12
-    filterBtn.AutoButtonColor = false
-    Instance.new("UICorner", filterBtn).CornerRadius = UDim.new(0, 4)
- 
-    -- Refresh button
-    local refreshBtn = Instance.new("TextButton", listHeader)
-    refreshBtn.Size = UDim2.new(0.2, 0, 0, 24)
-    refreshBtn.Position = UDim2.new(0.8, 0, 0.5, -12)
-    refreshBtn.BackgroundColor3 = CLR_SUCCESS
-    refreshBtn.Text = "Refresh"
-    refreshBtn.Font = Enum.Font.GothamMedium
-    refreshBtn.TextColor3 = Color3.new(1, 1, 1)
-    refreshBtn.TextSize = 12
-    refreshBtn.AutoButtonColor = false
-    Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 4)
- 
-    -- Server list scroll area
-    local scrollFrame = Instance.new("ScrollingFrame", serverList)
-    scrollFrame.Size = UDim2.new(1, -12, 1, -62)
-    scrollFrame.Position = UDim2.new(0, 6, 0, 56)
-    scrollFrame.BackgroundTransparency = 1
-    scrollFrame.ScrollBarThickness = 6
-    scrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
- 
-    local scrollLayout = Instance.new("UIListLayout", scrollFrame)
-    scrollLayout.Padding = UDim.new(0, 5)
- 
-    -- Function to get servers
-    local function GetServers(placeId)
-        local url = "https://games.roblox.com/v1/games/" .. placeId .. "/servers/Public?limit=100"
-        local success, response = pcall(function()
-            return HttpService:JSONDecode(game:HttpGet(url))
-        end)
- 
-        if success and response.data then
-            return response.data
-        end
-        return {}
-    end
- 
-    -- Create server entry
-    local function CreateServerEntry(server, index)
-        local entry = Instance.new("Frame", scrollFrame)
-        entry.Size = UDim2.new(1, 0, 0, 60)
-        entry.BackgroundColor3 = CLR_BACKGROUND
-        entry.LayoutOrder = index
-        Instance.new("UICorner", entry).CornerRadius = UDim.new(0, 6)
- 
-        local playersLabel = Instance.new("TextLabel", entry)
-        playersLabel.Size = UDim2.new(0.6, 0, 0.5, 0)
-        playersLabel.Position = UDim2.new(0.05, 0, 0, 0)
-        playersLabel.BackgroundTransparency = 1
-        playersLabel.Font = Enum.Font.GothamMedium
-        playersLabel.TextColor3 = CLR_TEXT
-        playersLabel.TextSize = 14
-        playersLabel.Text = "Players: " .. server.playing .. "/" .. server.maxPlayers
-        playersLabel.TextXAlignment = Enum.TextXAlignment.Left
- 
-        local idLabel = Instance.new("TextLabel", entry)
-        idLabel.Size = UDim2.new(0.9, 0, 0.5, 0)
-        idLabel.Position = UDim2.new(0.05, 0, 0.5, 0)
-        idLabel.BackgroundTransparency = 1
-        idLabel.Font = Enum.Font.Gotham
-        idLabel.TextSize = 12
-        idLabel.TextColor3 = CLR_TEXT_MUTED
-        idLabel.Text = "ID: " .. (server.id or "N/A")
-        idLabel.TextXAlignment = Enum.TextXAlignment.Left
-        idLabel.TextTruncate = Enum.TextTruncate.AtEnd
- 
-        local joinBtn = Instance.new("TextButton", entry)
-        joinBtn.Size = UDim2.new(0.25, 0, 0.6, 0)
-        joinBtn.Position = UDim2.new(0.7, 0, 0.2, 0)
-        joinBtn.BackgroundColor3 = CLR_PRIMARY
-        joinBtn.Text = "Join"
-        joinBtn.Font = Enum.Font.GothamMedium
-        joinBtn.TextColor3 = Color3.new(1, 1, 1)
-        joinBtn.TextSize = 14
-        Instance.new("UICorner", joinBtn).CornerRadius = UDim.new(0, 6)
- 
-        joinBtn.MouseButton1Click:Connect(function()
-            TS:TeleportToPlaceInstance(game.PlaceId, server.id, plr)
-        end)
- 
-        return entry
-    end
+    existingGui:Destroy()
+end
+local existingMini = CoreGui:FindFirstChild("MusicPlayerMiniGUI")
+if existingMini then existingMini:Destroy() end
 
-    -- Variable to track current filter state
-    local sortAscending = false
+-- ========== VARIABLES ==========
+local currentSound = nil
+local isLooping = true
+local currentVolume = 1.0
+local currentSpeed = 1.0
+local isMinimized = false
+local isHistoryOpen = false
+local isSearchOpen = false
+local isInfoOpen = false
+local isSettingsOpen = false
+local downloadHistory = {}
+local isPlaying = false
+local isPaused = false
+local pausedTimePosition = 0
+local isDraggingTimeSlider = false
+local isDraggingMiniTimeSlider = false
+local currentTheme = "Default"
+local currentSongName = ""
+local saveThemeEnabled = false
+local rememberKeyEnabled = false
+local miniPlayMode = false
+local isGameMuted = false
+local secretKey = "Bro_broa3"
+local isKeyCorrect = false
+local playlistSongs = {}
+local currentSearchTab = "Search"
 
-    -- Refresh server list with proper filtering
-    local function RefreshServerList()
-        for _, child in ipairs(scrollFrame:GetChildren()) do
-            if child:IsA("Frame") then
-                child:Destroy()
-            end
-        end
+-- Music cache system
+local musicCache = {}
 
-        local servers = GetServers(game.PlaceId)
-        
-        -- Apply sorting based on player count
-        table.sort(servers, function(a, b)
-            if sortAscending then
-                return a.playing < b.playing
-            else
-                return a.playing > b.playing
-            end
-        end)
+local originalSoundVolumes = {}
+local originalSoundGroupVolumes = {}
+local originalSoundServiceMuted = false
 
-        for i, server in ipairs(servers) do
-            CreateServerEntry(server, i)
-        end
-    end
- 
-    -- Sort functionality
-    filterBtn.MouseButton1Click:Connect(function()
-        sortAscending = not sortAscending
-        filterBtn.Text = sortAscending and "Filter: Low Players" or "Filter: High Players"
-        RefreshServerList()
-    end)
- 
-    -- Refresh button functionality
-    refreshBtn.MouseButton1Click:Connect(RefreshServerList)
- 
-    -- Initial load
-    RefreshServerList()
-    
-    -- Store original panel dimensions for restore operations
-    local originalInfoSize = info.Size
-    local originalInfoPosition = info.Position
-    local originalServerListSize = serverList.Size
-    local originalServerListPosition = serverList.Position
-    
-    -- Store original title position
-    local originalTitlePosition = title.Position
-    local originalTitleSize = title.Size
-    
-    -- MINIMIZE FUNCTIONALITY (FIXED WITH TITLE MOVEMENT)
-    minBtn.MouseButton1Click:Connect(function()
-        -- If we're in fullscreen mode, exit fullscreen first
-        if isFullscreen then
-            isFullscreen = false
-            frame.Size = originalFrameSize
-            frame.Position = originalFramePosition
-            frame.Draggable = true
-            
-            info.Size = originalInfoSize
-            info.Position = originalInfoPosition
-            
-            serverList.Size = originalServerListSize
-            serverList.Position = originalServerListPosition
-            
-            -- Restore title bar size
-            titleBar.Size = UDim2.new(1, 0, 0, 44)
-            
-            -- Restore title to center
-            title.Position = UDim2.new(0, 0, 0, 0)
-            title.Size = UDim2.new(1, 0, 1, 0)
-            title.TextXAlignment = Enum.TextXAlignment.Center
-        end
-        
-        -- Toggle minimize
-        isMinimized = not isMinimized
-        
-        if isMinimized then
-            -- Save current state before minimizing
-            originalFrameSize = frame.Size
-            originalFramePosition = frame.Position
-            
-            -- Minimize the frame
-            frame.Size = UDim2.fromOffset(300, 44)
-            info.Visible = false
-            serverList.Visible = false
-            
-            -- Ensure title bar takes full height of minimized frame
-            titleBar.Size = UDim2.new(1, 0, 1, 0)
-            
-            -- Move title to the right to avoid buttons
-            title.Position = UDim2.new(0, 120, 0, 0)
-            title.Size = UDim2.new(1, -130, 1, 0)
-            title.TextXAlignment = Enum.TextXAlignment.Left
-        else
-            -- Restore from minimize
-            frame.Size = originalFrameSize
-            frame.Position = originalFramePosition
-            info.Visible = true
-            serverList.Visible = true
-            
-            -- Restore title bar height
-            titleBar.Size = UDim2.new(1, 0, 0, 44)
-            
-            -- Restore title to center
-            title.Position = UDim2.new(0, 0, 0, 0)
-            title.Size = UDim2.new(1, 0, 1, 0)
-            title.TextXAlignment = Enum.TextXAlignment.Center
-        end
-    end)
+-- ========== NOTIFICATION SYSTEM ==========
+local NotificationFrame = nil
+local NotificationLabel = nil
+local notificationTween = nil
 
-    -- FULLSCREEN FUNCTIONALITY
-    fullscreenBtn.MouseButton1Click:Connect(function()
-        -- If minimized, restore first
-        if isMinimized then
-            isMinimized = false
-            frame.Size = originalFrameSize
-            frame.Position = originalFramePosition
-            info.Visible = true
-            serverList.Visible = true
-            titleBar.Size = UDim2.new(1, 0, 0, 44)
-            
-            -- Restore title to center
-            title.Position = UDim2.new(0, 0, 0, 0)
-            title.Size = UDim2.new(1, 0, 1, 0)
-            title.TextXAlignment = Enum.TextXAlignment.Center
-        end
-        
-        -- Toggle fullscreen
-        isFullscreen = not isFullscreen
-        
-        if isFullscreen then
-            -- Save current state before going fullscreen
-            originalFrameSize = frame.Size
-            originalFramePosition = frame.Position
-            originalInfoSize = info.Size
-            originalInfoPosition = info.Position
-            originalServerListSize = serverList.Size
-            originalServerListPosition = serverList.Position
-            
-            -- Fullscreen mode
-            local screenWidth = workspace.CurrentCamera.ViewportSize.X
-            local screenHeight = workspace.CurrentCamera.ViewportSize.Y
-            
-            frame.Size = UDim2.new(0, screenWidth - 20, 0, screenHeight - 20)
-            frame.Position = UDim2.new(0, 10, 0, 10)
-            frame.Draggable = false
-            
-            -- Scale panels
-            local newInfoWidth = (screenWidth - 60) * 0.35
-            info.Size = UDim2.new(0, newInfoWidth, 1, -58)
-            info.Position = UDim2.new(0, 12, 0, 46)
-            
-            local newListWidth = (screenWidth - 60) * 0.6
-            serverList.Size = UDim2.new(0, newListWidth, 1, -58)
-            serverList.Position = UDim2.new(0, newInfoWidth + 24, 0, 46)
-            
-            -- Ensure title is centered in fullscreen
-            title.Position = UDim2.new(0, 0, 0, 0)
-            title.Size = UDim2.new(1, 0, 1, 0)
-            title.TextXAlignment = Enum.TextXAlignment.Center
-        else
-            -- Exit fullscreen
-            frame.Size = originalFrameSize
-            frame.Position = originalFramePosition
-            frame.Draggable = true
-            
-            info.Size = originalInfoSize
-            info.Position = originalInfoPosition
-            
-            serverList.Size = originalServerListSize
-            serverList.Position = originalServerListPosition
-            
-            -- Restore title to center
-            title.Position = UDim2.new(0, 0, 0, 0)
-            title.Size = UDim2.new(1, 0, 1, 0)
-            title.TextXAlignment = Enum.TextXAlignment.Center
-        end
-    end)
- 
-    -- Cleanup
-    gui.Destroying:Connect(function()
-        if uptimeConnection then
-            uptimeConnection:Disconnect()
+local function showNotification(text, color)
+    if not NotificationFrame then return end
+    if notificationTween then notificationTween:Cancel() end
+    NotificationLabel.Text = text
+    NotificationLabel.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+    NotificationFrame.Visible = true
+    NotificationFrame.BackgroundTransparency = 0.3
+    NotificationLabel.TextTransparency = 0
+    notificationTween = TweenService:Create(NotificationFrame, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {BackgroundTransparency = 1})
+    local fadeTween = TweenService:Create(NotificationLabel, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {TextTransparency = 1})
+    notificationTween:Play()
+    fadeTween:Play()
+    spawn(function()
+        wait(2.5)
+        if NotificationFrame then
+            NotificationFrame.Visible = false
         end
     end)
 end
- 
--- Open the server hopper GUI immediately
-OpenServerHopper()
+
+-- ========== THEME SYSTEM ==========
+local themes = {
+    Default = {
+        mainBg = Color3.fromRGB(40, 40, 40), titleBg = Color3.fromRGB(30, 30, 30),
+        outlineColor = Color3.fromRGB(80, 80, 80), inputBg = Color3.fromRGB(60, 60, 60),
+        playColor = Color3.fromRGB(70, 180, 70), pauseColor = Color3.fromRGB(255, 180, 50),
+        stopColor = Color3.fromRGB(200, 70, 70), historyColor = Color3.fromRGB(100, 100, 200),
+        muteColor = Color3.fromRGB(180, 80, 80), muteOnColor = Color3.fromRGB(80, 180, 80),
+        loopColor = Color3.fromRGB(80, 130, 200), searchColor = Color3.fromRGB(100, 150, 255),
+        infoColor = Color3.fromRGB(100, 180, 255), settingColor = Color3.fromRGB(150, 150, 150),
+        volumeFill = Color3.fromRGB(70, 180, 70), timeSlider = Color3.fromRGB(100, 180, 255),
+        speedBtnColor = Color3.fromRGB(100, 100, 180), textColor = Color3.fromRGB(255, 255, 255),
+        labelColor = Color3.fromRGB(255, 255, 255), miniBtnColor = Color3.fromRGB(80, 80, 80),
+        tabActive = Color3.fromRGB(100, 150, 255), tabInactive = Color3.fromRGB(60, 60, 70),
+    },
+    ["Dark Blue"] = {
+        mainBg = Color3.fromRGB(15, 25, 45), titleBg = Color3.fromRGB(10, 18, 35),
+        outlineColor = Color3.fromRGB(40, 80, 140), inputBg = Color3.fromRGB(25, 40, 65),
+        playColor = Color3.fromRGB(50, 140, 200), pauseColor = Color3.fromRGB(200, 150, 40),
+        stopColor = Color3.fromRGB(180, 60, 60), historyColor = Color3.fromRGB(60, 80, 160),
+        muteColor = Color3.fromRGB(160, 70, 70), muteOnColor = Color3.fromRGB(60, 160, 80),
+        loopColor = Color3.fromRGB(50, 100, 170), searchColor = Color3.fromRGB(70, 120, 220),
+        infoColor = Color3.fromRGB(70, 140, 220), settingColor = Color3.fromRGB(80, 100, 150),
+        volumeFill = Color3.fromRGB(50, 140, 200), timeSlider = Color3.fromRGB(70, 150, 230),
+        speedBtnColor = Color3.fromRGB(60, 80, 150), textColor = Color3.fromRGB(220, 230, 255),
+        labelColor = Color3.fromRGB(200, 215, 245), miniBtnColor = Color3.fromRGB(50, 50, 70),
+        tabActive = Color3.fromRGB(70, 120, 220), tabInactive = Color3.fromRGB(30, 40, 60),
+    },
+    Light = {
+        mainBg = Color3.fromRGB(235, 235, 240), titleBg = Color3.fromRGB(220, 220, 225),
+        outlineColor = Color3.fromRGB(180, 180, 190), inputBg = Color3.fromRGB(210, 210, 215),
+        playColor = Color3.fromRGB(80, 200, 80), pauseColor = Color3.fromRGB(255, 170, 40),
+        stopColor = Color3.fromRGB(220, 80, 80), historyColor = Color3.fromRGB(130, 130, 220),
+        muteColor = Color3.fromRGB(200, 100, 100), muteOnColor = Color3.fromRGB(100, 200, 100),
+        loopColor = Color3.fromRGB(100, 150, 220), searchColor = Color3.fromRGB(120, 170, 255),
+        infoColor = Color3.fromRGB(120, 190, 255), settingColor = Color3.fromRGB(170, 170, 180),
+        volumeFill = Color3.fromRGB(80, 200, 80), timeSlider = Color3.fromRGB(120, 190, 255),
+        speedBtnColor = Color3.fromRGB(130, 130, 200), textColor = Color3.fromRGB(30, 30, 35),
+        labelColor = Color3.fromRGB(40, 40, 45), miniBtnColor = Color3.fromRGB(200, 200, 210),
+        tabActive = Color3.fromRGB(120, 170, 255), tabInactive = Color3.fromRGB(190, 190, 200),
+    },
+    ["Neon Light"] = {
+        mainBg = Color3.fromRGB(20, 20, 20), titleBg = Color3.fromRGB(10, 10, 10),
+        outlineColor = Color3.fromRGB(0, 255, 128), inputBg = Color3.fromRGB(35, 35, 35),
+        playColor = Color3.fromRGB(0, 255, 100), pauseColor = Color3.fromRGB(255, 180, 0),
+        stopColor = Color3.fromRGB(255, 50, 100), historyColor = Color3.fromRGB(128, 0, 255),
+        muteColor = Color3.fromRGB(255, 60, 60), muteOnColor = Color3.fromRGB(0, 255, 60),
+        loopColor = Color3.fromRGB(0, 180, 255), searchColor = Color3.fromRGB(255, 0, 255),
+        infoColor = Color3.fromRGB(0, 255, 255), settingColor = Color3.fromRGB(180, 180, 180),
+        volumeFill = Color3.fromRGB(0, 255, 100), timeSlider = Color3.fromRGB(0, 255, 200),
+        speedBtnColor = Color3.fromRGB(200, 100, 255), textColor = Color3.fromRGB(255, 255, 255),
+        labelColor = Color3.fromRGB(200, 255, 220), miniBtnColor = Color3.fromRGB(50, 50, 50),
+        tabActive = Color3.fromRGB(255, 0, 255), tabInactive = Color3.fromRGB(50, 50, 60),
+    },
+    ["Dark Light"] = {
+        mainBg = Color3.fromRGB(50, 50, 55), titleBg = Color3.fromRGB(40, 40, 45),
+        outlineColor = Color3.fromRGB(100, 100, 110), inputBg = Color3.fromRGB(70, 70, 75),
+        playColor = Color3.fromRGB(90, 190, 90), pauseColor = Color3.fromRGB(240, 170, 50),
+        stopColor = Color3.fromRGB(210, 80, 80), historyColor = Color3.fromRGB(120, 120, 210),
+        muteColor = Color3.fromRGB(190, 90, 90), muteOnColor = Color3.fromRGB(90, 190, 90),
+        loopColor = Color3.fromRGB(90, 140, 210), searchColor = Color3.fromRGB(110, 160, 255),
+        infoColor = Color3.fromRGB(110, 190, 255), settingColor = Color3.fromRGB(160, 160, 170),
+        volumeFill = Color3.fromRGB(90, 190, 90), timeSlider = Color3.fromRGB(110, 190, 255),
+        speedBtnColor = Color3.fromRGB(120, 120, 190), textColor = Color3.fromRGB(240, 240, 245),
+        labelColor = Color3.fromRGB(220, 220, 230), miniBtnColor = Color3.fromRGB(70, 70, 80),
+        tabActive = Color3.fromRGB(110, 160, 255), tabInactive = Color3.fromRGB(60, 60, 70),
+    },
+    Bright = {
+        mainBg = Color3.fromRGB(255, 255, 255), titleBg = Color3.fromRGB(240, 240, 245),
+        outlineColor = Color3.fromRGB(200, 200, 210), inputBg = Color3.fromRGB(230, 230, 235),
+        playColor = Color3.fromRGB(60, 200, 60), pauseColor = Color3.fromRGB(255, 160, 30),
+        stopColor = Color3.fromRGB(255, 60, 60), historyColor = Color3.fromRGB(100, 100, 255),
+        muteColor = Color3.fromRGB(255, 80, 80), muteOnColor = Color3.fromRGB(80, 255, 80),
+        loopColor = Color3.fromRGB(80, 150, 255), searchColor = Color3.fromRGB(100, 150, 255),
+        infoColor = Color3.fromRGB(100, 200, 255), settingColor = Color3.fromRGB(180, 180, 190),
+        volumeFill = Color3.fromRGB(60, 200, 60), timeSlider = Color3.fromRGB(100, 180, 255),
+        speedBtnColor = Color3.fromRGB(120, 120, 220), textColor = Color3.fromRGB(20, 20, 25),
+        labelColor = Color3.fromRGB(30, 30, 35), miniBtnColor = Color3.fromRGB(220, 220, 230),
+        tabActive = Color3.fromRGB(100, 150, 255), tabInactive = Color3.fromRGB(220, 220, 230),
+    },
+    Blue = {
+        mainBg = Color3.fromRGB(20, 40, 80), titleBg = Color3.fromRGB(15, 30, 60),
+        outlineColor = Color3.fromRGB(50, 100, 180), inputBg = Color3.fromRGB(30, 55, 100),
+        playColor = Color3.fromRGB(50, 160, 220), pauseColor = Color3.fromRGB(220, 160, 40),
+        stopColor = Color3.fromRGB(200, 70, 70), historyColor = Color3.fromRGB(80, 100, 200),
+        muteColor = Color3.fromRGB(180, 80, 80), muteOnColor = Color3.fromRGB(80, 200, 100),
+        loopColor = Color3.fromRGB(60, 120, 200), searchColor = Color3.fromRGB(80, 140, 240),
+        infoColor = Color3.fromRGB(80, 160, 240), settingColor = Color3.fromRGB(100, 120, 180),
+        volumeFill = Color3.fromRGB(50, 160, 220), timeSlider = Color3.fromRGB(80, 170, 250),
+        speedBtnColor = Color3.fromRGB(80, 100, 180), textColor = Color3.fromRGB(230, 240, 255),
+        labelColor = Color3.fromRGB(210, 225, 250), miniBtnColor = Color3.fromRGB(40, 50, 80),
+        tabActive = Color3.fromRGB(80, 140, 240), tabInactive = Color3.fromRGB(25, 45, 70),
+    },
+}
+
+-- ========== SETTINGS SAVE/LOAD ==========
+local function loadSettings()
+    local s, r = pcall(function() if readfile and isfile and isfile(SETTINGS_FILE) then return HttpService:JSONDecode(readfile(SETTINGS_FILE)) end end)
+    if s and r then 
+        if r.theme then currentTheme = r.theme end
+        if r.saveThemeEnabled ~= nil then saveThemeEnabled = r.saveThemeEnabled end
+        if r.rememberKeyEnabled ~= nil then rememberKeyEnabled = r.rememberKeyEnabled end
+    end
+    if rememberKeyEnabled then
+        local sk, sr = pcall(function() if readfile and isfile and isfile(KEY_FILE) then return readfile(KEY_FILE) end end)
+        if sk and sr and sr == secretKey then 
+            isKeyCorrect = true
+            pcall(function() loadPlaylist() end)
+        end
+    end
+end
+
+local function saveSettings()
+    if not saveThemeEnabled then return end
+    pcall(function() 
+        if writefile then 
+            writefile(SETTINGS_FILE, HttpService:JSONEncode({
+                theme = currentTheme, 
+                saveThemeEnabled = saveThemeEnabled, 
+                rememberKeyEnabled = rememberKeyEnabled
+            })) 
+        end 
+    end)
+end
+
+local function saveKey()
+    if rememberKeyEnabled and isKeyCorrect then 
+        pcall(function() if writefile then writefile(KEY_FILE, secretKey) end end) 
+    end
+end
+
+local function deleteKeyFile()
+    pcall(function() if isfile and isfile(KEY_FILE) then delfile(KEY_FILE) end end)
+end
+
+-- ========== CLEAN SONG NAME ==========
+local function cleanSongName(fn)
+    if not fn then return "Unknown" end
+    fn = string.gsub(fn, "%.mp3$", ""); fn = string.gsub(fn, "%.MP3$", ""); fn = string.gsub(fn, "%%20", " ")
+    return fn
+end
+
+-- ========== APPLY THEME ==========
+local function applyTheme(tn)
+    local t = themes[tn] or themes["Default"]; currentTheme = tn
+    MainFrame.BackgroundColor3 = t.mainBg; OutlineFrame.BackgroundColor3 = t.mainBg
+    TitleBar.BackgroundColor3 = t.titleBg; UIStroke.Color = t.outlineColor
+    ContentFrame.BackgroundTransparency = 1; UrlContainer.BackgroundColor3 = t.inputBg
+    UrlLabel.TextColor3 = t.labelColor
+    PlayButton.BackgroundColor3 = t.playColor; PauseButton.BackgroundColor3 = t.pauseColor
+    StopButton.BackgroundColor3 = t.stopColor; HistoryButton.BackgroundColor3 = t.historyColor
+    MuteToggle.BackgroundColor3 = isGameMuted and t.muteOnColor or t.muteColor
+    LoopToggle.BackgroundColor3 = t.loopColor; SearchButton.BackgroundColor3 = t.searchColor
+    InfoButton.BackgroundColor3 = t.infoColor; SettingsButton.BackgroundColor3 = t.settingColor
+    VolumeFill.BackgroundColor3 = t.volumeFill; VolumeSlider.BackgroundColor3 = t.inputBg
+    VolumeLabel.TextColor3 = t.labelColor; SpeedTextBox.BackgroundColor3 = t.inputBg
+    SpeedTextBox.TextColor3 = t.textColor; SpeedLabel.TextColor3 = t.labelColor
+    SpeedDownButton.BackgroundColor3 = t.speedBtnColor; SpeedUpButton.BackgroundColor3 = t.speedBtnColor
+    TimeSlider.BackgroundColor3 = t.timeSlider; TimeSliderBg.BackgroundColor3 = t.inputBg
+    StatusLabel.TextColor3 = t.textColor; TitleText.TextColor3 = t.textColor
+    UrlTextBox.TextColor3 = t.textColor; SecretKeyTextBox.TextColor3 = t.textColor
+    SecretKeyContainer.BackgroundColor3 = t.inputBg
+    local w = Color3.fromRGB(255,255,255)
+    for _, b in pairs({PlayButton,PauseButton,StopButton,HistoryButton,MuteToggle,LoopToggle,SearchButton,InfoButton,SettingsButton}) do b.TextColor3 = w end
+    if SearchPanelStroke then SearchPanelStroke.Color = t.searchColor end
+    if InfoPanelStroke then InfoPanelStroke.Color = t.infoColor end
+    if SearchTabBtn then
+        SearchTabBtn.BackgroundColor3 = currentSearchTab == "Search" and t.tabActive or t.tabInactive
+        PlaylistTabBtn.BackgroundColor3 = currentSearchTab == "Playlist" and t.tabActive or t.tabInactive
+    end
+    if MiniFrame then
+        MiniFrame.BackgroundColor3 = t.mainBg; MiniOutlineFrame.BackgroundColor3 = t.mainBg
+        MiniUIStroke.Color = t.outlineColor; MiniTimeSliderBg.BackgroundColor3 = t.inputBg
+        MiniTimeSlider.BackgroundColor3 = t.timeSlider; MiniTimeLabel.TextColor3 = t.textColor
+        MiniSongLabel.TextColor3 = t.textColor
+        for _, b in pairs({MiniPauseButton,MiniRewindButton,MiniForwardButton,MiniShowButton}) do b.BackgroundColor3 = t.miniBtnColor; b.TextColor3 = w end
+    end
+    saveSettings()
+end
+
+-- ========== FORMAT TIME ==========
+local function formatTime(s)
+    if s < 0 then s = 0 end
+    return string.format("%d:%02d", math.floor(s/60), math.floor(s%60))
+end
+
+local rainbowColors = {
+    Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),
+    Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)
+}
+
+local function updateTimeDisplay()
+    if not currentSound then
+        if TimeLabel then TimeLabel.Text = "0:00 / 0:00"; TimeLabel.TextColor3 = Color3.fromRGB(200,200,200) end
+        if TimeSlider then TimeSlider.Size = UDim2.new(0,0,1,0) end
+        if MiniTimeLabel then MiniTimeLabel.Text = "0:00 / 0:00" end
+        if MiniTimeSlider then MiniTimeSlider.Size = UDim2.new(0,0,1,0) end
+        return
+    end
+    local tp = currentSound.TimePosition; local tl = currentSound.TimeLength
+    if tp ~= tp then tp = 0 end; if tl ~= tl or tl <= 0 then tl = 1 end
+    local timeText = formatTime(tp) .. " / " .. formatTime(tl)
+    if TimeLabel then TimeLabel.Text = currentSongName ~= "" and (timeText .. "   " .. currentSongName) or timeText end
+    local frac = math.clamp(tp / tl, 0, 1)
+    if TimeSlider then TimeSlider.Size = UDim2.new(frac, 0, 1, 0) end
+    if MiniTimeLabel then MiniTimeLabel.Text = timeText end
+    if MiniTimeSlider then MiniTimeSlider.Size = UDim2.new(frac, 0, 1, 0) end
+    if MiniSongLabel and currentSongName ~= "" then MiniSongLabel.Text = currentSongName end
+    if MiniPauseButton then MiniPauseButton.Text = isPaused and "▶" or "⏸" end
+end
+
+local function animateTimeLabelColor()
+    local ci = 1
+    while TimeLabel and TimeLabel.Parent do
+        if currentSongName ~= "" then
+            local c = rainbowColors[ci]
+            TweenService:Create(TimeLabel, TweenInfo.new(0.5), {TextColor3 = c}):Play()
+            if MiniSongLabel then TweenService:Create(MiniSongLabel, TweenInfo.new(0.5), {TextColor3 = c}):Play() end
+            ci = ci + 1; if ci > #rainbowColors then ci = 1 end
+        end
+        wait(0.5)
+    end
+end
+
+-- ========== ANIMATED PLACEHOLDER ==========
+local function animateTextboxPlaceholder(textbox, texts)
+    local textIndex = 1
+    while textbox and textbox.Parent do
+        local fullText = texts[textIndex]
+        local currentText = ""
+        for i = 1, #fullText do
+            if not textbox or not textbox.Parent then return end
+            currentText = currentText .. string.sub(fullText, i, i)
+            textbox.PlaceholderText = currentText .. "_"
+            wait(0.15)
+        end
+        if not textbox or not textbox.Parent then return end
+        textbox.PlaceholderText = fullText .. "_"
+        wait(0.3)
+        for b = 1, 3 do
+            if not textbox or not textbox.Parent then return end
+            textbox.PlaceholderText = fullText; wait(0.2)
+            if not textbox or not textbox.Parent then return end
+            textbox.PlaceholderText = fullText .. "_"; wait(0.2)
+        end
+        wait(1.5)
+        if not textbox or not textbox.Parent then return end
+        textbox.PlaceholderText = ""; wait(0.5)
+        textIndex = textIndex + 1; if textIndex > #texts then textIndex = 1 end
+    end
+end
+
+-- ========== CORE FUNCTIONS ==========
+local function loadCache()
+    local s,r = pcall(function() if readfile and isfile and isfile(CACHE_FILE) then return HttpService:JSONDecode(readfile(CACHE_FILE)) end end)
+    return s and r or {}
+end
+local function saveCache() pcall(function() if writefile then writefile(CACHE_FILE, HttpService:JSONEncode(musicCache)) end end) end
+local function cleanOldCache()
+    pcall(function()
+        if listfiles then
+            local fl = listfiles(CACHE_FOLDER); local cf = {}
+            for _, f in ipairs(fl) do if string.find(f,"cache_") and string.find(f,".mp3") then table.insert(cf, CACHE_FOLDER.."/"..f) end end
+            table.sort(cf, function(a,b) return a>b end)
+            for i=21,#cf do pcall(function() delfile(cf[i]) end) end
+        end
+    end)
+end
+local function loadHistory()
+    local s,r = pcall(function() if readfile and isfile and isfile(HISTORY_FILE) then return HttpService:JSONDecode(readfile(HISTORY_FILE)) end end)
+    return s and r or {}
+end
+local function saveHistory() pcall(function() if writefile then writefile(HISTORY_FILE, HttpService:JSONEncode(downloadHistory)) end end) end
+local function addToHistory(url, fn)
+    for i,e in ipairs(downloadHistory) do if e.url==url then table.remove(downloadHistory,i); break end end
+    table.insert(downloadHistory,1,{url=url,fileName=fn,timestamp=os.time(),date=os.date("%Y-%m-%d %H:%M:%S")})
+    if #downloadHistory>50 then for i=51,#downloadHistory do downloadHistory[i]=nil end end
+    saveHistory()
+end
+local function removeFromHistory(idx)
+    if downloadHistory[idx] then table.remove(downloadHistory,idx); saveHistory(); return true end
+    return false
+end
+local function stopMusic()
+    if currentSound then currentSound:Stop(); currentSound:Destroy(); currentSound=nil end
+    isPlaying=false; isPaused=false; pausedTimePosition=0; currentSongName=""
+    updateTimeDisplay()
+end
+
+local function muteAllGameSounds(mute)
+    isGameMuted=mute
+    pcall(function() SoundService.RespectFilteringEnabled=false; if mute then originalSoundServiceMuted=SoundService.Muted; SoundService.Muted=true else SoundService.Muted=originalSoundServiceMuted end end)
+    local svcs={game,workspace,game:GetService("Lighting"),game:GetService("ReplicatedStorage"),game:GetService("ReplicatedFirst"),game:GetService("ServerStorage"),game:GetService("ServerScriptService"),game:GetService("StarterGui"),game:GetService("StarterPack"),game:GetService("StarterPlayer"),game:GetService("StarterCharacterScripts"),game:GetService("SoundService"),game:GetService("Players"),game:GetService("Chat"),game:GetService("TeleportService")}
+    if player then if player.Character then table.insert(svcs,player.Character) end; if player.Backpack then table.insert(svcs,player.Backpack) end; if player.PlayerGui then table.insert(svcs,player.PlayerGui) end; if player.PlayerScripts then table.insert(svcs,player.PlayerScripts) end end
+    pcall(function() if workspace.CurrentCamera then table.insert(svcs,workspace.CurrentCamera) end end)
+    for _,c in ipairs(svcs) do pcall(function() if c then for _,o in pairs(c:GetDescendants()) do if o==currentSound then elseif o:IsA("Sound") then if mute then if originalSoundVolumes[o]==nil then originalSoundVolumes[o]=o.Volume end; o.Volume=0 else local ov=originalSoundVolumes[o]; if ov~=nil then o.Volume=ov; originalSoundVolumes[o]=nil end end elseif o:IsA("SoundGroup") then if mute then if originalSoundGroupVolumes[o]==nil then originalSoundGroupVolumes[o]=o.Volume end; o.Volume=0 else local ov=originalSoundGroupVolumes[o]; if ov~=nil then o.Volume=ov; originalSoundGroupVolumes[o]=nil end end end end end end) end
+    if currentSound then pcall(function() currentSound.Volume=currentVolume end) end
+    if not mute then originalSoundVolumes={}; originalSoundGroupVolumes={} end
+    if MuteToggle then local t=themes[currentTheme] or themes["Default"]; MuteToggle.BackgroundColor3=mute and t.muteOnColor or t.muteColor; MuteToggle.Text=mute and "🔇 MUTE: ON" or "🔊 MUTE: OFF" end
+end
+
+local function updateVolumeSlider(v)
+    currentVolume=v; if VolumeFill then VolumeFill.Size=UDim2.new(v,0,1,0) end
+    if VolumeLabel then VolumeLabel.Text="Volume: "..math.floor(v*100).."%" end
+    if currentSound then currentSound.Volume=v end
+end
+local function updateSpeed(s)
+    currentSpeed=s; if SpeedTextBox then SpeedTextBox.Text=string.format("%.2f",s).."x" end
+    if SpeedLabel then SpeedLabel.Text="Speed: "..string.format("%.2f",s).."x" end
+    if currentSound then currentSound.PlaybackSpeed=s end
+end
+
+local function togglePause()
+    if not currentSound then return end
+    if isPaused then currentSound.TimePosition=pausedTimePosition; currentSound:Resume(); isPaused=false; isPlaying=true; if PauseButton then PauseButton.Text="⏸ PAUSE" end
+    else pausedTimePosition=currentSound.TimePosition; currentSound:Pause(); isPaused=true; isPlaying=false; if PauseButton then PauseButton.Text="▶ RESUME" end end
+    updateTimeDisplay()
+end
+
+local function playMusicFromUrl(url, fn)
+    stopMusic(); currentSongName=cleanSongName(fn)
+    if StatusLabel then StatusLabel.Text="⏬ Loading..."; StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
+    if MiniSongLabel then MiniSongLabel.Text=currentSongName end
+    if musicCache[url] and musicCache[url].fileName then
+        local cf=musicCache[url].fileName
+        if isfile and isfile(cf) then
+            if StatusLabel then StatusLabel.Text="📦 Cached"; StatusLabel.TextColor3=Color3.fromRGB(100,200,255) end
+            currentSound=Instance.new("Sound"); currentSound.Name="MusicPlayerSound"
+            currentSound.SoundId=getcustomasset(cf); currentSound.Volume=currentVolume
+            currentSound.Looped=isLooping; currentSound.PlaybackSpeed=currentSpeed; currentSound.Parent=workspace
+            currentSound:Play(); isPlaying=true; isPaused=false; pausedTimePosition=0
+            if PauseButton then PauseButton.Text="⏸ PAUSE" end
+            if StatusLabel then StatusLabel.Text="🎵 "..currentSongName; StatusLabel.TextColor3=Color3.fromRGB(100,255,100) end
+            addToHistory(url,fn); updateTimeDisplay(); return true
+        else musicCache[url]=nil; saveCache() end
+    end
+    if StatusLabel then StatusLabel.Text="⏬ Downloading..."; StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
+    local ts=os.time(); local cfn=CACHE_FOLDER.."/cache_"..ts..".mp3"
+    local s,err=pcall(function()
+        local d=game:HttpGet(url); writefile(cfn,d); musicCache[url]={fileName=cfn,timestamp=ts}; saveCache()
+        currentSound=Instance.new("Sound"); currentSound.Name="MusicPlayerSound"
+        currentSound.SoundId=getcustomasset(cfn); currentSound.Volume=currentVolume
+        currentSound.Looped=isLooping; currentSound.PlaybackSpeed=currentSpeed; currentSound.Parent=workspace
+        currentSound:Play(); isPlaying=true; isPaused=false; pausedTimePosition=0
+        if PauseButton then PauseButton.Text="⏸ PAUSE" end
+    end)
+    if s and currentSound then
+        if StatusLabel then StatusLabel.Text="🎵 "..currentSongName; StatusLabel.TextColor3=Color3.fromRGB(100,255,100) end
+        addToHistory(url,fn); cleanOldCache(); updateTimeDisplay(); return true
+    else
+        if StatusLabel then StatusLabel.Text="❌ Error: "..tostring(err); StatusLabel.TextColor3=Color3.fromRGB(255,100,100) end
+        currentSongName=""; stopMusic(); return false
+    end
+end
+
+-- ========== PLAYLIST LOADING ==========
+function loadPlaylist()
+    playlistSongs = {}
+    local s, data = pcall(function() return game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/PrimeMusic/refs/heads/main/Playlist") end)
+    if s and data then
+        for line in string.gmatch(data, "[^\r\n]+") do
+            line = string.gsub(line, "^%s+", ""); line = string.gsub(line, "%s+$", "")
+            if line ~= "" and string.find(line, ".mp3") then
+                local url = line
+                local fileName = "audio.mp3"
+                local parts = string.split(line, "/")
+                if #parts > 0 and string.find(parts[#parts], ".mp3") then
+                    fileName = string.gsub(string.gsub(parts[#parts], "%%20", " "), "%%25", "%%")
+                end
+                table.insert(playlistSongs, {url = url, fileName = fileName})
+            end
+        end
+    end
+end
+
+function checkSecretKey(input)
+    if input == secretKey then
+        isKeyCorrect = true
+        SecretKeyTextBox.Text = ""
+        saveKey()
+        loadPlaylist()
+        showNotification("✅ Key correct! Playlist unlocked!", Color3.fromRGB(100, 255, 100))
+        if isSearchOpen and currentSearchTab == "Playlist" then updatePlaylistDisplay() end
+        return true
+    else
+        SecretKeyTextBox.Text = ""
+        showNotification("❌ Wrong key! Try again.", Color3.fromRGB(255, 100, 100))
+        return false
+    end
+end
+
+function updatePlaylistDisplay()
+    if not PlaylistScrollFrame then return end
+    for _, c in pairs(PlaylistScrollFrame:GetChildren()) do if c.Name == "PlaylistItem" then c:Destroy() end end
+    if not isKeyCorrect then
+        if PlaylistNoResultsLabel then PlaylistNoResultsLabel.Visible = true; PlaylistNoResultsLabel.Text = "Enter the correct secret key to unlock the playlist! Find it in our Discord server." end
+        PlaylistScrollFrame.CanvasSize = UDim2.new(0,0,0,0); return
+    end    if #playlistSongs == 0 then
+        if PlaylistNoResultsLabel then PlaylistNoResultsLabel.Visible = true; PlaylistNoResultsLabel.Text = "Loading playlist..." end
+        PlaylistScrollFrame.CanvasSize = UDim2.new(0,0,0,0); return
+    end
+    PlaylistNoResultsLabel.Visible = false
+    local th = 0
+    for _, song in ipairs(playlistSongs) do
+        local item = Instance.new("Frame"); item.Name = "PlaylistItem"; item.Size = UDim2.new(1,-10,0,50)
+        item.Position = UDim2.new(0,5,0,th); item.BackgroundColor3 = Color3.fromRGB(50,50,60); item.BorderSizePixel = 0; item.Parent = PlaylistScrollFrame
+        local ic = Instance.new("UICorner"); ic.CornerRadius = UDim.new(0,4); ic.Parent = item
+        local lb = Instance.new("TextLabel"); lb.Size = UDim2.new(1,-70,0,20); lb.Position = UDim2.new(0,5,0,5)
+        lb.BackgroundTransparency = 1; lb.Text = cleanSongName(song.fileName); lb.TextColor3 = Color3.fromRGB(255,255,255)
+        lb.Font = Enum.Font.GothamBold; lb.TextSize = 12; lb.Parent = item
+        local pb = Instance.new("TextButton"); pb.Size = UDim2.new(0,60,0,30); pb.Position = UDim2.new(1,-65,0,10)
+        pb.BackgroundColor3 = Color3.fromRGB(70,150,70); pb.BorderSizePixel = 0; pb.Text = "PLAY"
+        pb.TextColor3 = Color3.fromRGB(255,255,255); pb.Font = Enum.Font.GothamBold; pb.TextSize = 10; pb.Parent = item
+        local pbc = Instance.new("UICorner"); pbc.CornerRadius = UDim.new(0,4); pbc.Parent = pb
+        local su, sf = song.url, song.fileName
+        pb.MouseButton1Click:Connect(function() if isSearchOpen then toggleSearchPanel() end; playMusicFromUrl(su, sf) end)
+        th = th + 55
+    end
+    PlaylistScrollFrame.CanvasSize = UDim2.new(0,0,0,th)
+end
+
+-- ========== GUI CREATION ==========
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name="MusicPlayerGUI"; ScreenGui.ResetOnSpawn=false; ScreenGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; ScreenGui.Parent=CoreGui
+
+MainFrame = Instance.new("Frame")
+MainFrame.Size=UDim2.new(0,400,0,345); MainFrame.Position=UDim2.new(0.5,-200,0.5,-172)
+MainFrame.BackgroundColor3=Color3.fromRGB(40,40,40); MainFrame.BorderSizePixel=0
+MainFrame.Active=true; MainFrame.Draggable=true; MainFrame.Parent=ScreenGui
+local originalSize=MainFrame.Size; local minimizedSize=UDim2.new(0,400,0,35)
+
+-- Notification Frame
+NotificationFrame = Instance.new("Frame")
+NotificationFrame.Size = UDim2.new(1, -20, 0, 30); NotificationFrame.Position = UDim2.new(0, 10, 1, -40)
+NotificationFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0); NotificationFrame.BackgroundTransparency = 1
+NotificationFrame.BorderSizePixel = 0; NotificationFrame.Visible = false; NotificationFrame.Parent = MainFrame
+local NotificationCorner = Instance.new("UICorner"); NotificationCorner.CornerRadius = UDim.new(0, 6); NotificationCorner.Parent = NotificationFrame
+NotificationLabel = Instance.new("TextLabel")
+NotificationLabel.Size = UDim2.new(1, 0, 1, 0); NotificationLabel.BackgroundTransparency = 1
+NotificationLabel.Text = ""; NotificationLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+NotificationLabel.Font = Enum.Font.GothamBold; NotificationLabel.TextSize = 12
+NotificationLabel.TextXAlignment = Enum.TextXAlignment.Center; NotificationLabel.Parent = NotificationFrame
+
+OutlineFrame=Instance.new("Frame")
+OutlineFrame.Size=UDim2.new(1,6,1,6); OutlineFrame.Position=UDim2.new(0,-3,0,-3)
+OutlineFrame.BackgroundColor3=Color3.fromRGB(40,40,40); OutlineFrame.BorderSizePixel=0; OutlineFrame.ZIndex=0; OutlineFrame.Parent=MainFrame
+UIStroke=Instance.new("UIStroke"); UIStroke.Thickness=3; UIStroke.Color=Color3.fromRGB(80,80,80); UIStroke.Parent=OutlineFrame
+spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while UIStroke and UIStroke.Parent do TweenService:Create(UIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
+local UICorner=Instance.new("UICorner"); UICorner.CornerRadius=UDim.new(0,10); UICorner.Parent=MainFrame
+local OutlineCorner=Instance.new("UICorner"); OutlineCorner.CornerRadius=UDim.new(0,12); OutlineCorner.Parent=OutlineFrame
+
+TitleBar=Instance.new("Frame"); TitleBar.Size=UDim2.new(1,0,0,35); TitleBar.BackgroundColor3=Color3.fromRGB(30,30,30); TitleBar.BorderSizePixel=0; TitleBar.Parent=MainFrame
+local TitleBarUICorner=Instance.new("UICorner"); TitleBarUICorner.CornerRadius=UDim.new(0,10); TitleBarUICorner.Parent=TitleBar
+TitleText=Instance.new("TextLabel"); TitleText.Size=UDim2.new(0,200,1,0); TitleText.Position=UDim2.new(0,15,0,0); TitleText.BackgroundTransparency=1; TitleText.Text="GitHub MP3 Player"; TitleText.TextColor3=Color3.fromRGB(255,255,255); TitleText.TextXAlignment=Enum.TextXAlignment.Left; TitleText.Font=Enum.Font.GothamBold; TitleText.TextSize=16; TitleText.Parent=TitleBar
+
+local function mkBtn(tx,px,cl,pr)
+    local b=Instance.new("TextButton"); b.Size=UDim2.new(0,35,0,35); b.Position=UDim2.new(1,px,0,0)
+    b.BackgroundColor3=cl; b.BorderSizePixel=0; b.Text=tx; b.TextColor3=Color3.fromRGB(255,255,255)
+    b.Font=Enum.Font.GothamBold; b.TextSize=18; b.Parent=pr
+    local cr=Instance.new("UICorner"); cr.CornerRadius=UDim.new(0,8); cr.Parent=b; return b
+end
+
+InfoButton=mkBtn("ℹ",-200,Color3.fromRGB(100,180,255),TitleBar)
+SettingsButton=mkBtn("⚙",-160,Color3.fromRGB(150,150,150),TitleBar)
+SearchButton=mkBtn("🔍",-120,Color3.fromRGB(100,150,255),TitleBar)
+local MinimizeButton=mkBtn("-",-80,Color3.fromRGB(255,180,60),TitleBar)
+local CloseButton=Instance.new("TextButton"); CloseButton.Size=UDim2.new(0,40,0,35); CloseButton.Position=UDim2.new(1,-40,0,0)
+CloseButton.BackgroundColor3=Color3.fromRGB(255,60,60); CloseButton.BorderSizePixel=0; CloseButton.Text="X"
+CloseButton.TextColor3=Color3.fromRGB(255,255,255); CloseButton.Font=Enum.Font.GothamBold; CloseButton.TextSize=14; CloseButton.Parent=TitleBar
+local CloseUICorner=Instance.new("UICorner"); CloseUICorner.CornerRadius=UDim.new(0,8); CloseUICorner.Parent=CloseButton
+
+-- Settings Panel (SHORTER - 230px)
+SettingsPanel=Instance.new("Frame"); SettingsPanel.Size=UDim2.new(1,0,0,240); SettingsPanel.Position=UDim2.new(0,0,0,-250)
+SettingsPanel.BackgroundColor3=Color3.fromRGB(35,35,42); SettingsPanel.BorderSizePixel=0; SettingsPanel.Visible=false; SettingsPanel.Parent=MainFrame; SettingsPanel.ZIndex=10
+local SettingsPanelCorner=Instance.new("UICorner"); SettingsPanelCorner.CornerRadius=UDim.new(0,8); SettingsPanelCorner.Parent=SettingsPanel
+local SettingsPanelStroke=Instance.new("UIStroke"); SettingsPanelStroke.Thickness=2; SettingsPanelStroke.Color=Color3.fromRGB(150,150,160); SettingsPanelStroke.Parent=SettingsPanel
+local SettingsTitle=Instance.new("TextLabel"); SettingsTitle.Size=UDim2.new(1,0,0,30); SettingsTitle.BackgroundColor3=Color3.fromRGB(45,45,52); SettingsTitle.BorderSizePixel=0; SettingsTitle.Text="⚙ SETTINGS"; SettingsTitle.TextColor3=Color3.fromRGB(255,255,255); SettingsTitle.Font=Enum.Font.GothamBold; SettingsTitle.TextSize=14; SettingsTitle.Parent=SettingsPanel
+local SettingsTitleCorner=Instance.new("UICorner"); SettingsTitleCorner.CornerRadius=UDim.new(0,8); SettingsTitleCorner.Parent=SettingsTitle
+
+-- Settings scroll frame
+local SettingsScrollFrame=Instance.new("ScrollingFrame"); SettingsScrollFrame.Size=UDim2.new(1,-10,1,-35); SettingsScrollFrame.Position=UDim2.new(0,5,0,35); SettingsScrollFrame.BackgroundTransparency=1; SettingsScrollFrame.BorderSizePixel=0; SettingsScrollFrame.ScrollBarThickness=6; SettingsScrollFrame.ScrollBarImageColor3=Color3.fromRGB(130,130,140); SettingsScrollFrame.CanvasSize=UDim2.new(0,0,0,200); SettingsScrollFrame.Parent=SettingsPanel
+
+local ThemeLabel=Instance.new("TextLabel"); ThemeLabel.Size=UDim2.new(0,120,0,20); ThemeLabel.Position=UDim2.new(0,10,0,5); ThemeLabel.BackgroundTransparency=1; ThemeLabel.Text="Theme:"; ThemeLabel.TextColor3=Color3.fromRGB(220,220,230); ThemeLabel.TextXAlignment=Enum.TextXAlignment.Left; ThemeLabel.Font=Enum.Font.GothamBold; ThemeLabel.TextSize=12; ThemeLabel.Parent=SettingsScrollFrame
+local ThemeDropdown=Instance.new("TextButton"); ThemeDropdown.Size=UDim2.new(1,-20,0,26); ThemeDropdown.Position=UDim2.new(0,10,0,28); ThemeDropdown.BackgroundColor3=Color3.fromRGB(60,60,70); ThemeDropdown.BorderSizePixel=0; ThemeDropdown.Text=currentTheme.." ▼"; ThemeDropdown.TextColor3=Color3.fromRGB(255,255,255); ThemeDropdown.Font=Enum.Font.GothamBold; ThemeDropdown.TextSize=12; ThemeDropdown.Parent=SettingsScrollFrame
+local ThemeDropdownCorner=Instance.new("UICorner"); ThemeDropdownCorner.CornerRadius=UDim.new(0,5); ThemeDropdownCorner.Parent=ThemeDropdown
+local ThemeList=Instance.new("ScrollingFrame"); ThemeList.Size=UDim2.new(1,-20,0,50); ThemeList.Position=UDim2.new(0,10,0,57); ThemeList.BackgroundColor3=Color3.fromRGB(50,50,58); ThemeList.BorderSizePixel=0; ThemeList.ScrollBarThickness=5; ThemeList.ScrollBarImageColor3=Color3.fromRGB(130,130,140); ThemeList.CanvasSize=UDim2.new(0,0,0,0); ThemeList.Visible=false; ThemeList.Parent=SettingsScrollFrame
+local ThemeListCorner=Instance.new("UICorner"); ThemeListCorner.CornerRadius=UDim.new(0,4); ThemeListCorner.Parent=ThemeList
+local themeNames={"Default","Dark Blue","Light","Neon Light","Dark Light","Bright","Blue"}
+for i,n in ipairs(themeNames) do
+    local b=Instance.new("TextButton"); b.Size=UDim2.new(1,-8,0,24); b.Position=UDim2.new(0,4,0,(i-1)*26+2); b.BackgroundColor3=Color3.fromRGB(55,55,63); b.BorderSizePixel=0; b.Text=n; b.TextColor3=Color3.fromRGB(255,255,255); b.Font=Enum.Font.Gotham; b.TextSize=11; b.Parent=ThemeList
+    local bc=Instance.new("UICorner"); bc.CornerRadius=UDim.new(0,3); bc.Parent=b; b.MouseButton1Click:Connect(function() applyTheme(n); ThemeDropdown.Text=n.." ▼"; ThemeList.Visible=false end)
+end
+ThemeList.CanvasSize=UDim2.new(0,0,0,#themeNames*26+4); ThemeDropdown.MouseButton1Click:Connect(function() ThemeList.Visible=not ThemeList.Visible end)
+
+local SaveThemeLabel=Instance.new("TextLabel"); SaveThemeLabel.Size=UDim2.new(0,150,0,20); SaveThemeLabel.Position=UDim2.new(0,10,0,115); SaveThemeLabel.BackgroundTransparency=1; SaveThemeLabel.Text="Save Theme:"; SaveThemeLabel.TextColor3=Color3.fromRGB(220,220,230); SaveThemeLabel.TextXAlignment=Enum.TextXAlignment.Left; SaveThemeLabel.Font=Enum.Font.GothamBold; SaveThemeLabel.TextSize=12; SaveThemeLabel.Parent=SettingsScrollFrame
+local SaveThemeToggle=Instance.new("TextButton"); SaveThemeToggle.Size=UDim2.new(0,50,0,24); SaveThemeToggle.Position=UDim2.new(0,165,0,113); SaveThemeToggle.BorderSizePixel=0; SaveThemeToggle.Font=Enum.Font.GothamBold; SaveThemeToggle.TextSize=11; SaveThemeToggle.TextColor3=Color3.fromRGB(255,255,255); SaveThemeToggle.Parent=SettingsScrollFrame
+local SaveThemeToggleCorner=Instance.new("UICorner"); SaveThemeToggleCorner.CornerRadius=UDim.new(0,5); SaveThemeToggleCorner.Parent=SaveThemeToggle
+local function updateSaveThemeToggle() if saveThemeEnabled then SaveThemeToggle.BackgroundColor3=Color3.fromRGB(80,180,80); SaveThemeToggle.Text="ON" else SaveThemeToggle.BackgroundColor3=Color3.fromRGB(180,80,80); SaveThemeToggle.Text="OFF" end end
+SaveThemeToggle.MouseButton1Click:Connect(function() saveThemeEnabled=not saveThemeEnabled; updateSaveThemeToggle(); if saveThemeEnabled then saveSettings() else pcall(function() if isfile and isfile(SETTINGS_FILE) then delfile(SETTINGS_FILE) end end) end end)
+
+local RememberKeyLabel=Instance.new("TextLabel"); RememberKeyLabel.Size=UDim2.new(0,150,0,20); RememberKeyLabel.Position=UDim2.new(0,10,0,148); RememberKeyLabel.BackgroundTransparency=1; RememberKeyLabel.Text="Remember Key:"; RememberKeyLabel.TextColor3=Color3.fromRGB(220,220,230); RememberKeyLabel.TextXAlignment=Enum.TextXAlignment.Left; RememberKeyLabel.Font=Enum.Font.GothamBold; RememberKeyLabel.TextSize=12; RememberKeyLabel.Parent=SettingsScrollFrame
+local RememberKeyToggle=Instance.new("TextButton"); RememberKeyToggle.Size=UDim2.new(0,50,0,24); RememberKeyToggle.Position=UDim2.new(0,165,0,146); RememberKeyToggle.BorderSizePixel=0; RememberKeyToggle.Font=Enum.Font.GothamBold; RememberKeyToggle.TextSize=11; RememberKeyToggle.TextColor3=Color3.fromRGB(255,255,255); RememberKeyToggle.Parent=SettingsScrollFrame
+local RememberKeyToggleCorner=Instance.new("UICorner"); RememberKeyToggleCorner.CornerRadius=UDim.new(0,5); RememberKeyToggleCorner.Parent=RememberKeyToggle
+local function updateRememberKeyToggle() if rememberKeyEnabled then RememberKeyToggle.BackgroundColor3=Color3.fromRGB(80,180,80); RememberKeyToggle.Text="ON" else RememberKeyToggle.BackgroundColor3=Color3.fromRGB(180,80,80); RememberKeyToggle.Text="OFF" end end
+RememberKeyToggle.MouseButton1Click:Connect(function() rememberKeyEnabled=not rememberKeyEnabled; updateRememberKeyToggle(); if rememberKeyEnabled then if isKeyCorrect then saveKey() end else deleteKeyFile() end; saveSettings() end)
+
+local MiniPlayLabel=Instance.new("TextLabel"); MiniPlayLabel.Size=UDim2.new(0,150,0,20); MiniPlayLabel.Position=UDim2.new(0,10,0,181); MiniPlayLabel.BackgroundTransparency=1; MiniPlayLabel.Text="Mini Mode:"; MiniPlayLabel.TextColor3=Color3.fromRGB(220,220,230); MiniPlayLabel.TextXAlignment=Enum.TextXAlignment.Left; MiniPlayLabel.Font=Enum.Font.GothamBold; MiniPlayLabel.TextSize=12; MiniPlayLabel.Parent=SettingsScrollFrame
+local MiniPlayToggle=Instance.new("TextButton"); MiniPlayToggle.Size=UDim2.new(0,50,0,24); MiniPlayToggle.Position=UDim2.new(0,165,0,179); MiniPlayToggle.BorderSizePixel=0; MiniPlayToggle.Font=Enum.Font.GothamBold; MiniPlayToggle.TextSize=11; MiniPlayToggle.TextColor3=Color3.fromRGB(255,255,255); MiniPlayToggle.Parent=SettingsScrollFrame
+local MiniPlayToggleCorner=Instance.new("UICorner"); MiniPlayToggleCorner.CornerRadius=UDim.new(0,5); MiniPlayToggleCorner.Parent=MiniPlayToggle
+local function updateMiniPlayToggle() MiniPlayToggle.BackgroundColor3=miniPlayMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); MiniPlayToggle.Text=miniPlayMode and "ON" or "OFF" end
+
+-- Info Panel
+InfoPanel=Instance.new("Frame"); InfoPanel.Size=UDim2.new(0,280,1,0); InfoPanel.Position=UDim2.new(0,-290,0,0); InfoPanel.BackgroundColor3=Color3.fromRGB(30,35,40); InfoPanel.BorderSizePixel=0; InfoPanel.Visible=false; InfoPanel.Parent=MainFrame; InfoPanel.ZIndex=10
+local InfoPanelCorner=Instance.new("UICorner"); InfoPanelCorner.CornerRadius=UDim.new(0,8); InfoPanelCorner.Parent=InfoPanel
+InfoPanelStroke=Instance.new("UIStroke"); InfoPanelStroke.Thickness=2; InfoPanelStroke.Color=Color3.fromRGB(100,180,255); InfoPanelStroke.Parent=InfoPanel
+local InfoTitle=Instance.new("TextLabel"); InfoTitle.Size=UDim2.new(1,0,0,30); InfoTitle.BackgroundColor3=Color3.fromRGB(40,45,50); InfoTitle.BorderSizePixel=0; InfoTitle.Text="HOW TO USE"; InfoTitle.TextColor3=Color3.fromRGB(255,255,255); InfoTitle.Font=Enum.Font.GothamBold; InfoTitle.TextSize=14; InfoTitle.Parent=InfoPanel
+local InfoTitleCorner=Instance.new("UICorner"); InfoTitleCorner.CornerRadius=UDim.new(0,8); InfoTitleCorner.Parent=InfoTitle
+InfoScrollFrame=Instance.new("ScrollingFrame"); InfoScrollFrame.Size=UDim2.new(1,-20,1,-40); InfoScrollFrame.Position=UDim2.new(0,10,0,40); InfoScrollFrame.BackgroundColor3=Color3.fromRGB(35,40,45); InfoScrollFrame.BorderSizePixel=0; InfoScrollFrame.ScrollBarThickness=8; InfoScrollFrame.ScrollBarImageColor3=Color3.fromRGB(120,120,140); InfoScrollFrame.CanvasSize=UDim2.new(0,0,0,0); InfoScrollFrame.Parent=InfoPanel
+local InfoScrollCorner=Instance.new("UICorner"); InfoScrollCorner.CornerRadius=UDim.new(0,6); InfoScrollCorner.Parent=InfoScrollFrame
+InfoText=Instance.new("TextLabel"); InfoText.Size=UDim2.new(1,-20,0,550); InfoText.Position=UDim2.new(0,10,0,10); InfoText.BackgroundTransparency=1
+InfoText.Text=[[<b>STEPS TO PLAY MUSIC:</b>
+<font color="#ff4444">1. UPLOAD</font> <font color="#ffffff">a music from</font> <font color="#ff4444">GitHub</font>
+<font color="#ff4444">2. RAW</font> <font color="#ffffff">the uploaded music link</font>
+<font color="#ff4444">3. PASTE</font> <font color="#ffffff">the raw GitHub link</font>
+
+<b>PLAYLIST:</b>
+<font color="#ffffff">Enter the secret key in the</font>
+<font color="#f1c40f">key textbox</font> <font color="#ffffff">to unlock!</font>
+<font color="#9b59b6">Find the key in our Discord!</font>
+
+<b>SEARCH:</b>
+<font color="#ff4444">SEARCH</font> <font color="#ffffff">function is only from my GitHub</font>
+
+<font color="#9b59b6">DISCORD LINK:</font>
+<font color="#3498db">https://discord.gg/hTEvZ3nkZd</font>]]
+InfoText.TextColor3=Color3.fromRGB(200,220,240); InfoText.TextXAlignment=Enum.TextXAlignment.Left; InfoText.TextYAlignment=Enum.TextYAlignment.Top; InfoText.Font=Enum.Font.Gotham; InfoText.TextSize=13; InfoText.TextWrapped=true; InfoText.RichText=true; InfoText.Parent=InfoScrollFrame
+InfoText:GetPropertyChangedSignal("TextBounds"):Connect(function() InfoScrollFrame.CanvasSize=UDim2.new(0,0,0,InfoText.TextBounds.Y+20) end)
+
+-- Content frame
+ContentFrame=Instance.new("Frame"); ContentFrame.Size=UDim2.new(1,-20,1,-55); ContentFrame.Position=UDim2.new(0,10,0,45); ContentFrame.BackgroundTransparency=1; ContentFrame.Parent=MainFrame
+UrlLabel=Instance.new("TextLabel"); UrlLabel.Size=UDim2.new(1,0,0,18); UrlLabel.BackgroundTransparency=1; UrlLabel.Text="GitHub MP3 URL:"; UrlLabel.TextColor3=Color3.fromRGB(255,255,255); UrlLabel.TextXAlignment=Enum.TextXAlignment.Left; UrlLabel.Font=Enum.Font.Gotham; UrlLabel.TextSize=12; UrlLabel.Parent=ContentFrame
+UrlContainer=Instance.new("Frame"); UrlContainer.Size=UDim2.new(1,0,0,32); UrlContainer.Position=UDim2.new(0,0,0,22); UrlContainer.BackgroundColor3=Color3.fromRGB(60,60,60); UrlContainer.BorderSizePixel=0; UrlContainer.ClipsDescendants=true; UrlContainer.Parent=ContentFrame
+local UrlScrollingFrame=Instance.new("ScrollingFrame"); UrlScrollingFrame.Size=UDim2.new(1,0,1,0); UrlScrollingFrame.BackgroundTransparency=1; UrlScrollingFrame.BorderSizePixel=0; UrlScrollingFrame.ScrollBarThickness=8; UrlScrollingFrame.ScrollBarImageColor3=Color3.fromRGB(150,150,150); UrlScrollingFrame.VerticalScrollBarInset=Enum.ScrollBarInset.None; UrlScrollingFrame.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; UrlScrollingFrame.CanvasSize=UDim2.new(0,0,0,0); UrlScrollingFrame.ElasticBehavior=Enum.ElasticBehavior.Never; UrlScrollingFrame.ScrollingDirection=Enum.ScrollingDirection.X; UrlScrollingFrame.Parent=UrlContainer
+UrlTextBox=Instance.new("TextBox"); UrlTextBox.Size=UDim2.new(1,0,1,0); UrlTextBox.Position=UDim2.new(0,5,0,0); UrlTextBox.BackgroundTransparency=1; UrlTextBox.Text=""; UrlTextBox.PlaceholderText="https://github.com/.../audio.mp3"; UrlTextBox.TextColor3=Color3.fromRGB(255,255,255); UrlTextBox.Font=Enum.Font.Gotham; UrlTextBox.TextSize=12; UrlTextBox.ClearTextOnFocus=false; UrlTextBox.TextXAlignment=Enum.TextXAlignment.Left; UrlTextBox.TextWrapped=false; UrlTextBox.Parent=UrlScrollingFrame
+UrlTextBox:GetPropertyChangedSignal("Text"):Connect(function() local tw=UrlTextBox.TextBounds.X; local fw=UrlScrollingFrame.AbsoluteSize.X; UrlScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
+UrlTextBox:GetPropertyChangedSignal("TextBounds"):Connect(function() local tw=UrlTextBox.TextBounds.X; local fw=UrlScrollingFrame.AbsoluteSize.X; UrlScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
+local TextBoxUICorner=Instance.new("UICorner"); TextBoxUICorner.CornerRadius=UDim.new(0,6); TextBoxUICorner.Parent=UrlContainer
+
+local ControlButtons=Instance.new("Frame"); ControlButtons.Size=UDim2.new(1,0,0,35); ControlButtons.Position=UDim2.new(0,0,0,60); ControlButtons.BackgroundTransparency=1; ControlButtons.Parent=ContentFrame
+PlayButton=Instance.new("TextButton"); PlayButton.Size=UDim2.new(0.31,0,1,0); PlayButton.BackgroundColor3=Color3.fromRGB(70,180,70); PlayButton.BorderSizePixel=0; PlayButton.Text="▶ PLAY"; PlayButton.TextColor3=Color3.fromRGB(255,255,255); PlayButton.Font=Enum.Font.GothamBold; PlayButton.TextSize=13; PlayButton.Parent=ControlButtons
+local PlayButtonUICorner=Instance.new("UICorner"); PlayButtonUICorner.CornerRadius=UDim.new(0,6); PlayButtonUICorner.Parent=PlayButton
+PauseButton=Instance.new("TextButton"); PauseButton.Size=UDim2.new(0.31,0,1,0); PauseButton.Position=UDim2.new(0.345,0,0,0); PauseButton.BackgroundColor3=Color3.fromRGB(255,180,50); PauseButton.BorderSizePixel=0; PauseButton.Text="⏸ PAUSE"; PauseButton.TextColor3=Color3.fromRGB(255,255,255); PauseButton.Font=Enum.Font.GothamBold; PauseButton.TextSize=13; PauseButton.Parent=ControlButtons
+local PauseButtonUICorner=Instance.new("UICorner"); PauseButtonUICorner.CornerRadius=UDim.new(0,6); PauseButtonUICorner.Parent=PauseButton
+StopButton=Instance.new("TextButton"); StopButton.Size=UDim2.new(0.31,0,1,0); StopButton.Position=UDim2.new(0.69,0,0,0); StopButton.BackgroundColor3=Color3.fromRGB(200,70,70); StopButton.BorderSizePixel=0; StopButton.Text="⏹ STOP"; StopButton.TextColor3=Color3.fromRGB(255,255,255); StopButton.Font=Enum.Font.GothamBold; StopButton.TextSize=13; StopButton.Parent=ControlButtons
+local StopButtonUICorner=Instance.new("UICorner"); StopButtonUICorner.CornerRadius=UDim.new(0,6); StopButtonUICorner.Parent=StopButton
+
+local TimeFrame=Instance.new("Frame"); TimeFrame.Size=UDim2.new(1,0,0,35); TimeFrame.Position=UDim2.new(0,0,0,100); TimeFrame.BackgroundTransparency=1; TimeFrame.Parent=ContentFrame
+TimeLabel=Instance.new("TextLabel"); TimeLabel.Size=UDim2.new(1,-5,0,15); TimeLabel.Position=UDim2.new(0,0,0,0); TimeLabel.BackgroundTransparency=1; TimeLabel.Text="0:00 / 0:00"; TimeLabel.TextColor3=Color3.fromRGB(200,200,200); TimeLabel.TextXAlignment=Enum.TextXAlignment.Left; TimeLabel.Font=Enum.Font.Gotham; TimeLabel.TextSize=11; TimeLabel.TextTruncate=Enum.TextTruncate.AtEnd; TimeLabel.Parent=TimeFrame
+TimeSliderBg=Instance.new("Frame"); TimeSliderBg.Size=UDim2.new(1,0,0,8); TimeSliderBg.Position=UDim2.new(0,0,0,18); TimeSliderBg.BackgroundColor3=Color3.fromRGB(60,60,60); TimeSliderBg.BorderSizePixel=0; TimeSliderBg.Parent=TimeFrame
+local TimeSliderBgCorner=Instance.new("UICorner"); TimeSliderBgCorner.CornerRadius=UDim.new(0,4); TimeSliderBgCorner.Parent=TimeSliderBg
+TimeSlider=Instance.new("Frame"); TimeSlider.Size=UDim2.new(0,0,1,0); TimeSlider.BackgroundColor3=Color3.fromRGB(100,180,255); TimeSlider.BorderSizePixel=0; TimeSlider.Parent=TimeSliderBg
+local TimeSliderCorner=Instance.new("UICorner"); TimeSliderCorner.CornerRadius=UDim.new(0,4); TimeSliderCorner.Parent=TimeSlider
+local TimeSliderButton=Instance.new("TextButton"); TimeSliderButton.Size=UDim2.new(1,0,1,0); TimeSliderButton.BackgroundTransparency=1; TimeSliderButton.BorderSizePixel=0; TimeSliderButton.Text=""; TimeSliderButton.Parent=TimeSliderBg
+
+HistoryButton=Instance.new("TextButton"); HistoryButton.Size=UDim2.new(1,0,0,25); HistoryButton.Position=UDim2.new(0,0,0,140); HistoryButton.BackgroundColor3=Color3.fromRGB(100,100,200); HistoryButton.BorderSizePixel=0; HistoryButton.Text="→ HISTORY"; HistoryButton.TextColor3=Color3.fromRGB(255,255,255); HistoryButton.Font=Enum.Font.GothamBold; HistoryButton.TextSize=12; HistoryButton.Parent=ContentFrame
+local HistoryButtonUICorner=Instance.new("UICorner"); HistoryButtonUICorner.CornerRadius=UDim.new(0,6); HistoryButtonUICorner.Parent=HistoryButton
+
+local ToggleFrame=Instance.new("Frame"); ToggleFrame.Size=UDim2.new(1,0,0,28); ToggleFrame.Position=UDim2.new(0,0,0,170); ToggleFrame.BackgroundTransparency=1; ToggleFrame.Parent=ContentFrame
+local bw=0.32; local sp=0.02
+
+MuteToggle=Instance.new("TextButton"); MuteToggle.Size=UDim2.new(bw,0,0,28); MuteToggle.Position=UDim2.new(0,0,0,0); MuteToggle.BackgroundColor3=Color3.fromRGB(180,80,80); MuteToggle.BorderSizePixel=0; MuteToggle.Text="🔊 MUTE: OFF"; MuteToggle.TextColor3=Color3.fromRGB(255,255,255); MuteToggle.Font=Enum.Font.Gotham; MuteToggle.TextSize=10; MuteToggle.Parent=ToggleFrame
+local MuteUICorner=Instance.new("UICorner"); MuteUICorner.CornerRadius=UDim.new(0,6); MuteUICorner.Parent=MuteToggle
+
+SecretKeyContainer=Instance.new("Frame"); SecretKeyContainer.Size=UDim2.new(bw,0,0,28); SecretKeyContainer.Position=UDim2.new(bw+sp,0,0,0); SecretKeyContainer.BackgroundColor3=Color3.fromRGB(60,60,70); SecretKeyContainer.BorderSizePixel=0; SecretKeyContainer.ClipsDescendants=true; SecretKeyContainer.Parent=ToggleFrame
+local SecretKeyContainerCorner=Instance.new("UICorner"); SecretKeyContainerCorner.CornerRadius=UDim.new(0,6); SecretKeyContainerCorner.Parent=SecretKeyContainer
+local SecretKeyScrollingFrame=Instance.new("ScrollingFrame"); SecretKeyScrollingFrame.Size=UDim2.new(1,0,1,0); SecretKeyScrollingFrame.BackgroundTransparency=1; SecretKeyScrollingFrame.BorderSizePixel=0; SecretKeyScrollingFrame.ScrollBarThickness=5; SecretKeyScrollingFrame.ScrollBarImageColor3=Color3.fromRGB(130,130,140); SecretKeyScrollingFrame.VerticalScrollBarInset=Enum.ScrollBarInset.None; SecretKeyScrollingFrame.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; SecretKeyScrollingFrame.CanvasSize=UDim2.new(0,0,0,0); SecretKeyScrollingFrame.ElasticBehavior=Enum.ElasticBehavior.Never; SecretKeyScrollingFrame.ScrollingDirection=Enum.ScrollingDirection.X; SecretKeyScrollingFrame.Parent=SecretKeyContainer
+SecretKeyTextBox=Instance.new("TextBox"); SecretKeyTextBox.Size=UDim2.new(1,0,1,0); SecretKeyTextBox.Position=UDim2.new(0,3,0,0); SecretKeyTextBox.BackgroundTransparency=1; SecretKeyTextBox.Text=""; SecretKeyTextBox.PlaceholderText=""; SecretKeyTextBox.PlaceholderColor3=Color3.fromRGB(150,150,160); SecretKeyTextBox.TextColor3=Color3.fromRGB(255,255,255); SecretKeyTextBox.Font=Enum.Font.Gotham; SecretKeyTextBox.TextSize=9; SecretKeyTextBox.ClearTextOnFocus=false; SecretKeyTextBox.TextXAlignment=Enum.TextXAlignment.Left; SecretKeyTextBox.TextWrapped=false; SecretKeyTextBox.Parent=SecretKeyScrollingFrame
+SecretKeyTextBox:GetPropertyChangedSignal("Text"):Connect(function() local tw=SecretKeyTextBox.TextBounds.X; local fw=SecretKeyScrollingFrame.AbsoluteSize.X; SecretKeyScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
+SecretKeyTextBox:GetPropertyChangedSignal("TextBounds"):Connect(function() local tw=SecretKeyTextBox.TextBounds.X; local fw=SecretKeyScrollingFrame.AbsoluteSize.X; SecretKeyScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
+SecretKeyTextBox.FocusLost:Connect(function(ep) if ep and SecretKeyTextBox.Text~="" then checkSecretKey(SecretKeyTextBox.Text) end end)
+
+LoopToggle=Instance.new("TextButton"); LoopToggle.Size=UDim2.new(bw,0,0,28); LoopToggle.Position=UDim2.new(bw*2+sp*2,0,0,0); LoopToggle.BackgroundColor3=Color3.fromRGB(80,130,200); LoopToggle.BorderSizePixel=0; LoopToggle.Text="🔁 LOOP: ON"; LoopToggle.TextColor3=Color3.fromRGB(255,255,255); LoopToggle.Font=Enum.Font.Gotham; LoopToggle.TextSize=11; LoopToggle.Parent=ToggleFrame
+local LoopUICorner=Instance.new("UICorner"); LoopUICorner.CornerRadius=UDim.new(0,6); LoopUICorner.Parent=LoopToggle
+
+local VolumeFrame=Instance.new("Frame"); VolumeFrame.Size=UDim2.new(1,0,0,35); VolumeFrame.Position=UDim2.new(0,0,0,205); VolumeFrame.BackgroundTransparency=1; VolumeFrame.Parent=ContentFrame
+VolumeLabel=Instance.new("TextLabel"); VolumeLabel.Size=UDim2.new(0,80,0,18); VolumeLabel.BackgroundTransparency=1; VolumeLabel.Text="Volume: 100%"; VolumeLabel.TextColor3=Color3.fromRGB(255,255,255); VolumeLabel.TextXAlignment=Enum.TextXAlignment.Left; VolumeLabel.Font=Enum.Font.Gotham; VolumeLabel.TextSize=12; VolumeLabel.Parent=VolumeFrame
+VolumeSlider=Instance.new("TextButton"); VolumeSlider.Size=UDim2.new(1,-90,0,18); VolumeSlider.Position=UDim2.new(0,85,0,8); VolumeSlider.BackgroundColor3=Color3.fromRGB(80,80,80); VolumeSlider.BorderSizePixel=0; VolumeSlider.AutoButtonColor=false; VolumeSlider.Text=""; VolumeSlider.Parent=VolumeFrame
+VolumeFill=Instance.new("Frame"); VolumeFill.Size=UDim2.new(1,0,1,0); VolumeFill.BackgroundColor3=Color3.fromRGB(70,180,70); VolumeFill.BorderSizePixel=0; VolumeFill.Parent=VolumeSlider
+local VolumeSliderCorner=Instance.new("UICorner"); VolumeSliderCorner.CornerRadius=UDim.new(0,9); VolumeSliderCorner.Parent=VolumeSlider
+local VolumeFillCorner=Instance.new("UICorner"); VolumeFillCorner.CornerRadius=UDim.new(0,9); VolumeFillCorner.Parent=VolumeFill
+
+local SpeedFrame=Instance.new("Frame"); SpeedFrame.Size=UDim2.new(1,0,0,35); SpeedFrame.Position=UDim2.new(0,0,0,245); SpeedFrame.BackgroundTransparency=1; SpeedFrame.Parent=ContentFrame
+SpeedLabel=Instance.new("TextLabel"); SpeedLabel.Size=UDim2.new(0,80,0,18); SpeedLabel.BackgroundTransparency=1; SpeedLabel.Text="Speed: 1.00x"; SpeedLabel.TextColor3=Color3.fromRGB(255,255,255); SpeedLabel.TextXAlignment=Enum.TextXAlignment.Left; SpeedLabel.Font=Enum.Font.Gotham; SpeedLabel.TextSize=12; SpeedLabel.Parent=SpeedFrame
+SpeedTextBox=Instance.new("TextBox"); SpeedTextBox.Size=UDim2.new(1,-130,0,22); SpeedTextBox.Position=UDim2.new(0,85,0,6); SpeedTextBox.BackgroundColor3=Color3.fromRGB(60,60,70); SpeedTextBox.BorderSizePixel=0; SpeedTextBox.Text="1.00x"; SpeedTextBox.TextColor3=Color3.fromRGB(255,255,255); SpeedTextBox.Font=Enum.Font.GothamBold; SpeedTextBox.TextSize=12; SpeedTextBox.TextXAlignment=Enum.TextXAlignment.Center; SpeedTextBox.PlaceholderText="0-100"; SpeedTextBox.PlaceholderColor3=Color3.fromRGB(150,150,150); SpeedTextBox.Parent=SpeedFrame
+local SpeedTextBoxCorner=Instance.new("UICorner"); SpeedTextBoxCorner.CornerRadius=UDim.new(0,5); SpeedTextBoxCorner.Parent=SpeedTextBox
+SpeedDownButton=Instance.new("TextButton"); SpeedDownButton.Size=UDim2.new(0,20,0,22); SpeedDownButton.Position=UDim2.new(1,-40,0,6); SpeedDownButton.BackgroundColor3=Color3.fromRGB(100,100,180); SpeedDownButton.BorderSizePixel=0; SpeedDownButton.Text="<"; SpeedDownButton.TextColor3=Color3.fromRGB(255,255,255); SpeedDownButton.Font=Enum.Font.GothamBold; SpeedDownButton.TextSize=14; SpeedDownButton.AutoButtonColor=true; SpeedDownButton.Parent=SpeedFrame
+local SpeedDownCorner=Instance.new("UICorner"); SpeedDownCorner.CornerRadius=UDim.new(0,5); SpeedDownCorner.Parent=SpeedDownButton
+SpeedUpButton=Instance.new("TextButton"); SpeedUpButton.Size=UDim2.new(0,20,0,22); SpeedUpButton.Position=UDim2.new(1,-15,0,6); SpeedUpButton.BackgroundColor3=Color3.fromRGB(100,100,180); SpeedUpButton.BorderSizePixel=0; SpeedUpButton.Text=">"; SpeedUpButton.TextColor3=Color3.fromRGB(255,255,255); SpeedUpButton.Font=Enum.Font.GothamBold; SpeedUpButton.TextSize=14; SpeedUpButton.AutoButtonColor=true; SpeedUpButton.Parent=SpeedFrame
+local SpeedUpCorner=Instance.new("UICorner"); SpeedUpCorner.CornerRadius=UDim.new(0,5); SpeedUpCorner.Parent=SpeedUpButton
+
+StatusLabel=Instance.new("TextLabel"); StatusLabel.Size=UDim2.new(1,0,0,18); StatusLabel.Position=UDim2.new(0,0,1,-22); StatusLabel.BackgroundTransparency=1; StatusLabel.Text="Ready to play music"; StatusLabel.TextColor3=Color3.fromRGB(200,200,200); StatusLabel.TextXAlignment=Enum.TextXAlignment.Center; StatusLabel.Font=Enum.Font.Gotham; StatusLabel.TextSize=11; StatusLabel.Parent=ContentFrame
+
+-- History Panel
+local HistoryPanel=Instance.new("Frame"); HistoryPanel.Size=UDim2.new(1,0,1,0); HistoryPanel.Position=UDim2.new(1,0,0,0); HistoryPanel.BackgroundColor3=Color3.fromRGB(35,35,35); HistoryPanel.BorderSizePixel=0; HistoryPanel.Visible=false; HistoryPanel.Parent=ContentFrame
+local HistoryPanelCorner=Instance.new("UICorner"); HistoryPanelCorner.CornerRadius=UDim.new(0,8); HistoryPanelCorner.Parent=HistoryPanel
+local HistoryTitle=Instance.new("TextLabel"); HistoryTitle.Size=UDim2.new(1,0,0,30); HistoryTitle.BackgroundColor3=Color3.fromRGB(50,50,50); HistoryTitle.BorderSizePixel=0; HistoryTitle.Text="DOWNLOAD HISTORY"; HistoryTitle.TextColor3=Color3.fromRGB(255,255,255); HistoryTitle.Font=Enum.Font.GothamBold; HistoryTitle.TextSize=14; HistoryTitle.Parent=HistoryPanel
+local HistoryTitleCorner=Instance.new("UICorner"); HistoryTitleCorner.CornerRadius=UDim.new(0,8); HistoryTitleCorner.Parent=HistoryTitle
+local BackButton=Instance.new("TextButton"); BackButton.Size=UDim2.new(0,80,0,25); BackButton.Position=UDim2.new(0,10,0,35); BackButton.BackgroundColor3=Color3.fromRGB(80,130,200); BackButton.BorderSizePixel=0; BackButton.Text="← BACK"; BackButton.TextColor3=Color3.fromRGB(255,255,255); BackButton.Font=Enum.Font.GothamBold; BackButton.TextSize=12; BackButton.Parent=HistoryPanel
+local BackButtonCorner=Instance.new("UICorner"); BackButtonCorner.CornerRadius=UDim.new(0,6); BackButtonCorner.Parent=BackButton
+HistoryScrollFrame=Instance.new("ScrollingFrame"); HistoryScrollFrame.Size=UDim2.new(1,-20,1,-70); HistoryScrollFrame.Position=UDim2.new(0,10,0,70); HistoryScrollFrame.BackgroundColor3=Color3.fromRGB(45,45,45); HistoryScrollFrame.BorderSizePixel=0; HistoryScrollFrame.ScrollBarThickness=8; HistoryScrollFrame.ScrollBarImageColor3=Color3.fromRGB(120,120,120); HistoryScrollFrame.CanvasSize=UDim2.new(0,0,0,0); HistoryScrollFrame.Parent=HistoryPanel
+local HistoryScrollCorner=Instance.new("UICorner"); HistoryScrollCorner.CornerRadius=UDim.new(0,6); HistoryScrollCorner.Parent=HistoryScrollFrame
+NoHistoryLabel=Instance.new("TextLabel"); NoHistoryLabel.Size=UDim2.new(1,0,0,50); NoHistoryLabel.Position=UDim2.new(0,0,0.5,-25); NoHistoryLabel.BackgroundTransparency=1; NoHistoryLabel.Text="No download history yet\nPlay some music first!"; NoHistoryLabel.TextColor3=Color3.fromRGB(150,150,150); NoHistoryLabel.Font=Enum.Font.Gotham; NoHistoryLabel.TextSize=12; NoHistoryLabel.TextWrapped=true; NoHistoryLabel.Visible=true; NoHistoryLabel.Parent=HistoryScrollFrame
+
+-- Search Panel with Tabs
+SearchPanel=Instance.new("Frame"); SearchPanel.Size=UDim2.new(0,300,1,0); SearchPanel.Position=UDim2.new(1,10,0,0); SearchPanel.BackgroundColor3=Color3.fromRGB(35,35,45); SearchPanel.BorderSizePixel=0; SearchPanel.Visible=false; SearchPanel.Parent=MainFrame; SearchPanel.ZIndex=10
+local SearchPanelCorner=Instance.new("UICorner"); SearchPanelCorner.CornerRadius=UDim.new(0,8); SearchPanelCorner.Parent=SearchPanel
+SearchPanelStroke=Instance.new("UIStroke"); SearchPanelStroke.Thickness=2; SearchPanelStroke.Color=Color3.fromRGB(100,150,255); SearchPanelStroke.Parent=SearchPanel
+local TabFrame=Instance.new("Frame"); TabFrame.Size=UDim2.new(1,0,0,30); TabFrame.BackgroundTransparency=1; TabFrame.Parent=SearchPanel
+SearchTabBtn=Instance.new("TextButton"); SearchTabBtn.Size=UDim2.new(0.48,0,1,0); SearchTabBtn.Position=UDim2.new(0,0,0,0); SearchTabBtn.BackgroundColor3=Color3.fromRGB(100,150,255); SearchTabBtn.BorderSizePixel=0; SearchTabBtn.Text="🔍 Search"; SearchTabBtn.TextColor3=Color3.fromRGB(255,255,255); SearchTabBtn.Font=Enum.Font.GothamBold; SearchTabBtn.TextSize=12; SearchTabBtn.Parent=TabFrame
+local SearchTabCorner=Instance.new("UICorner"); SearchTabCorner.CornerRadius=UDim.new(0,6); SearchTabCorner.Parent=SearchTabBtn
+PlaylistTabBtn=Instance.new("TextButton"); PlaylistTabBtn.Size=UDim2.new(0.48,0,1,0); PlaylistTabBtn.Position=UDim2.new(0.52,0,0,0); PlaylistTabBtn.BackgroundColor3=Color3.fromRGB(60,60,70); PlaylistTabBtn.BorderSizePixel=0; PlaylistTabBtn.Text="📋 Playlist"; PlaylistTabBtn.TextColor3=Color3.fromRGB(255,255,255); PlaylistTabBtn.Font=Enum.Font.GothamBold; PlaylistTabBtn.TextSize=12; PlaylistTabBtn.Parent=TabFrame
+local PlaylistTabCorner=Instance.new("UICorner"); PlaylistTabCorner.CornerRadius=UDim.new(0,6); PlaylistTabCorner.Parent=PlaylistTabBtn
+local SearchContentFrame=Instance.new("Frame"); SearchContentFrame.Size=UDim2.new(1,0,1,-35); SearchContentFrame.Position=UDim2.new(0,0,0,35); SearchContentFrame.BackgroundTransparency=1; SearchContentFrame.Visible=true; SearchContentFrame.Parent=SearchPanel
+SearchInputFrame=Instance.new("Frame"); SearchInputFrame.Size=UDim2.new(1,-20,0,40); SearchInputFrame.Position=UDim2.new(0,10,0,0); SearchInputFrame.BackgroundColor3=Color3.fromRGB(60,60,70); SearchInputFrame.BorderSizePixel=0; SearchInputFrame.ClipsDescendants=true; SearchInputFrame.Parent=SearchContentFrame
+local SearchInputCorner=Instance.new("UICorner"); SearchInputCorner.CornerRadius=UDim.new(0,6); SearchInputCorner.Parent=SearchInputFrame
+local SearchScrollingFrame=Instance.new("ScrollingFrame"); SearchScrollingFrame.Size=UDim2.new(1,-40,1,0); SearchScrollingFrame.BackgroundTransparency=1; SearchScrollingFrame.BorderSizePixel=0; SearchScrollingFrame.ScrollBarThickness=6; SearchScrollingFrame.ScrollBarImageColor3=Color3.fromRGB(150,150,150); SearchScrollingFrame.VerticalScrollBarInset=Enum.ScrollBarInset.None; SearchScrollingFrame.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; SearchScrollingFrame.CanvasSize=UDim2.new(0,0,0,0); SearchScrollingFrame.ElasticBehavior=Enum.ElasticBehavior.Never; SearchScrollingFrame.ScrollingDirection=Enum.ScrollingDirection.X; SearchScrollingFrame.Parent=SearchInputFrame
+SearchTextBox=Instance.new("TextBox"); SearchTextBox.Size=UDim2.new(1,0,1,0); SearchTextBox.Position=UDim2.new(0,5,0,0); SearchTextBox.BackgroundTransparency=1; SearchTextBox.Text=""; SearchTextBox.PlaceholderText=""; SearchTextBox.PlaceholderColor3=Color3.fromRGB(180,180,180); SearchTextBox.TextColor3=Color3.fromRGB(255,255,255); SearchTextBox.Font=Enum.Font.Gotham; SearchTextBox.TextSize=12; SearchTextBox.ClearTextOnFocus=false; SearchTextBox.TextXAlignment=Enum.TextXAlignment.Left; SearchTextBox.TextWrapped=false; SearchTextBox.Parent=SearchScrollingFrame
+SearchTextBox:GetPropertyChangedSignal("Text"):Connect(function() local tw=SearchTextBox.TextBounds.X; local fw=SearchScrollingFrame.AbsoluteSize.X; SearchScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
+SearchTextBox:GetPropertyChangedSignal("TextBounds"):Connect(function() local tw=SearchTextBox.TextBounds.X; local fw=SearchScrollingFrame.AbsoluteSize.X; SearchScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
+local SearchPanelButton=Instance.new("TextButton"); SearchPanelButton.Size=UDim2.new(0,30,0,30); SearchPanelButton.Position=UDim2.new(1,-35,0,5); SearchPanelButton.BackgroundColor3=Color3.fromRGB(100,150,255); SearchPanelButton.BorderSizePixel=0; SearchPanelButton.Text="🔍"; SearchPanelButton.TextColor3=Color3.fromRGB(255,255,255); SearchPanelButton.Font=Enum.Font.GothamBold; SearchPanelButton.TextSize=14; SearchPanelButton.Parent=SearchInputFrame
+local SearchPanelButtonCorner=Instance.new("UICorner"); SearchPanelButtonCorner.CornerRadius=UDim.new(0,4); SearchPanelButtonCorner.Parent=SearchPanelButton
+local SearchInstruction=Instance.new("TextLabel"); SearchInstruction.Size=UDim2.new(1,-20,0,25); SearchInstruction.Position=UDim2.new(0,10,0,45); SearchInstruction.BackgroundTransparency=1; SearchInstruction.Text="Enter song name or full GitHub raw URL"; SearchInstruction.TextColor3=Color3.fromRGB(200,200,220); SearchInstruction.TextXAlignment=Enum.TextXAlignment.Left; SearchInstruction.TextWrapped=true; SearchInstruction.Font=Enum.Font.Gotham; SearchInstruction.TextSize=10; SearchInstruction.Parent=SearchContentFrame
+SearchScrollFrame=Instance.new("ScrollingFrame"); SearchScrollFrame.Size=UDim2.new(1,-20,1,-80); SearchScrollFrame.Position=UDim2.new(0,10,0,75); SearchScrollFrame.BackgroundColor3=Color3.fromRGB(45,45,55); SearchScrollFrame.BorderSizePixel=0; SearchScrollFrame.ScrollBarThickness=8; SearchScrollFrame.ScrollBarImageColor3=Color3.fromRGB(120,120,140); SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0); SearchScrollFrame.Parent=SearchContentFrame
+local SearchScrollCorner=Instance.new("UICorner"); SearchScrollCorner.CornerRadius=UDim.new(0,6); SearchScrollCorner.Parent=SearchScrollFrame
+SearchNoResultsLabel=Instance.new("TextLabel"); SearchNoResultsLabel.Size=UDim2.new(1,0,0,50); SearchNoResultsLabel.Position=UDim2.new(0,0,0.5,-25); SearchNoResultsLabel.BackgroundTransparency=1; SearchNoResultsLabel.Text="Enter a search term or URL"; SearchNoResultsLabel.TextColor3=Color3.fromRGB(150,150,160); SearchNoResultsLabel.Font=Enum.Font.Gotham; SearchNoResultsLabel.TextSize=12; SearchNoResultsLabel.TextWrapped=true; SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Parent=SearchScrollFrame
+local PlaylistContentFrame=Instance.new("Frame"); PlaylistContentFrame.Size=UDim2.new(1,0,1,-35); PlaylistContentFrame.Position=UDim2.new(0,0,0,35); PlaylistContentFrame.BackgroundTransparency=1; PlaylistContentFrame.Visible=false; PlaylistContentFrame.Parent=SearchPanel
+PlaylistScrollFrame=Instance.new("ScrollingFrame"); PlaylistScrollFrame.Size=UDim2.new(1,-20,1,-10); PlaylistScrollFrame.Position=UDim2.new(0,10,0,5); PlaylistScrollFrame.BackgroundColor3=Color3.fromRGB(45,45,55); PlaylistScrollFrame.BorderSizePixel=0; PlaylistScrollFrame.ScrollBarThickness=8; PlaylistScrollFrame.ScrollBarImageColor3=Color3.fromRGB(120,120,140); PlaylistScrollFrame.CanvasSize=UDim2.new(0,0,0,0); PlaylistScrollFrame.Parent=PlaylistContentFrame
+local PlaylistScrollCorner=Instance.new("UICorner"); PlaylistScrollCorner.CornerRadius=UDim.new(0,6); PlaylistScrollCorner.Parent=PlaylistScrollFrame
+PlaylistNoResultsLabel=Instance.new("TextLabel"); PlaylistNoResultsLabel.Size=UDim2.new(1,0,0,50); PlaylistNoResultsLabel.Position=UDim2.new(0,0,0.5,-25); PlaylistNoResultsLabel.BackgroundTransparency=1; PlaylistNoResultsLabel.Text="Enter the correct secret key to unlock the playlist! Find it in our Discord server."; PlaylistNoResultsLabel.TextColor3=Color3.fromRGB(150,150,160); PlaylistNoResultsLabel.Font=Enum.Font.Gotham; PlaylistNoResultsLabel.TextSize=12; PlaylistNoResultsLabel.TextWrapped=true; PlaylistNoResultsLabel.Visible=true; PlaylistNoResultsLabel.Parent=PlaylistScrollFrame
+
+SearchTabBtn.MouseButton1Click:Connect(function() currentSearchTab="Search"; SearchContentFrame.Visible=true; PlaylistContentFrame.Visible=false; local t=themes[currentTheme] or themes["Default"]; SearchTabBtn.BackgroundColor3=t.tabActive; PlaylistTabBtn.BackgroundColor3=t.tabInactive end)
+PlaylistTabBtn.MouseButton1Click:Connect(function() currentSearchTab="Playlist"; SearchContentFrame.Visible=false; PlaylistContentFrame.Visible=true; local t=themes[currentTheme] or themes["Default"]; PlaylistTabBtn.BackgroundColor3=t.tabActive; SearchTabBtn.BackgroundColor3=t.tabInactive; updatePlaylistDisplay() end)
+
+-- ========== MINI GUI ==========
+local MiniScreenGui=Instance.new("ScreenGui"); MiniScreenGui.Name="MusicPlayerMiniGUI"; MiniScreenGui.ResetOnSpawn=false; MiniScreenGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; MiniScreenGui.Parent=CoreGui; MiniScreenGui.Enabled=false
+MiniFrame=Instance.new("Frame"); MiniFrame.Size=UDim2.new(0,360,0,120); MiniFrame.Position=UDim2.new(0.5,-180,0.1,0); MiniFrame.BackgroundColor3=Color3.fromRGB(40,40,40); MiniFrame.BorderSizePixel=0; MiniFrame.Active=true; MiniFrame.Draggable=true; MiniFrame.Parent=MiniScreenGui
+local MiniUICorner=Instance.new("UICorner"); MiniUICorner.CornerRadius=UDim.new(0,15); MiniUICorner.Parent=MiniFrame
+MiniOutlineFrame=Instance.new("Frame"); MiniOutlineFrame.Size=UDim2.new(1,6,1,6); MiniOutlineFrame.Position=UDim2.new(0,-3,0,-3); MiniOutlineFrame.BackgroundColor3=Color3.fromRGB(40,40,40); MiniOutlineFrame.BorderSizePixel=0; MiniOutlineFrame.ZIndex=0; MiniOutlineFrame.Parent=MiniFrame
+local MiniOutlineCorner=Instance.new("UICorner"); MiniOutlineCorner.CornerRadius=UDim.new(0,16); MiniOutlineCorner.Parent=MiniOutlineFrame
+MiniUIStroke=Instance.new("UIStroke"); MiniUIStroke.Thickness=3; MiniUIStroke.Color=Color3.fromRGB(80,80,80); MiniUIStroke.Parent=MiniOutlineFrame
+spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while MiniUIStroke and MiniUIStroke.Parent do TweenService:Create(MiniUIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
+MiniSongLabel=Instance.new("TextLabel"); MiniSongLabel.Size=UDim2.new(1,-60,0,25); MiniSongLabel.Position=UDim2.new(0,15,0,8); MiniSongLabel.BackgroundTransparency=1; MiniSongLabel.Text=""; MiniSongLabel.TextColor3=Color3.fromRGB(255,255,255); MiniSongLabel.TextXAlignment=Enum.TextXAlignment.Left; MiniSongLabel.Font=Enum.Font.GothamBold; MiniSongLabel.TextSize=14; MiniSongLabel.TextTruncate=Enum.TextTruncate.AtEnd; MiniSongLabel.Parent=MiniFrame
+MiniTimeLabel=Instance.new("TextLabel"); MiniTimeLabel.Size=UDim2.new(1,-60,0,18); MiniTimeLabel.Position=UDim2.new(0,15,0,35); MiniTimeLabel.BackgroundTransparency=1; MiniTimeLabel.Text="0:00 / 0:00"; MiniTimeLabel.TextColor3=Color3.fromRGB(200,200,200); MiniTimeLabel.TextXAlignment=Enum.TextXAlignment.Left; MiniTimeLabel.Font=Enum.Font.Gotham; MiniTimeLabel.TextSize=11; MiniTimeLabel.Parent=MiniFrame
+MiniTimeSliderBg=Instance.new("Frame"); MiniTimeSliderBg.Size=UDim2.new(1,-60,0,10); MiniTimeSliderBg.Position=UDim2.new(0,15,0,58); MiniTimeSliderBg.BackgroundColor3=Color3.fromRGB(60,60,60); MiniTimeSliderBg.BorderSizePixel=0; MiniTimeSliderBg.Parent=MiniFrame
+local MiniTimeSliderBgCorner=Instance.new("UICorner"); MiniTimeSliderBgCorner.CornerRadius=UDim.new(0,5); MiniTimeSliderBgCorner.Parent=MiniTimeSliderBg
+MiniTimeSlider=Instance.new("Frame"); MiniTimeSlider.Size=UDim2.new(0,0,1,0); MiniTimeSlider.BackgroundColor3=Color3.fromRGB(100,180,255); MiniTimeSlider.BorderSizePixel=0; MiniTimeSlider.Parent=MiniTimeSliderBg
+local MiniTimeSliderCorner=Instance.new("UICorner"); MiniTimeSliderCorner.CornerRadius=UDim.new(0,5); MiniTimeSliderCorner.Parent=MiniTimeSlider
+local MiniTimeSliderButton=Instance.new("TextButton"); MiniTimeSliderButton.Size=UDim2.new(1,0,1,0); MiniTimeSliderButton.BackgroundTransparency=1; MiniTimeSliderButton.BorderSizePixel=0; MiniTimeSliderButton.Text=""; MiniTimeSliderButton.Parent=MiniTimeSliderBg
+local MiniButtonsFrame=Instance.new("Frame"); MiniButtonsFrame.Size=UDim2.new(0,150,0,35); MiniButtonsFrame.Position=UDim2.new(0,15,0,75); MiniButtonsFrame.BackgroundTransparency=1; MiniButtonsFrame.Parent=MiniFrame
+MiniRewindButton=Instance.new("TextButton"); MiniRewindButton.Size=UDim2.new(0,35,0,35); MiniRewindButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniRewindButton.BorderSizePixel=0; MiniRewindButton.Text="⏪"; MiniRewindButton.TextColor3=Color3.fromRGB(255,255,255); MiniRewindButton.Font=Enum.Font.GothamBold; MiniRewindButton.TextSize=16; MiniRewindButton.Parent=MiniButtonsFrame
+local MiniRewindCorner=Instance.new("UICorner"); MiniRewindCorner.CornerRadius=UDim.new(1,0); MiniRewindCorner.Parent=MiniRewindButton
+MiniPauseButton=Instance.new("TextButton"); MiniPauseButton.Size=UDim2.new(0,40,0,40); MiniPauseButton.Position=UDim2.new(0,45,0,-3); MiniPauseButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniPauseButton.BorderSizePixel=0; MiniPauseButton.Text="⏸"; MiniPauseButton.TextColor3=Color3.fromRGB(255,255,255); MiniPauseButton.Font=Enum.Font.GothamBold; MiniPauseButton.TextSize=18; MiniPauseButton.Parent=MiniButtonsFrame
+local MiniPauseCorner=Instance.new("UICorner"); MiniPauseCorner.CornerRadius=UDim.new(1,0); MiniPauseCorner.Parent=MiniPauseButton
+MiniForwardButton=Instance.new("TextButton"); MiniForwardButton.Size=UDim2.new(0,35,0,35); MiniForwardButton.Position=UDim2.new(0,95,0,0); MiniForwardButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniForwardButton.BorderSizePixel=0; MiniForwardButton.Text="⏩"; MiniForwardButton.TextColor3=Color3.fromRGB(255,255,255); MiniForwardButton.Font=Enum.Font.GothamBold; MiniForwardButton.TextSize=16; MiniForwardButton.Parent=MiniButtonsFrame
+local MiniForwardCorner=Instance.new("UICorner"); MiniForwardCorner.CornerRadius=UDim.new(1,0); MiniForwardCorner.Parent=MiniForwardButton
+MiniShowButton=Instance.new("TextButton"); MiniShowButton.Size=UDim2.new(0,35,0,35); MiniShowButton.Position=UDim2.new(1,-42,0,8); MiniShowButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniShowButton.BorderSizePixel=0; MiniShowButton.Text="📂"; MiniShowButton.TextColor3=Color3.fromRGB(255,255,255); MiniShowButton.Font=Enum.Font.GothamBold; MiniShowButton.TextSize=18; MiniShowButton.Parent=MiniFrame
+local MiniShowButtonCorner=Instance.new("UICorner"); MiniShowButtonCorner.CornerRadius=UDim.new(0,8); MiniShowButtonCorner.Parent=MiniShowButton
+
+MiniPauseButton.MouseButton1Click:Connect(function() if not currentSound then return end; togglePause() end)
+MiniRewindButton.MouseButton1Click:Connect(function() if not currentSound then return end; local nt=math.max(currentSound.TimePosition-10,0); currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end)
+MiniForwardButton.MouseButton1Click:Connect(function() if not currentSound then return end; local nt=math.min(currentSound.TimePosition+10,currentSound.TimeLength); currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end)
+
+local function toggleMiniPlayMode() miniPlayMode=not miniPlayMode; updateMiniPlayToggle(); if miniPlayMode then ScreenGui.Enabled=false; MiniScreenGui.Enabled=true; if isSearchOpen then isSearchOpen=false; SearchPanel.Visible=false end; if isInfoOpen then isInfoOpen=false; InfoPanel.Visible=false end; if isSettingsOpen then isSettingsOpen=false; SettingsPanel.Visible=false end else ScreenGui.Enabled=true; MiniScreenGui.Enabled=false end end
+MiniPlayToggle.MouseButton1Click:Connect(toggleMiniPlayMode)
+MiniShowButton.MouseButton1Click:Connect(function() toggleMiniPlayMode() end)
+
+-- ========== TIME SLIDER EVENTS ==========
+TimeSliderButton.MouseButton1Down:Connect(function() isDraggingTimeSlider=true; if currentSound and currentSound.TimeLength>0 then local mx=mouse.X-TimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/TimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end end)
+MiniTimeSliderButton.MouseButton1Down:Connect(function() isDraggingMiniTimeSlider=true; if currentSound and currentSound.TimeLength>0 then local mx=mouse.X-MiniTimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/MiniTimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end end)
+UserInputService.InputChanged:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseMovement then if isDraggingTimeSlider and currentSound and currentSound.TimeLength>0 then local mx=mouse.X-TimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/TimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() elseif isDraggingMiniTimeSlider and currentSound and currentSound.TimeLength>0 then local mx=mouse.X-MiniTimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/MiniTimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end end end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 then isDraggingTimeSlider=false; isDraggingMiniTimeSlider=false end end)
+
+-- ========== FUNCTIONS ==========
+local function applySpeedFromTextBox() local t=string.gsub(string.gsub(SpeedTextBox.Text,"x",""),"X",""); local s=tonumber(t); if s then updateSpeed(math.clamp(s,0,100)) else SpeedTextBox.Text=string.format("%.2f",currentSpeed).."x" end end
+local function searchMusic(st)
+    if not SearchScrollFrame then return end
+    for _,c in pairs(SearchScrollFrame:GetChildren()) do if c.Name=="SearchResultItem" then c:Destroy() end end
+    if st=="" then if SearchNoResultsLabel then SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="Enter a search term or URL" end; SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0); return end
+    SearchNoResultsLabel.Visible=false
+    if string.find(st,"http") and string.find(st,".mp3") then
+        local s,r=pcall(function() return game:HttpGet(st) end)
+        if s and r and #r>0 then
+            local fn="audio.mp3"; local pts=string.split(st,"/"); if #pts>0 and string.find(pts[#pts],".mp3") then fn=string.gsub(string.gsub(pts[#pts],"%%20"," "),"%%25","%%") end
+            local it=Instance.new("Frame"); it.Name="SearchResultItem"; it.Size=UDim2.new(1,-10,0,50); it.Position=UDim2.new(0,5,0,0); it.BackgroundColor3=Color3.fromRGB(50,50,60); it.BorderSizePixel=0; it.Parent=SearchScrollFrame
+            Instance.new("UICorner").CornerRadius=UDim.new(0,4); it:FindFirstChild("UICorner") or Instance.new("UICorner",it).CornerRadius=UDim.new(0,4)
+            local lb=Instance.new("TextLabel"); lb.Size=UDim2.new(1,-70,0,20); lb.Position=UDim2.new(0,5,0,5); lb.BackgroundTransparency=1; lb.Text=fn; lb.TextColor3=Color3.fromRGB(255,255,255); lb.Font=Enum.Font.GothamBold; lb.TextSize=12; lb.Parent=it
+            local pb=Instance.new("TextButton"); pb.Size=UDim2.new(0,60,0,30); pb.Position=UDim2.new(1,-65,0,10); pb.BackgroundColor3=Color3.fromRGB(70,150,70); pb.BorderSizePixel=0; pb.Text="PLAY"; pb.TextColor3=Color3.fromRGB(255,255,255); pb.Font=Enum.Font.GothamBold; pb.TextSize=10; pb.Parent=it
+            Instance.new("UICorner",pb).CornerRadius=UDim.new(0,4); pb.MouseButton1Click:Connect(function() if isSearchOpen then toggleSearchPanel() end; playMusicFromUrl(st,fn) end)
+            SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,60)
+        else SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="❌ URL not found"; SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0) end
+    else
+        local fd={}; pcall(function() local bu="https://github.com/Bro-broa3/PrimeMusic/raw/main/"; local tr={string.gsub(st," ","%%20")..".mp3",string.gsub(string.lower(st)," ","%%20")..".mp3",string.gsub(st," ","")..".mp3",string.gsub(string.lower(st)," ","_")..".mp3",string.gsub(string.lower(st)," ","-")..".mp3",string.lower(string.gsub(st," ",""))..".mp3"}; for _,fn in ipairs(tr) do pcall(function() local rp=game:HttpGet(bu..fn); if rp and #rp>1000 then table.insert(fd,{url=bu..fn,fileName=string.gsub(fn,"%%20"," ")}) end end) end end)
+        if #fd>0 then local th=0; for _,rs in ipairs(fd) do local it=Instance.new("Frame"); it.Name="SearchResultItem"; it.Size=UDim2.new(1,-10,0,50); it.Position=UDim2.new(0,5,0,th); it.BackgroundColor3=Color3.fromRGB(50,50,60); it.BorderSizePixel=0; it.Parent=SearchScrollFrame; Instance.new("UICorner",it).CornerRadius=UDim.new(0,4); local lb=Instance.new("TextLabel"); lb.Size=UDim2.new(1,-70,0,20); lb.Position=UDim2.new(0,5,0,5); lb.BackgroundTransparency=1; lb.Text=rs.fileName; lb.TextColor3=Color3.fromRGB(255,255,255); lb.Font=Enum.Font.GothamBold; lb.TextSize=12; lb.Parent=it; local pb=Instance.new("TextButton"); pb.Size=UDim2.new(0,60,0,30); pb.Position=UDim2.new(1,-65,0,10); pb.BackgroundColor3=Color3.fromRGB(70,150,70); pb.BorderSizePixel=0; pb.Text="PLAY"; pb.TextColor3=Color3.fromRGB(255,255,255); pb.Font=Enum.Font.GothamBold; pb.TextSize=10; pb.Parent=it; Instance.new("UICorner",pb).CornerRadius=UDim.new(0,4); local ru,rf=rs.url,rs.fileName; pb.MouseButton1Click:Connect(function() if isSearchOpen then toggleSearchPanel() end; playMusicFromUrl(ru,rf) end); th=th+55 end; SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,th)
+        else SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="❌ No results found"; SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0) end
+    end
+end
+
+function toggleSettingsPanel() if isSettingsOpen then TweenService:Create(SettingsPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,0,0,-250)}):Play(); wait(0.3); SettingsPanel.Visible=false; isSettingsOpen=false else if isSearchOpen then toggleSearchPanel() end; if isHistoryOpen then toggleHistoryPanel() end; if isInfoOpen then toggleInfoPanel() end; SettingsPanel.Visible=true; isSettingsOpen=true; TweenService:Create(SettingsPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,-250)}):Play() end end
+function toggleInfoPanel() if isInfoOpen then TweenService:Create(InfoPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,-290,0,0)}):Play(); wait(0.3); InfoPanel.Visible=false; isInfoOpen=false else if isSearchOpen then toggleSearchPanel() end; if isHistoryOpen then toggleHistoryPanel() end; InfoPanel.Visible=true; isInfoOpen=true; TweenService:Create(InfoPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,-290,0,0)}):Play() end end
+function toggleSearchPanel() if isHistoryOpen then toggleHistoryPanel() end; isSearchOpen=not isSearchOpen; if isSearchOpen then SearchPanel.Visible=true; TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(1,10,0,0)}):Play(); if currentSearchTab=="Search" then SearchTextBox.Text=""; SearchTextBox:CaptureFocus(); for _,c in pairs(SearchScrollFrame:GetChildren()) do if c.Name=="SearchResultItem" then c:Destroy() end end; SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="Enter a search term or URL" else updatePlaylistDisplay() end else TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,310,0,0)}):Play(); wait(0.3); SearchPanel.Visible=false end end
+function toggleHistoryPanel() if isSearchOpen then toggleSearchPanel() end; isHistoryOpen=not isHistoryOpen; if isHistoryOpen then HistoryPanel.Visible=true; TweenService:Create(HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)}):Play(); HistoryButton.Text="← HISTORY"; updateHistoryList() else TweenService:Create(HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); HistoryButton.Text="→ HISTORY"; wait(0.3); HistoryPanel.Visible=false end end
+function updateHistoryList() for _,c in pairs(HistoryScrollFrame:GetChildren()) do if c.Name=="HistoryItem" then c:Destroy() end end; NoHistoryLabel.Visible=#downloadHistory==0; if #downloadHistory==0 then HistoryScrollFrame.CanvasSize=UDim2.new(0,0,0,0); return end; local ih,spc,th=45,5,0; for i,e in ipairs(downloadHistory) do local ce,ci={url=e.url,fileName=e.fileName,date=e.date},i; local it=Instance.new("Frame"); it.Name="HistoryItem"; it.Size=UDim2.new(1,-10,0,ih); it.Position=UDim2.new(0,5,0,th); it.BackgroundColor3=i%2==0 and Color3.fromRGB(55,55,55) or Color3.fromRGB(50,50,50); it.BorderSizePixel=0; it.Parent=HistoryScrollFrame; local ic=Instance.new("UICorner"); ic.CornerRadius=UDim.new(0,4); ic.Parent=it; local fl=Instance.new("TextLabel"); fl.Size=UDim2.new(0.6,-5,0,20); fl.Position=UDim2.new(0,5,0,5); fl.BackgroundTransparency=1; fl.Text=ce.fileName or "Unknown"; fl.TextColor3=Color3.fromRGB(255,255,255); fl.Font=Enum.Font.Gotham; fl.TextSize=11; fl.TextTruncate=Enum.TextTruncate.AtEnd; fl.Parent=it; local dl=Instance.new("TextLabel"); dl.Size=UDim2.new(0.6,-5,0,15); dl.Position=UDim2.new(0,5,0,25); dl.BackgroundTransparency=1; dl.Text=ce.date or "Unknown"; dl.TextColor3=Color3.fromRGB(180,180,180); dl.Font=Enum.Font.Gotham; dl.TextSize=9; dl.Parent=it; local pb=Instance.new("TextButton"); pb.Size=UDim2.new(0.15,-5,0,25); pb.Position=UDim2.new(0.6,5,0,10); pb.BackgroundColor3=Color3.fromRGB(70,150,70); pb.BorderSizePixel=0; pb.Text="▶"; pb.TextColor3=Color3.fromRGB(255,255,255); pb.Font=Enum.Font.GothamBold; pb.TextSize=12; pb.Parent=it; local pbc=Instance.new("UICorner"); pbc.CornerRadius=UDim.new(0,4); pbc.Parent=pb; local db=Instance.new("TextButton"); db.Size=UDim2.new(0.15,-5,0,25); db.Position=UDim2.new(0.8,10,0,10); db.BackgroundColor3=Color3.fromRGB(200,80,80); db.BorderSizePixel=0; db.Text="🗑️"; db.TextColor3=Color3.fromRGB(255,255,255); db.Font=Enum.Font.Gotham; db.TextSize=12; db.Parent=it; local dbc=Instance.new("UICorner"); dbc.CornerRadius=UDim.new(0,4); dbc.Parent=db; pb.MouseButton1Click:Connect(function() if ce and ce.url then if isHistoryOpen then toggleHistoryPanel() end; playMusicFromUrl(ce.url,ce.fileName or "audio.mp3") end end); db.MouseButton1Click:Connect(function() if removeFromHistory(ci) then updateHistoryList() end end); th=th+ih+spc end; HistoryScrollFrame.CanvasSize=UDim2.new(0,0,0,th) end
+
+-- ========== EVENT CONNECTIONS ==========
+SpeedTextBox.FocusLost:Connect(function(ep) applySpeedFromTextBox() end)
+SpeedUpButton.MouseButton1Click:Connect(function() updateSpeed(math.min(currentSpeed+0.25,100)) end)
+SpeedDownButton.MouseButton1Click:Connect(function() updateSpeed(math.max(currentSpeed-0.25,0)) end)
+local dragInput,dragStart,startPos
+MainFrame.InputBegan:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 and not isDraggingTimeSlider and not isDraggingMiniTimeSlider then dragStart=input.Position; startPos=MainFrame.Position; input.Changed:Connect(function() if input.UserInputState==Enum.UserInputState.End then dragStart=nil end end) end end)
+MainFrame.InputChanged:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseMovement then dragInput=input end end)
+VolumeSlider.MouseButton1Down:Connect(function() local cn; cn=RunService.Heartbeat:Connect(function() local mx=mouse.X-VolumeSlider.AbsolutePosition.X; updateVolumeSlider(math.clamp(mx/VolumeSlider.AbsoluteSize.X,0,1)) end); VolumeSlider.MouseButton1Up:Connect(function() cn:Disconnect() end); VolumeSlider.MouseLeave:Connect(function() cn:Disconnect() end) end)
+VolumeSlider.MouseButton1Click:Connect(function() local mx=mouse.X-VolumeSlider.AbsolutePosition.X; updateVolumeSlider(math.clamp(mx/VolumeSlider.AbsoluteSize.X,0,1)) end)
+CloseButton.MouseButton1Click:Connect(function() if isGameMuted then muteAllGameSounds(false) end; stopMusic(); ScreenGui:Destroy(); MiniScreenGui:Destroy() end)
+MinimizeButton.MouseButton1Click:Connect(function() if isMinimized then MainFrame.Size=originalSize; ContentFrame.Visible=true; OutlineFrame.Visible=true; isMinimized=false else if isSearchOpen then isSearchOpen=false; SearchPanel.Visible=false end; if isInfoOpen then isInfoOpen=false; InfoPanel.Visible=false end; if isSettingsOpen then isSettingsOpen=false; SettingsPanel.Visible=false end; MainFrame.Size=minimizedSize; ContentFrame.Visible=false; OutlineFrame.Visible=false; isMinimized=true end end)
+SettingsButton.MouseButton1Click:Connect(function() toggleSettingsPanel() end)
+InfoButton.MouseButton1Click:Connect(function() toggleInfoPanel() end)
+SearchButton.MouseButton1Click:Connect(function() toggleSearchPanel() end)
+SearchPanelButton.MouseButton1Click:Connect(function() searchMusic(SearchTextBox.Text) end)
+SearchTextBox.FocusLost:Connect(function(ep) if ep then searchMusic(SearchTextBox.Text) end end)
+HistoryButton.MouseButton1Click:Connect(function() toggleHistoryPanel() end)
+BackButton.MouseButton1Click:Connect(function() toggleHistoryPanel() end)
+MuteToggle.MouseButton1Click:Connect(function() muteAllGameSounds(not isGameMuted) end)
+LoopToggle.MouseButton1Click:Connect(function() isLooping=not isLooping; local t=themes[currentTheme] or themes["Default"]; if isLooping then LoopToggle.BackgroundColor3=t.loopColor; LoopToggle.Text="🔁 LOOP: ON"; if currentSound then currentSound.Looped=true end else LoopToggle.BackgroundColor3=Color3.fromRGB(130,130,130); LoopToggle.Text="➡ LOOP: OFF"; if currentSound then currentSound.Looped=false end end end)
+PlayButton.MouseButton1Click:Connect(function() local url=UrlTextBox.Text; if url=="" then StatusLabel.Text="❌ Error: Please enter URL"; return end; if string.sub(string.lower(url),-4)~=".mp3" then StatusLabel.Text="❌ Error: URL must end with .mp3"; return end; local fn="audio.mp3"; local pts=string.split(url,"/"); if #pts>0 and string.find(pts[#pts],".mp3") then fn=string.gsub(string.gsub(pts[#pts],"%%20"," "),"%%25","%%") end; playMusicFromUrl(url,fn) end)
+PauseButton.MouseButton1Click:Connect(function() if not currentSound then StatusLabel.Text="❌ No music playing"; return end; togglePause() end)
+StopButton.MouseButton1Click:Connect(function() stopMusic(); if PauseButton then PauseButton.Text="⏸ PAUSE" end; StatusLabel.Text="⏹ Music Stopped"; updateTimeDisplay() end)
+
+-- ========== CONTINUOUS TIME UPDATE LOOP ==========
+spawn(function() while true do if currentSound then updateTimeDisplay() end; wait(0.05) end end)
+spawn(animateTimeLabelColor)
+spawn(function() animateTextboxPlaceholder(SearchTextBox, {"search by name or paste URL","type a song name to find...","paste GitHub raw URL here...","find your favorite music...","enter URL ending with .mp3..."}) end)
+spawn(function() animateTextboxPlaceholder(SecretKeyTextBox, {"enter a secret key","unlock the playlist...","type the key to access..."}) end)
+
+-- ========== INITIALIZATION ==========
+loadSettings()
+applyTheme(currentTheme)
+updateSaveThemeToggle()
+updateRememberKeyToggle()
+updateMiniPlayToggle()
+updateVolumeSlider(currentVolume)
+updateSpeed(currentSpeed)
+updateTimeDisplay()
+musicCache=loadCache()
+downloadHistory=loadHistory()
+updateHistoryList()
+cleanOldCache()
+if isKeyCorrect then pcall(function() loadPlaylist() end) end
+
+player.CharacterAdded:Connect(function(char) if currentSound and isPlaying then currentSound.Parent=workspace; if not currentSound.IsPlaying then currentSound:Play() end end end)
+Players.PlayerRemoving:Connect(function(lp) if lp==player then if isGameMuted then muteAllGameSounds(false) end; stopMusic(); ScreenGui:Destroy(); MiniScreenGui:Destroy() end end)
