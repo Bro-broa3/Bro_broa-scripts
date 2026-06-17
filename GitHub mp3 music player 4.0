@@ -218,7 +218,6 @@ local rainbowColors = {
     Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)
 }
 
--- CRITICAL FIX: updateTimeDisplay now always updates the slider position from currentSound.TimePosition
 local function updateTimeDisplay()
     if not currentSound then
         if TimeLabel then TimeLabel.Text = "0:00 / 0:00"; TimeLabel.TextColor3 = Color3.fromRGB(200,200,200) end
@@ -227,19 +226,10 @@ local function updateTimeDisplay()
         if MiniTimeSlider then MiniTimeSlider.Size = UDim2.new(0,0,1,0) end
         return
     end
-    
-    local tp = currentSound.TimePosition
-    local tl = currentSound.TimeLength
-    if tp ~= tp then tp = 0 end
-    if tl ~= tl or tl <= 0 then tl = 1 end
-    
+    local tp = currentSound.TimePosition; local tl = currentSound.TimeLength
+    if tp ~= tp then tp = 0 end; if tl ~= tl or tl <= 0 then tl = 1 end
     local timeText = formatTime(tp) .. " / " .. formatTime(tl)
-    
-    if TimeLabel then
-        TimeLabel.Text = currentSongName ~= "" and (timeText .. "   " .. currentSongName) or timeText
-    end
-    
-    -- Always update slider from actual sound position (not just when not dragging)
+    if TimeLabel then TimeLabel.Text = currentSongName ~= "" and (timeText .. "   " .. currentSongName) or timeText end
     local frac = math.clamp(tp / tl, 0, 1)
     if TimeSlider then TimeSlider.Size = UDim2.new(frac, 0, 1, 0) end
     if MiniTimeLabel then MiniTimeLabel.Text = timeText end
@@ -258,6 +248,52 @@ local function animateTimeLabelColor()
             ci = ci + 1; if ci > #rainbowColors then ci = 1 end
         end
         wait(0.5)
+    end
+end
+
+-- ========== ANIMATED PLACEHOLDER TEXT FOR SEARCH TEXTBOX ==========
+local placeholderTexts = {
+    "search by name or paste URL",
+    "type a song name to find...",
+    "paste GitHub raw URL here...",
+    "find your favorite music...",
+    "enter URL ending with .mp3..."
+}
+
+local function animateSearchPlaceholder()
+    local textIndex = 1
+    while SearchTextBox and SearchTextBox.Parent do
+        local fullText = placeholderTexts[textIndex]
+        -- Type out the text letter by letter with underscore cursor
+        local currentText = ""
+        for i = 1, #fullText do
+            if not SearchTextBox or not SearchTextBox.Parent then return end
+            local char = string.sub(fullText, i, i)
+            currentText = currentText .. char
+            SearchTextBox.PlaceholderText = currentText .. "_"
+            wait(0.15)
+        end
+        -- Show full text with blinking underscore for a moment
+        if not SearchTextBox or not SearchTextBox.Parent then return end
+        SearchTextBox.PlaceholderText = fullText .. "_"
+        wait(0.3)
+        -- Blink underscore 3 times
+        for b = 1, 3 do
+            if not SearchTextBox or not SearchTextBox.Parent then return end
+            SearchTextBox.PlaceholderText = fullText
+            wait(0.2)
+            if not SearchTextBox or not SearchTextBox.Parent then return end
+            SearchTextBox.PlaceholderText = fullText .. "_"
+            wait(0.2)
+        end
+        -- Wait a moment then clear
+        wait(1.5)
+        if not SearchTextBox or not SearchTextBox.Parent then return end
+        SearchTextBox.PlaceholderText = ""
+        wait(0.5)
+        -- Next text
+        textIndex = textIndex + 1
+        if textIndex > #placeholderTexts then textIndex = 1 end
     end
 end
 
@@ -324,17 +360,14 @@ end
 local function togglePause()
     if not currentSound then return end
     if isPaused then
-        currentSound.TimePosition = pausedTimePosition
-        currentSound:Resume()
+        currentSound.TimePosition = pausedTimePosition; currentSound:Resume()
         isPaused = false; isPlaying = true
         if PauseButton then PauseButton.Text = "⏸ PAUSE" end
     else
-        pausedTimePosition = currentSound.TimePosition
-        currentSound:Pause()
+        pausedTimePosition = currentSound.TimePosition; currentSound:Pause()
         isPaused = true; isPlaying = false
         if PauseButton then PauseButton.Text = "▶ RESUME" end
     end
-    -- Force update display immediately after pause toggle
     updateTimeDisplay()
 end
 
@@ -428,13 +461,10 @@ local SettingsTitle=Instance.new("TextLabel"); SettingsTitle.Size=UDim2.new(1,0,
 local SettingsTitleCorner=Instance.new("UICorner"); SettingsTitleCorner.CornerRadius=UDim.new(0,8); SettingsTitleCorner.Parent=SettingsTitle
 
 local ThemeLabel=Instance.new("TextLabel"); ThemeLabel.Size=UDim2.new(0,120,0,25); ThemeLabel.Position=UDim2.new(0,15,0,40); ThemeLabel.BackgroundTransparency=1; ThemeLabel.Text="Theme:"; ThemeLabel.TextColor3=Color3.fromRGB(220,220,230); ThemeLabel.TextXAlignment=Enum.TextXAlignment.Left; ThemeLabel.Font=Enum.Font.GothamBold; ThemeLabel.TextSize=13; ThemeLabel.Parent=SettingsPanel
-
 local ThemeDropdown=Instance.new("TextButton"); ThemeDropdown.Size=UDim2.new(1,-30,0,30); ThemeDropdown.Position=UDim2.new(0,15,0,70); ThemeDropdown.BackgroundColor3=Color3.fromRGB(60,60,70); ThemeDropdown.BorderSizePixel=0; ThemeDropdown.Text=currentTheme.." ▼"; ThemeDropdown.TextColor3=Color3.fromRGB(255,255,255); ThemeDropdown.Font=Enum.Font.GothamBold; ThemeDropdown.TextSize=13; ThemeDropdown.Parent=SettingsPanel
 local ThemeDropdownCorner=Instance.new("UICorner"); ThemeDropdownCorner.CornerRadius=UDim.new(0,6); ThemeDropdownCorner.Parent=ThemeDropdown
-
 local ThemeList=Instance.new("ScrollingFrame"); ThemeList.Size=UDim2.new(1,-30,0,55); ThemeList.Position=UDim2.new(0,15,0,105); ThemeList.BackgroundColor3=Color3.fromRGB(50,50,58); ThemeList.BorderSizePixel=0; ThemeList.ScrollBarThickness=6; ThemeList.ScrollBarImageColor3=Color3.fromRGB(130,130,140); ThemeList.CanvasSize=UDim2.new(0,0,0,0); ThemeList.Visible=false; ThemeList.Parent=SettingsPanel
 local ThemeListCorner=Instance.new("UICorner"); ThemeListCorner.CornerRadius=UDim.new(0,5); ThemeListCorner.Parent=ThemeList
-
 local themeNames={"Default","Dark Blue","Light","Neon Light","Dark Light","Bright","Blue"}
 for i,n in ipairs(themeNames) do
     local b=Instance.new("TextButton"); b.Size=UDim2.new(1,-10,0,28); b.Position=UDim2.new(0,5,0,(i-1)*30+3); b.BackgroundColor3=Color3.fromRGB(55,55,63); b.BorderSizePixel=0; b.Text=n; b.TextColor3=Color3.fromRGB(255,255,255); b.Font=Enum.Font.Gotham; b.TextSize=12; b.Parent=ThemeList
@@ -459,10 +489,8 @@ local InfoPanelCorner=Instance.new("UICorner"); InfoPanelCorner.CornerRadius=UDi
 InfoPanelStroke=Instance.new("UIStroke"); InfoPanelStroke.Thickness=2; InfoPanelStroke.Color=Color3.fromRGB(100,180,255); InfoPanelStroke.Parent=InfoPanel
 local InfoTitle=Instance.new("TextLabel"); InfoTitle.Size=UDim2.new(1,0,0,30); InfoTitle.BackgroundColor3=Color3.fromRGB(40,45,50); InfoTitle.BorderSizePixel=0; InfoTitle.Text="HOW TO USE"; InfoTitle.TextColor3=Color3.fromRGB(255,255,255); InfoTitle.Font=Enum.Font.GothamBold; InfoTitle.TextSize=14; InfoTitle.Parent=InfoPanel
 local InfoTitleCorner=Instance.new("UICorner"); InfoTitleCorner.CornerRadius=UDim.new(0,8); InfoTitleCorner.Parent=InfoTitle
-
 InfoScrollFrame=Instance.new("ScrollingFrame"); InfoScrollFrame.Size=UDim2.new(1,-20,1,-40); InfoScrollFrame.Position=UDim2.new(0,10,0,40); InfoScrollFrame.BackgroundColor3=Color3.fromRGB(35,40,45); InfoScrollFrame.BorderSizePixel=0; InfoScrollFrame.ScrollBarThickness=8; InfoScrollFrame.ScrollBarImageColor3=Color3.fromRGB(120,120,140); InfoScrollFrame.CanvasSize=UDim2.new(0,0,0,0); InfoScrollFrame.Parent=InfoPanel
 local InfoScrollCorner=Instance.new("UICorner"); InfoScrollCorner.CornerRadius=UDim.new(0,6); InfoScrollCorner.Parent=InfoScrollFrame
-
 InfoText=Instance.new("TextLabel"); InfoText.Size=UDim2.new(1,-20,0,500); InfoText.Position=UDim2.new(0,10,0,10); InfoText.BackgroundTransparency=1
 InfoText.Text=[[<b>STEPS TO PLAY MUSIC:</b>
 <font color="#ff4444">1. UPLOAD</font> <font color="#ffffff">a music from</font> <font color="#ff4444">GitHub</font>
@@ -477,40 +505,28 @@ InfoText:GetPropertyChangedSignal("TextBounds"):Connect(function() InfoScrollFra
 
 -- Content frame
 ContentFrame=Instance.new("Frame"); ContentFrame.Size=UDim2.new(1,-20,1,-55); ContentFrame.Position=UDim2.new(0,10,0,45); ContentFrame.BackgroundTransparency=1; ContentFrame.Parent=MainFrame
-
 UrlLabel=Instance.new("TextLabel"); UrlLabel.Size=UDim2.new(1,0,0,18); UrlLabel.BackgroundTransparency=1; UrlLabel.Text="GitHub MP3 URL:"; UrlLabel.TextColor3=Color3.fromRGB(255,255,255); UrlLabel.TextXAlignment=Enum.TextXAlignment.Left; UrlLabel.Font=Enum.Font.Gotham; UrlLabel.TextSize=12; UrlLabel.Parent=ContentFrame
-
 UrlContainer=Instance.new("Frame"); UrlContainer.Size=UDim2.new(1,0,0,32); UrlContainer.Position=UDim2.new(0,0,0,22); UrlContainer.BackgroundColor3=Color3.fromRGB(60,60,60); UrlContainer.BorderSizePixel=0; UrlContainer.ClipsDescendants=true; UrlContainer.Parent=ContentFrame
-
 local UrlScrollingFrame=Instance.new("ScrollingFrame"); UrlScrollingFrame.Size=UDim2.new(1,0,1,0); UrlScrollingFrame.BackgroundTransparency=1; UrlScrollingFrame.BorderSizePixel=0; UrlScrollingFrame.ScrollBarThickness=8; UrlScrollingFrame.ScrollBarImageColor3=Color3.fromRGB(150,150,150); UrlScrollingFrame.VerticalScrollBarInset=Enum.ScrollBarInset.None; UrlScrollingFrame.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; UrlScrollingFrame.CanvasSize=UDim2.new(0,0,0,0); UrlScrollingFrame.ElasticBehavior=Enum.ElasticBehavior.Never; UrlScrollingFrame.ScrollingDirection=Enum.ScrollingDirection.X; UrlScrollingFrame.Parent=UrlContainer
-
 UrlTextBox=Instance.new("TextBox"); UrlTextBox.Size=UDim2.new(1,0,1,0); UrlTextBox.Position=UDim2.new(0,5,0,0); UrlTextBox.BackgroundTransparency=1; UrlTextBox.Text=""; UrlTextBox.PlaceholderText="https://github.com/.../audio.mp3"; UrlTextBox.TextColor3=Color3.fromRGB(255,255,255); UrlTextBox.Font=Enum.Font.Gotham; UrlTextBox.TextSize=12; UrlTextBox.ClearTextOnFocus=false; UrlTextBox.TextXAlignment=Enum.TextXAlignment.Left; UrlTextBox.TextWrapped=false; UrlTextBox.Parent=UrlScrollingFrame
-
 UrlTextBox:GetPropertyChangedSignal("Text"):Connect(function() local tw=UrlTextBox.TextBounds.X; local fw=UrlScrollingFrame.AbsoluteSize.X; UrlScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
 UrlTextBox:GetPropertyChangedSignal("TextBounds"):Connect(function() local tw=UrlTextBox.TextBounds.X; local fw=UrlScrollingFrame.AbsoluteSize.X; UrlScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
 local TextBoxUICorner=Instance.new("UICorner"); TextBoxUICorner.CornerRadius=UDim.new(0,6); TextBoxUICorner.Parent=UrlContainer
 
 local ControlButtons=Instance.new("Frame"); ControlButtons.Size=UDim2.new(1,0,0,35); ControlButtons.Position=UDim2.new(0,0,0,60); ControlButtons.BackgroundTransparency=1; ControlButtons.Parent=ContentFrame
-
 PlayButton=Instance.new("TextButton"); PlayButton.Size=UDim2.new(0.31,0,1,0); PlayButton.BackgroundColor3=Color3.fromRGB(70,180,70); PlayButton.BorderSizePixel=0; PlayButton.Text="▶ PLAY"; PlayButton.TextColor3=Color3.fromRGB(255,255,255); PlayButton.Font=Enum.Font.GothamBold; PlayButton.TextSize=13; PlayButton.Parent=ControlButtons
 local PlayButtonUICorner=Instance.new("UICorner"); PlayButtonUICorner.CornerRadius=UDim.new(0,6); PlayButtonUICorner.Parent=PlayButton
-
 PauseButton=Instance.new("TextButton"); PauseButton.Size=UDim2.new(0.31,0,1,0); PauseButton.Position=UDim2.new(0.345,0,0,0); PauseButton.BackgroundColor3=Color3.fromRGB(255,180,50); PauseButton.BorderSizePixel=0; PauseButton.Text="⏸ PAUSE"; PauseButton.TextColor3=Color3.fromRGB(255,255,255); PauseButton.Font=Enum.Font.GothamBold; PauseButton.TextSize=13; PauseButton.Parent=ControlButtons
 local PauseButtonUICorner=Instance.new("UICorner"); PauseButtonUICorner.CornerRadius=UDim.new(0,6); PauseButtonUICorner.Parent=PauseButton
-
 StopButton=Instance.new("TextButton"); StopButton.Size=UDim2.new(0.31,0,1,0); StopButton.Position=UDim2.new(0.69,0,0,0); StopButton.BackgroundColor3=Color3.fromRGB(200,70,70); StopButton.BorderSizePixel=0; StopButton.Text="⏹ STOP"; StopButton.TextColor3=Color3.fromRGB(255,255,255); StopButton.Font=Enum.Font.GothamBold; StopButton.TextSize=13; StopButton.Parent=ControlButtons
 local StopButtonUICorner=Instance.new("UICorner"); StopButtonUICorner.CornerRadius=UDim.new(0,6); StopButtonUICorner.Parent=StopButton
 
 local TimeFrame=Instance.new("Frame"); TimeFrame.Size=UDim2.new(1,0,0,35); TimeFrame.Position=UDim2.new(0,0,0,100); TimeFrame.BackgroundTransparency=1; TimeFrame.Parent=ContentFrame
-
 TimeLabel=Instance.new("TextLabel"); TimeLabel.Size=UDim2.new(1,-5,0,15); TimeLabel.Position=UDim2.new(0,0,0,0); TimeLabel.BackgroundTransparency=1; TimeLabel.Text="0:00 / 0:00"; TimeLabel.TextColor3=Color3.fromRGB(200,200,200); TimeLabel.TextXAlignment=Enum.TextXAlignment.Left; TimeLabel.Font=Enum.Font.Gotham; TimeLabel.TextSize=11; TimeLabel.TextTruncate=Enum.TextTruncate.AtEnd; TimeLabel.Parent=TimeFrame
-
 TimeSliderBg=Instance.new("Frame"); TimeSliderBg.Size=UDim2.new(1,0,0,8); TimeSliderBg.Position=UDim2.new(0,0,0,18); TimeSliderBg.BackgroundColor3=Color3.fromRGB(60,60,60); TimeSliderBg.BorderSizePixel=0; TimeSliderBg.Parent=TimeFrame
 local TimeSliderBgCorner=Instance.new("UICorner"); TimeSliderBgCorner.CornerRadius=UDim.new(0,4); TimeSliderBgCorner.Parent=TimeSliderBg
-
 TimeSlider=Instance.new("Frame"); TimeSlider.Size=UDim2.new(0,0,1,0); TimeSlider.BackgroundColor3=Color3.fromRGB(100,180,255); TimeSlider.BorderSizePixel=0; TimeSlider.Parent=TimeSliderBg
 local TimeSliderCorner=Instance.new("UICorner"); TimeSliderCorner.CornerRadius=UDim.new(0,4); TimeSliderCorner.Parent=TimeSlider
-
 local TimeSliderButton=Instance.new("TextButton"); TimeSliderButton.Size=UDim2.new(1,0,1,0); TimeSliderButton.BackgroundTransparency=1; TimeSliderButton.BorderSizePixel=0; TimeSliderButton.Text=""; TimeSliderButton.Parent=TimeSliderBg
 
 HistoryButton=Instance.new("TextButton"); HistoryButton.Size=UDim2.new(1,0,0,25); HistoryButton.Position=UDim2.new(0,0,0,140); HistoryButton.BackgroundColor3=Color3.fromRGB(100,100,200); HistoryButton.BorderSizePixel=0; HistoryButton.Text="→ HISTORY"; HistoryButton.TextColor3=Color3.fromRGB(255,255,255); HistoryButton.Font=Enum.Font.GothamBold; HistoryButton.TextSize=12; HistoryButton.Parent=ContentFrame
@@ -518,13 +534,10 @@ local HistoryButtonUICorner=Instance.new("UICorner"); HistoryButtonUICorner.Corn
 
 local ToggleFrame=Instance.new("Frame"); ToggleFrame.Size=UDim2.new(1,0,0,28); ToggleFrame.Position=UDim2.new(0,0,0,170); ToggleFrame.BackgroundTransparency=1; ToggleFrame.Parent=ContentFrame
 local bw=0.32; local sp=0.02
-
 MuteToggle=Instance.new("TextButton"); MuteToggle.Size=UDim2.new(bw,0,0,28); MuteToggle.Position=UDim2.new(0,0,0,0); MuteToggle.BackgroundColor3=Color3.fromRGB(180,80,80); MuteToggle.BorderSizePixel=0; MuteToggle.Text="🔊 MUTE: OFF"; MuteToggle.TextColor3=Color3.fromRGB(255,255,255); MuteToggle.Font=Enum.Font.Gotham; MuteToggle.TextSize=10; MuteToggle.Parent=ToggleFrame
 local MuteUICorner=Instance.new("UICorner"); MuteUICorner.CornerRadius=UDim.new(0,6); MuteUICorner.Parent=MuteToggle
-
 ToggleSettingsButton=Instance.new("TextButton"); ToggleSettingsButton.Size=UDim2.new(bw,0,0,28); ToggleSettingsButton.Position=UDim2.new(bw+sp,0,0,0); ToggleSettingsButton.BackgroundColor3=Color3.fromRGB(150,150,150); ToggleSettingsButton.BorderSizePixel=0; ToggleSettingsButton.Text="⚙ SETTING"; ToggleSettingsButton.TextColor3=Color3.fromRGB(255,255,255); ToggleSettingsButton.Font=Enum.Font.GothamBold; ToggleSettingsButton.TextSize=10; ToggleSettingsButton.Parent=ToggleFrame
 local ToggleSettingsCorner=Instance.new("UICorner"); ToggleSettingsCorner.CornerRadius=UDim.new(0,6); ToggleSettingsCorner.Parent=ToggleSettingsButton
-
 LoopToggle=Instance.new("TextButton"); LoopToggle.Size=UDim2.new(bw,0,0,28); LoopToggle.Position=UDim2.new(bw*2+sp*2,0,0,0); LoopToggle.BackgroundColor3=Color3.fromRGB(80,130,200); LoopToggle.BorderSizePixel=0; LoopToggle.Text="🔁 LOOP: ON"; LoopToggle.TextColor3=Color3.fromRGB(255,255,255); LoopToggle.Font=Enum.Font.Gotham; LoopToggle.TextSize=11; LoopToggle.Parent=ToggleFrame
 local LoopUICorner=Instance.new("UICorner"); LoopUICorner.CornerRadius=UDim.new(0,6); LoopUICorner.Parent=LoopToggle
 
@@ -569,7 +582,7 @@ local SearchInputCorner=Instance.new("UICorner"); SearchInputCorner.CornerRadius
 
 local SearchScrollingFrame=Instance.new("ScrollingFrame"); SearchScrollingFrame.Size=UDim2.new(1,-40,1,0); SearchScrollingFrame.BackgroundTransparency=1; SearchScrollingFrame.BorderSizePixel=0; SearchScrollingFrame.ScrollBarThickness=6; SearchScrollingFrame.ScrollBarImageColor3=Color3.fromRGB(150,150,150); SearchScrollingFrame.VerticalScrollBarInset=Enum.ScrollBarInset.None; SearchScrollingFrame.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; SearchScrollingFrame.CanvasSize=UDim2.new(0,0,0,0); SearchScrollingFrame.ElasticBehavior=Enum.ElasticBehavior.Never; SearchScrollingFrame.ScrollingDirection=Enum.ScrollingDirection.X; SearchScrollingFrame.Parent=SearchInputFrame
 
-SearchTextBox=Instance.new("TextBox"); SearchTextBox.Size=UDim2.new(1,0,1,0); SearchTextBox.Position=UDim2.new(0,5,0,0); SearchTextBox.BackgroundTransparency=1; SearchTextBox.Text=""; SearchTextBox.PlaceholderText="🔍 search by name or paste URL"; SearchTextBox.PlaceholderColor3=Color3.fromRGB(180,180,180); SearchTextBox.TextColor3=Color3.fromRGB(255,255,255); SearchTextBox.Font=Enum.Font.Gotham; SearchTextBox.TextSize=12; SearchTextBox.ClearTextOnFocus=false; SearchTextBox.TextXAlignment=Enum.TextXAlignment.Left; SearchTextBox.TextWrapped=false; SearchTextBox.Parent=SearchScrollingFrame
+SearchTextBox=Instance.new("TextBox"); SearchTextBox.Size=UDim2.new(1,0,1,0); SearchTextBox.Position=UDim2.new(0,5,0,0); SearchTextBox.BackgroundTransparency=1; SearchTextBox.Text=""; SearchTextBox.PlaceholderText=""; SearchTextBox.PlaceholderColor3=Color3.fromRGB(180,180,180); SearchTextBox.TextColor3=Color3.fromRGB(255,255,255); SearchTextBox.Font=Enum.Font.Gotham; SearchTextBox.TextSize=12; SearchTextBox.ClearTextOnFocus=false; SearchTextBox.TextXAlignment=Enum.TextXAlignment.Left; SearchTextBox.TextWrapped=false; SearchTextBox.Parent=SearchScrollingFrame
 
 SearchTextBox:GetPropertyChangedSignal("Text"):Connect(function() local tw=SearchTextBox.TextBounds.X; local fw=SearchScrollingFrame.AbsoluteSize.X; SearchScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
 SearchTextBox:GetPropertyChangedSignal("TextBounds"):Connect(function() local tw=SearchTextBox.TextBounds.X; local fw=SearchScrollingFrame.AbsoluteSize.X; SearchScrollingFrame.CanvasSize=tw>fw-10 and UDim2.new(0,tw+20,0,0) or UDim2.new(0,0,0,0) end)
@@ -586,35 +599,26 @@ SearchNoResultsLabel=Instance.new("TextLabel"); SearchNoResultsLabel.Size=UDim2.
 
 -- ========== MINI GUI ==========
 local MiniScreenGui=Instance.new("ScreenGui"); MiniScreenGui.Name="MusicPlayerMiniGUI"; MiniScreenGui.ResetOnSpawn=false; MiniScreenGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; MiniScreenGui.Parent=CoreGui; MiniScreenGui.Enabled=false
-
 MiniFrame=Instance.new("Frame"); MiniFrame.Size=UDim2.new(0,360,0,120); MiniFrame.Position=UDim2.new(0.5,-180,0.1,0); MiniFrame.BackgroundColor3=Color3.fromRGB(40,40,40); MiniFrame.BorderSizePixel=0; MiniFrame.Active=true; MiniFrame.Draggable=true; MiniFrame.Parent=MiniScreenGui
 local MiniUICorner=Instance.new("UICorner"); MiniUICorner.CornerRadius=UDim.new(0,15); MiniUICorner.Parent=MiniFrame
 MiniOutlineFrame=Instance.new("Frame"); MiniOutlineFrame.Size=UDim2.new(1,6,1,6); MiniOutlineFrame.Position=UDim2.new(0,-3,0,-3); MiniOutlineFrame.BackgroundColor3=Color3.fromRGB(40,40,40); MiniOutlineFrame.BorderSizePixel=0; MiniOutlineFrame.ZIndex=0; MiniOutlineFrame.Parent=MiniFrame
 local MiniOutlineCorner=Instance.new("UICorner"); MiniOutlineCorner.CornerRadius=UDim.new(0,16); MiniOutlineCorner.Parent=MiniOutlineFrame
 MiniUIStroke=Instance.new("UIStroke"); MiniUIStroke.Thickness=3; MiniUIStroke.Color=Color3.fromRGB(80,80,80); MiniUIStroke.Parent=MiniOutlineFrame
-
 spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while MiniUIStroke and MiniUIStroke.Parent do TweenService:Create(MiniUIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
-
 MiniSongLabel=Instance.new("TextLabel"); MiniSongLabel.Size=UDim2.new(1,-60,0,25); MiniSongLabel.Position=UDim2.new(0,15,0,8); MiniSongLabel.BackgroundTransparency=1; MiniSongLabel.Text=""; MiniSongLabel.TextColor3=Color3.fromRGB(255,255,255); MiniSongLabel.TextXAlignment=Enum.TextXAlignment.Left; MiniSongLabel.Font=Enum.Font.GothamBold; MiniSongLabel.TextSize=14; MiniSongLabel.TextTruncate=Enum.TextTruncate.AtEnd; MiniSongLabel.Parent=MiniFrame
 MiniTimeLabel=Instance.new("TextLabel"); MiniTimeLabel.Size=UDim2.new(1,-60,0,18); MiniTimeLabel.Position=UDim2.new(0,15,0,35); MiniTimeLabel.BackgroundTransparency=1; MiniTimeLabel.Text="0:00 / 0:00"; MiniTimeLabel.TextColor3=Color3.fromRGB(200,200,200); MiniTimeLabel.TextXAlignment=Enum.TextXAlignment.Left; MiniTimeLabel.Font=Enum.Font.Gotham; MiniTimeLabel.TextSize=11; MiniTimeLabel.Parent=MiniFrame
-
 MiniTimeSliderBg=Instance.new("Frame"); MiniTimeSliderBg.Size=UDim2.new(1,-60,0,10); MiniTimeSliderBg.Position=UDim2.new(0,15,0,58); MiniTimeSliderBg.BackgroundColor3=Color3.fromRGB(60,60,60); MiniTimeSliderBg.BorderSizePixel=0; MiniTimeSliderBg.Parent=MiniFrame
 local MiniTimeSliderBgCorner=Instance.new("UICorner"); MiniTimeSliderBgCorner.CornerRadius=UDim.new(0,5); MiniTimeSliderBgCorner.Parent=MiniTimeSliderBg
 MiniTimeSlider=Instance.new("Frame"); MiniTimeSlider.Size=UDim2.new(0,0,1,0); MiniTimeSlider.BackgroundColor3=Color3.fromRGB(100,180,255); MiniTimeSlider.BorderSizePixel=0; MiniTimeSlider.Parent=MiniTimeSliderBg
 local MiniTimeSliderCorner=Instance.new("UICorner"); MiniTimeSliderCorner.CornerRadius=UDim.new(0,5); MiniTimeSliderCorner.Parent=MiniTimeSlider
 local MiniTimeSliderButton=Instance.new("TextButton"); MiniTimeSliderButton.Size=UDim2.new(1,0,1,0); MiniTimeSliderButton.BackgroundTransparency=1; MiniTimeSliderButton.BorderSizePixel=0; MiniTimeSliderButton.Text=""; MiniTimeSliderButton.Parent=MiniTimeSliderBg
-
 local MiniButtonsFrame=Instance.new("Frame"); MiniButtonsFrame.Size=UDim2.new(0,150,0,35); MiniButtonsFrame.Position=UDim2.new(0,15,0,75); MiniButtonsFrame.BackgroundTransparency=1; MiniButtonsFrame.Parent=MiniFrame
-
 MiniRewindButton=Instance.new("TextButton"); MiniRewindButton.Size=UDim2.new(0,35,0,35); MiniRewindButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniRewindButton.BorderSizePixel=0; MiniRewindButton.Text="⏪"; MiniRewindButton.TextColor3=Color3.fromRGB(255,255,255); MiniRewindButton.Font=Enum.Font.GothamBold; MiniRewindButton.TextSize=16; MiniRewindButton.Parent=MiniButtonsFrame
 local MiniRewindCorner=Instance.new("UICorner"); MiniRewindCorner.CornerRadius=UDim.new(1,0); MiniRewindCorner.Parent=MiniRewindButton
-
 MiniPauseButton=Instance.new("TextButton"); MiniPauseButton.Size=UDim2.new(0,40,0,40); MiniPauseButton.Position=UDim2.new(0,45,0,-3); MiniPauseButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniPauseButton.BorderSizePixel=0; MiniPauseButton.Text="⏸"; MiniPauseButton.TextColor3=Color3.fromRGB(255,255,255); MiniPauseButton.Font=Enum.Font.GothamBold; MiniPauseButton.TextSize=18; MiniPauseButton.Parent=MiniButtonsFrame
 local MiniPauseCorner=Instance.new("UICorner"); MiniPauseCorner.CornerRadius=UDim.new(1,0); MiniPauseCorner.Parent=MiniPauseButton
-
 MiniForwardButton=Instance.new("TextButton"); MiniForwardButton.Size=UDim2.new(0,35,0,35); MiniForwardButton.Position=UDim2.new(0,95,0,0); MiniForwardButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniForwardButton.BorderSizePixel=0; MiniForwardButton.Text="⏩"; MiniForwardButton.TextColor3=Color3.fromRGB(255,255,255); MiniForwardButton.Font=Enum.Font.GothamBold; MiniForwardButton.TextSize=16; MiniForwardButton.Parent=MiniButtonsFrame
 local MiniForwardCorner=Instance.new("UICorner"); MiniForwardCorner.CornerRadius=UDim.new(1,0); MiniForwardCorner.Parent=MiniForwardButton
-
 MiniShowButton=Instance.new("TextButton"); MiniShowButton.Size=UDim2.new(0,35,0,35); MiniShowButton.Position=UDim2.new(1,-42,0,8); MiniShowButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniShowButton.BorderSizePixel=0; MiniShowButton.Text="📂"; MiniShowButton.TextColor3=Color3.fromRGB(255,255,255); MiniShowButton.Font=Enum.Font.GothamBold; MiniShowButton.TextSize=18; MiniShowButton.Parent=MiniFrame
 local MiniShowButtonCorner=Instance.new("UICorner"); MiniShowButtonCorner.CornerRadius=UDim.new(0,8); MiniShowButtonCorner.Parent=MiniShowButton
 
@@ -630,61 +634,22 @@ end
 MiniPlayToggle.MouseButton1Click:Connect(toggleMiniPlayMode)
 MiniShowButton.MouseButton1Click:Connect(function() toggleMiniPlayMode() end)
 
--- ========== TIME SLIDER EVENTS (FIXED) ==========
--- Main time slider
+-- ========== TIME SLIDER EVENTS ==========
 TimeSliderButton.MouseButton1Down:Connect(function()
-    isDraggingTimeSlider = true
-    if currentSound and currentSound.TimeLength > 0 then
-        local mx = mouse.X - TimeSliderBg.AbsolutePosition.X
-        local frac = math.clamp(mx / TimeSliderBg.AbsoluteSize.X, 0, 1)
-        local nt = frac * currentSound.TimeLength
-        currentSound.TimePosition = nt
-        if isPaused then pausedTimePosition = nt end
-        updateTimeDisplay()
-    end
+    isDraggingTimeSlider=true
+    if currentSound and currentSound.TimeLength>0 then local mx=mouse.X-TimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/TimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end
 end)
-
--- Mini time slider
 MiniTimeSliderButton.MouseButton1Down:Connect(function()
-    isDraggingMiniTimeSlider = true
-    if currentSound and currentSound.TimeLength > 0 then
-        local mx = mouse.X - MiniTimeSliderBg.AbsolutePosition.X
-        local frac = math.clamp(mx / MiniTimeSliderBg.AbsoluteSize.X, 0, 1)
-        local nt = frac * currentSound.TimeLength
-        currentSound.TimePosition = nt
-        if isPaused then pausedTimePosition = nt end
-        updateTimeDisplay()
-    end
+    isDraggingMiniTimeSlider=true
+    if currentSound and currentSound.TimeLength>0 then local mx=mouse.X-MiniTimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/MiniTimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end
 end)
-
--- Global mouse movement for continuous dragging
 UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        if isDraggingTimeSlider and currentSound and currentSound.TimeLength > 0 then
-            local mx = mouse.X - TimeSliderBg.AbsolutePosition.X
-            local frac = math.clamp(mx / TimeSliderBg.AbsoluteSize.X, 0, 1)
-            local nt = frac * currentSound.TimeLength
-            currentSound.TimePosition = nt
-            if isPaused then pausedTimePosition = nt end
-            updateTimeDisplay()
-        elseif isDraggingMiniTimeSlider and currentSound and currentSound.TimeLength > 0 then
-            local mx = mouse.X - MiniTimeSliderBg.AbsolutePosition.X
-            local frac = math.clamp(mx / MiniTimeSliderBg.AbsoluteSize.X, 0, 1)
-            local nt = frac * currentSound.TimeLength
-            currentSound.TimePosition = nt
-            if isPaused then pausedTimePosition = nt end
-            updateTimeDisplay()
-        end
+    if input.UserInputType==Enum.UserInputType.MouseMovement then
+        if isDraggingTimeSlider and currentSound and currentSound.TimeLength>0 then local mx=mouse.X-TimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/TimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay()
+        elseif isDraggingMiniTimeSlider and currentSound and currentSound.TimeLength>0 then local mx=mouse.X-MiniTimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/MiniTimeSliderBg.AbsoluteSize.X,0,1); local nt=frac*currentSound.TimeLength; currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end
     end
 end)
-
--- Global mouse release
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        isDraggingTimeSlider = false
-        isDraggingMiniTimeSlider = false
-    end
-end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType==Enum.UserInputType.MouseButton1 then isDraggingTimeSlider=false; isDraggingMiniTimeSlider=false end end)
 
 -- ========== FUNCTIONS ==========
 local function applySpeedFromTextBox()
@@ -695,7 +660,7 @@ end
 local function searchMusic(st)
     if not SearchScrollFrame then return end
     for _,c in pairs(SearchScrollFrame:GetChildren()) do if c.Name=="SearchResultItem" then c:Destroy() end end
-    if st=="" then if SearchNoResultsLabel then SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="🔍 Enter a search term or URL" end; SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0); return end
+    if st=="" then if SearchNoResultsLabel then SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="Enter a search term or URL" end; SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0); return end
     SearchNoResultsLabel.Visible=false
     local isFU=string.find(st,"http") and string.find(st,".mp3")
     if isFU then
@@ -744,7 +709,7 @@ function toggleInfoPanel()
 end
 function toggleSearchPanel()
     if isHistoryOpen then toggleHistoryPanel() end; isSearchOpen=not isSearchOpen
-    if isSearchOpen then SearchPanel.Visible=true; TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(1,10,0,0)}):Play(); SearchTextBox.Text=""; SearchTextBox:CaptureFocus(); for _,c in pairs(SearchScrollFrame:GetChildren()) do if c.Name=="SearchResultItem" then c:Destroy() end end; SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="🔍 Enter song name or paste URL"
+    if isSearchOpen then SearchPanel.Visible=true; TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(1,10,0,0)}):Play(); SearchTextBox.Text=""; SearchTextBox:CaptureFocus(); for _,c in pairs(SearchScrollFrame:GetChildren()) do if c.Name=="SearchResultItem" then c:Destroy() end end; SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="Enter a search term or URL"
     else TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,310,0,0)}):Play(); wait(0.3); SearchPanel.Visible=false end
 end
 function toggleHistoryPanel()
@@ -813,18 +778,11 @@ PauseButton.MouseButton1Click:Connect(function() if not currentSound then Status
 StopButton.MouseButton1Click:Connect(function() stopMusic(); if PauseButton then PauseButton.Text="⏸ PAUSE" end; StatusLabel.Text="⏹ Music Stopped"; updateTimeDisplay() end)
 
 -- ========== CONTINUOUS TIME UPDATE LOOP ==========
--- This always runs, updating from the actual sound position
-spawn(function()
-    while true do
-        if currentSound then
-            -- Always update the display from the actual sound position
-            updateTimeDisplay()
-        end
-        wait(0.05)
-    end
-end)
+spawn(function() while true do if currentSound then updateTimeDisplay() end; wait(0.05) end end)
 
+-- ========== START ANIMATIONS ==========
 spawn(animateTimeLabelColor)
+spawn(animateSearchPlaceholder)
 
 -- ========== INITIALIZATION ==========
 loadSettings()
