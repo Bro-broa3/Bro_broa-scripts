@@ -373,44 +373,45 @@ local function animateTextboxPlaceholder(textbox,texts)
     end
 end
 
--- FIXED: Simple scrolling by padding the text and changing position
+-- WORKING AUTO-SCROLL FUNCTION
 local function startAutoScroll(label)
     if not label then return end
     spawn(function()
         local fullText = label.Text
-        while label and label.Parent and label.Text == fullText and fullText ~= "" do
+        if fullText == "" then return end
+        
+        while label and label.Parent do
+            if label.Text ~= fullText then break end
+            
             local textWidth = label.TextBounds.X
             local frameWidth = label.AbsoluteSize.X
             
-            if textWidth > frameWidth then
-                -- Add spaces to create padding for smooth scroll loop
-                local paddedText = fullText .. "          " .. fullText
-                local scrollPos = 1
+            if textWidth > frameWidth and frameWidth > 0 then
+                local paddedText = fullText .. "     " .. fullText
+                local maxScroll = #fullText + 5
                 
-                while label and label.Parent and label.Text == fullText do
-                    -- Calculate how much text fits
+                for pos = 1, maxScroll do
+                    if label.Text ~= fullText or not label.Parent then return end
+                    
                     local displayText = ""
-                    for i = scrollPos, #paddedText do
-                        label.Text = string.sub(paddedText, scrollPos, i)
+                    for i = pos, #paddedText do
+                        local testText = string.sub(paddedText, pos, i)
+                        label.Text = testText
                         if label.TextBounds.X > frameWidth then
                             label.Text = displayText
                             break
                         end
-                        displayText = string.sub(paddedText, scrollPos, i)
+                        displayText = testText
                     end
                     
-                    scrollPos = scrollPos + 1
-                    
-                    -- Reset when we reach the end of first fullText copy
-                    if scrollPos > #fullText then
-                        scrollPos = 1
-                        wait(0.5) -- Pause before restarting
-                    end
-                    
-                    wait(0.2)
+                    wait(0.3)
+                end
+                
+                if label.Text == fullText then
+                    wait(0.5)
                 end
             else
-                wait(0.5)
+                wait(1)
             end
         end
     end)
@@ -429,17 +430,14 @@ end
 local function removeFromHistory(idx) if downloadHistory[idx] then table.remove(downloadHistory,idx); saveHistory(); return true end; return false end
 local function stopMusic() if currentSound then currentSound:Stop(); currentSound:Destroy(); currentSound=nil end; isPlaying=false; isPaused=false; pausedTimePosition=0; currentSongName=""; currentPlaylistIndex=0; updateTimeDisplay() end
 
--- FIXED: Mute function that ONLY mutes game sounds, NEVER the player's music
 local function muteAllGameSounds(mute)
     isGameMuted = mute
     
-    -- Clean up old connections
     for _, conn in ipairs(descConnections) do
         pcall(function() conn:Disconnect() end)
     end
     descConnections = {}
     
-    -- Mute/unmute SoundService
     pcall(function() 
         SoundService.RespectFilteringEnabled = false
         if mute then 
@@ -450,12 +448,10 @@ local function muteAllGameSounds(mute)
         end 
     end)
     
-    -- Process all sounds except our music
     local function processSounds(parent)
         pcall(function()
             if parent then
                 for _, o in pairs(parent:GetDescendants()) do
-                    -- SKIP our music player sound
                     if o == currentSound then
                         -- DO NOTHING to our music
                     elseif o:IsA("Sound") then
@@ -490,7 +486,6 @@ local function muteAllGameSounds(mute)
         end)
     end
     
-    -- Process all services
     local services = {
         workspace, game:GetService("Lighting"), game:GetService("ReplicatedStorage"),
         game:GetService("ReplicatedFirst"), game:GetService("ServerStorage"),
@@ -515,12 +510,10 @@ local function muteAllGameSounds(mute)
         processSounds(service)
     end
     
-    -- Listen for new sounds (exclude our music)
     if mute then
         local function connectDescendantAdded(parent)
             if parent then
                 local conn = parent.DescendantAdded:Connect(function(descendant)
-                    -- SKIP our music player sound
                     if descendant == currentSound then
                         -- DO NOTHING to our music
                     elseif descendant:IsA("Sound") then
@@ -546,7 +539,6 @@ local function muteAllGameSounds(mute)
         end
     end
     
-    -- ALWAYS ensure our music volume is correct
     if currentSound then
         pcall(function() 
             currentSound.Volume = currentVolume
@@ -591,7 +583,6 @@ local function playMusicFromUrl(url,fn,playlistIdx)
             currentSound:Play(); isPlaying=true; isPaused=false; pausedTimePosition=0
             if StatusLabel then StatusLabel.Text="🎵 "..currentSongName; StatusLabel.TextColor3=Color3.fromRGB(100,255,100) end
             addToHistory(url,fn); updateTimeDisplay()
-            -- CRITICAL: If mute is on, ensure our music plays at full volume
             if isGameMuted then
                 pcall(function() currentSound.Volume = currentVolume end)
             end
@@ -608,7 +599,6 @@ local function playMusicFromUrl(url,fn,playlistIdx)
     if s and currentSound then
         if StatusLabel then StatusLabel.Text="🎵 "..currentSongName; StatusLabel.TextColor3=Color3.fromRGB(100,255,100) end
         addToHistory(url,fn); updateTimeDisplay()
-        -- CRITICAL: If mute is on, ensure our music plays at full volume
         if isGameMuted then
             pcall(function() currentSound.Volume = currentVolume end)
         end
