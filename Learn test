@@ -373,45 +373,85 @@ local function animateTextboxPlaceholder(textbox,texts)
     end
 end
 
--- WORKING AUTO-SCROLL FUNCTION
+-- ========== SIMPLE AUTO SCROLL USING POSITION TWEEN ==========
 local function startAutoScroll(label)
     if not label then return end
+    
+    -- Remove any existing scroll container
+    local oldContainer = label:FindFirstChild("ScrollContainer")
+    if oldContainer then oldContainer:Destroy() end
+    
+    local songName = label.Text
+    if songName == "" then return end
+    
+    -- Setup label
+    label.Text = ""
+    label.TextTruncate = Enum.TextTruncate.None
+    label.ClipsDescendants = true
+    
+    -- Create container
+    local scrollContainer = Instance.new("Frame")
+    scrollContainer.Name = "ScrollContainer"
+    scrollContainer.Size = UDim2.new(1, 0, 1, 0)
+    scrollContainer.Position = UDim2.new(0, 0, 0, 0)
+    scrollContainer.BackgroundTransparency = 1
+    scrollContainer.ClipsDescendants = true
+    scrollContainer.Parent = label
+    
+    -- Create inner text
+    local innerText = Instance.new("TextLabel")
+    innerText.Name = "InnerText"
+    innerText.BackgroundTransparency = 1
+    innerText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    innerText.Font = Enum.Font.GothamBold
+    innerText.TextSize = 11
+    innerText.TextXAlignment = Enum.TextXAlignment.Left
+    innerText.TextYAlignment = Enum.TextYAlignment.Center
+    innerText.Parent = scrollContainer
+    innerText.Text = songName
+    
+    -- Wait for size calculation
+    innerText.Size = UDim2.new(0, innerText.TextBounds.X + 10, 1, 0)
+    wait(0.1)
+    innerText.Size = UDim2.new(0, innerText.TextBounds.X + 10, 1, 0)
+    
+    local textWidth = innerText.TextBounds.X
+    local containerWidth = scrollContainer.AbsoluteSize.X
+    
     spawn(function()
-        local fullText = label.Text
-        if fullText == "" then return end
-        
-        while label and label.Parent do
-            if label.Text ~= fullText then break end
+        while scrollContainer and scrollContainer.Parent do
+            textWidth = innerText.TextBounds.X
+            containerWidth = scrollContainer.AbsoluteSize.X
             
-            local textWidth = label.TextBounds.X
-            local frameWidth = label.AbsoluteSize.X
-            
-            if textWidth > frameWidth and frameWidth > 0 then
-                local paddedText = fullText .. "     " .. fullText
-                local maxScroll = #fullText + 5
+            if textWidth > containerWidth and containerWidth > 10 then
+                -- Set text width to actual size + padding
+                innerText.Size = UDim2.new(0, textWidth + 40, 1, 0)
                 
-                for pos = 1, maxScroll do
-                    if label.Text ~= fullText or not label.Parent then return end
-                    
-                    local displayText = ""
-                    for i = pos, #paddedText do
-                        local testText = string.sub(paddedText, pos, i)
-                        label.Text = testText
-                        if label.TextBounds.X > frameWidth then
-                            label.Text = displayText
-                            break
-                        end
-                        displayText = testText
-                    end
-                    
-                    wait(0.3)
-                end
+                -- Start position: right edge
+                innerText.Position = UDim2.new(0, containerWidth, 0, 0)
+                wait(0.8)
                 
-                if label.Text == fullText then
-                    wait(0.5)
-                end
+                if not scrollContainer.Parent then break end
+                
+                -- End position: left edge
+                local endX = -textWidth - 20
+                local distance = containerWidth - endX
+                local duration = distance / 40 -- pixels per second
+                
+                local tween = TweenService:Create(
+                    innerText,
+                    TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
+                    {Position = UDim2.new(0, endX, 0, 0)}
+                )
+                tween:Play()
+                
+                wait(duration + 0.3)
             else
-                wait(1)
+                -- Text fits, center it
+                innerText.Size = UDim2.new(1, -10, 1, 0)
+                innerText.Position = UDim2.new(0, 5, 0, 0)
+                innerText.TextXAlignment = Enum.TextXAlignment.Center
+                wait(2)
             end
         end
     end)
@@ -453,7 +493,6 @@ local function muteAllGameSounds(mute)
             if parent then
                 for _, o in pairs(parent:GetDescendants()) do
                     if o == currentSound then
-                        -- DO NOTHING to our music
                     elseif o:IsA("Sound") then
                         if mute then
                             if originalSoundVolumes[o] == nil then
@@ -515,7 +554,6 @@ local function muteAllGameSounds(mute)
             if parent then
                 local conn = parent.DescendantAdded:Connect(function(descendant)
                     if descendant == currentSound then
-                        -- DO NOTHING to our music
                     elseif descendant:IsA("Sound") then
                         if originalSoundVolumes[descendant] == nil then
                             originalSoundVolumes[descendant] = descendant.Volume
@@ -566,15 +604,27 @@ local function togglePause()
     else pausedTimePosition=currentSound.TimePosition; currentSound:Pause(); isPaused=true; isPlaying=false; if PauseButton then PauseButton.Text="▶ RESUME" end end; updateTimeDisplay()
 end
 
+-- FIXED: playMusicFromUrl properly handles scroll container cleanup
 local function playMusicFromUrl(url,fn,playlistIdx)
     stopMusic(); currentSongName=cleanSongName(fn); currentPlaylistIndex=playlistIdx or 0
     if StatusLabel then StatusLabel.Text="⏬ Loading..."; StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
     if MiniSongLabel then MiniSongLabel.Text=currentSongName end
-    if ExtraSongLabel then ExtraSongLabel.Text=currentSongName; startAutoScroll(ExtraSongLabel) end
+    
+    -- Properly handle ExtraSongLabel scroll
+    if ExtraSongLabel then
+        -- Destroy old scroll container
+        local oldContainer = ExtraSongLabel:FindFirstChild("ScrollContainer")
+        if oldContainer then oldContainer:Destroy() end
+        -- Set the text and start scroll
+        ExtraSongLabel.Text = currentSongName
+        startAutoScroll(ExtraSongLabel)
+    end
+    
     if ExtraMiniImage and currentPlaylistIndex>0 and playlistSongs[currentPlaylistIndex] then
         local img = playlistSongs[currentPlaylistIndex].imageAsset
         ExtraMiniImage.Image = (img and img ~= "") and img or ""
     elseif ExtraMiniImage then ExtraMiniImage.Image = "" end
+    
     if musicCache[url] and musicCache[url].fileName then
         local cf=musicCache[url].fileName
         if isfile and isfile(cf) then
@@ -583,9 +633,7 @@ local function playMusicFromUrl(url,fn,playlistIdx)
             currentSound:Play(); isPlaying=true; isPaused=false; pausedTimePosition=0
             if StatusLabel then StatusLabel.Text="🎵 "..currentSongName; StatusLabel.TextColor3=Color3.fromRGB(100,255,100) end
             addToHistory(url,fn); updateTimeDisplay()
-            if isGameMuted then
-                pcall(function() currentSound.Volume = currentVolume end)
-            end
+            if isGameMuted then pcall(function() currentSound.Volume = currentVolume end) end
             return true
         else musicCache[url]=nil; saveCache() end
     end
@@ -599,9 +647,7 @@ local function playMusicFromUrl(url,fn,playlistIdx)
     if s and currentSound then
         if StatusLabel then StatusLabel.Text="🎵 "..currentSongName; StatusLabel.TextColor3=Color3.fromRGB(100,255,100) end
         addToHistory(url,fn); updateTimeDisplay()
-        if isGameMuted then
-            pcall(function() currentSound.Volume = currentVolume end)
-        end
+        if isGameMuted then pcall(function() currentSound.Volume = currentVolume end) end
         return true
     else currentSongName=""; stopMusic(); return false end
 end
@@ -712,19 +758,16 @@ local function createExtraMiniGUI()
     ExtraMiniFrame.BackgroundColor3=Color3.fromRGB(20,20,20); ExtraMiniFrame.BackgroundTransparency=0.5; ExtraMiniFrame.BorderSizePixel=0; ExtraMiniFrame.Active=true; ExtraMiniFrame.Draggable=true; ExtraMiniFrame.Parent=ExtraMiniScreenGui
     Instance.new("UICorner",ExtraMiniFrame).CornerRadius=UDim.new(0,15)
     
-    -- X button with Transparency 1 (only text visible)
     local ecb=Instance.new("TextButton"); ecb.Size=UDim2.new(0,25,0,25); ecb.Position=UDim2.new(1,-28,0,3)
     ecb.BackgroundColor3=Color3.fromRGB(20,20,20); ecb.BackgroundTransparency=1; ecb.BorderSizePixel=0; ecb.Text="X"; ecb.TextColor3=Color3.fromRGB(255,255,255); ecb.Font=Enum.Font.GothamBold; ecb.TextSize=14; ecb.Parent=ExtraMiniFrame
     Instance.new("UICorner",ecb).CornerRadius=UDim.new(1,0)
     ecb.MouseButton1Click:Connect(function() extraMiniPlayMode=false; if ExtraMiniScreenGui then ExtraMiniScreenGui.Enabled=false end; if ScreenGui then ScreenGui.Enabled=true end; updateExtraMiniToggle() end)
     
-    -- Loop button
     ExtraLoopImageButton=Instance.new("ImageButton"); ExtraLoopImageButton.Size=UDim2.new(0,25,0,25); ExtraLoopImageButton.Position=UDim2.new(0,3,0,3)
     ExtraLoopImageButton.BackgroundTransparency=1; ExtraLoopImageButton.BorderSizePixel=0; ExtraLoopImageButton.Image=isLooping and "rbxassetid://133261841375114" or "rbxassetid://72571947341676"; ExtraLoopImageButton.Parent=ExtraMiniFrame
     Instance.new("UICorner",ExtraLoopImageButton).CornerRadius=UDim.new(1,0)
     ExtraLoopImageButton.MouseButton1Click:Connect(function() isLooping=not isLooping; ExtraLoopImageButton.Image=isLooping and "rbxassetid://133261841375114" or "rbxassetid://72571947341676"; if currentSound then currentSound.Looped=isLooping end end)
     
-    -- Song name label with auto-scroll
     ExtraSongLabel=Instance.new("TextLabel"); ExtraSongLabel.Size=UDim2.new(1,-60,0,22); ExtraSongLabel.Position=UDim2.new(0,30,0,5)
     ExtraSongLabel.BackgroundTransparency=1; ExtraSongLabel.Text=""; ExtraSongLabel.TextColor3=Color3.fromRGB(255,255,255); ExtraSongLabel.Font=Enum.Font.GothamBold; ExtraSongLabel.TextSize=11; ExtraSongLabel.TextTruncate=Enum.TextTruncate.None; ExtraSongLabel.TextXAlignment=Enum.TextXAlignment.Left; ExtraSongLabel.Parent=ExtraMiniFrame
     ExtraSongLabel.ClipsDescendants=true
@@ -785,7 +828,10 @@ local function toggleExtraMiniMode()
         if currentPlaylistIndex>0 and playlistSongs[currentPlaylistIndex] then
             local img = playlistSongs[currentPlaylistIndex].imageAsset
             if img and img ~= "" and ExtraMiniImage then ExtraMiniImage.Image = img end
-            if ExtraSongLabel then ExtraSongLabel.Text = currentSongName; startAutoScroll(ExtraSongLabel) end
+        end
+        if currentSongName ~= "" and ExtraSongLabel then
+            ExtraSongLabel.Text = currentSongName
+            startAutoScroll(ExtraSongLabel)
         end
         if ExtraMiniScreenGui then ExtraMiniScreenGui.Enabled=true end
         if ScreenGui then ScreenGui.Enabled=false end
@@ -853,7 +899,7 @@ SaveThemeToggle.MouseButton1Click:Connect(function() saveThemeEnabled=not saveTh
 local RememberKeyLabel=Instance.new("TextLabel"); RememberKeyLabel.Size=UDim2.new(0,200,0,25); RememberKeyLabel.Position=UDim2.new(0,15,0,yPos+90); RememberKeyLabel.BackgroundTransparency=1; RememberKeyLabel.Text="Remember Key:"; RememberKeyLabel.TextColor3=Color3.fromRGB(220,220,230); RememberKeyLabel.TextXAlignment=Enum.TextXAlignment.Left; RememberKeyLabel.Font=Enum.Font.GothamBold; RememberKeyLabel.TextSize=13; RememberKeyLabel.Parent=SettingsScrollFrame
 RememberKeyToggle=Instance.new("TextButton"); RememberKeyToggle.Size=UDim2.new(0,60,0,28); RememberKeyToggle.Position=UDim2.new(0,220,0,yPos+90); RememberKeyToggle.BorderSizePixel=0; RememberKeyToggle.Font=Enum.Font.GothamBold; RememberKeyToggle.TextSize=12; RememberKeyToggle.TextColor3=Color3.fromRGB(255,255,255); RememberKeyToggle.Parent=SettingsScrollFrame
 Instance.new("UICorner",RememberKeyToggle).CornerRadius=UDim.new(0,6)
-RememberKeyToggle.MouseButton1Click:Connect(function() rememberKeyEnabled=not rememberKeyEnabled; updateRememberKeyToggle(); if rememberKeyEnabled then if isKeyCorrect then saveKeyState() end else deleteKeyFile() end; pcall(function() if writefile then writefile(SETTINGS_FILE,HttpService:JSONEncode({theme=currentTheme,saveThemeEnabled=saveThemeEnabled,rememberKeyEnabled=rememberKeyEnabled,timeSliderBlue=timeSliderBlue})) end end) end)
+RememberKeyToggle.MouseButton1Click:Connect(function() rememberKeyEnabled=not rememberKeyEnabled; updateRememberKeyToggle(); if rememberKeyEnabled then if isKeyCorrect then saveKeyState() end else deleteKeyFile() end end)
 
 local SliderColorLabel=Instance.new("TextLabel"); SliderColorLabel.Size=UDim2.new(0,200,0,25); SliderColorLabel.Position=UDim2.new(0,15,0,yPos+125); SliderColorLabel.BackgroundTransparency=1; SliderColorLabel.Text="Slider Color:"; SliderColorLabel.TextColor3=Color3.fromRGB(220,220,230); SliderColorLabel.TextXAlignment=Enum.TextXAlignment.Left; SliderColorLabel.Font=Enum.Font.GothamBold; SliderColorLabel.TextSize=13; SliderColorLabel.Parent=SettingsScrollFrame
 SliderColorToggle=Instance.new("TextButton"); SliderColorToggle.Size=UDim2.new(0,60,0,28); SliderColorToggle.Position=UDim2.new(0,220,0,yPos+125); SliderColorToggle.BorderSizePixel=0; SliderColorToggle.Font=Enum.Font.GothamBold; SliderColorToggle.TextSize=12; SliderColorToggle.TextColor3=Color3.fromRGB(255,255,255); SliderColorToggle.Parent=SettingsScrollFrame
