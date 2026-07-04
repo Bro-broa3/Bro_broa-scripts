@@ -2234,6 +2234,40 @@ local function CreateGUI()
         end
     })
 
+    FeTab:CreateButton({
+        Name = "TRUE FE",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing TRUE FE...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/7yd7/Hub/refs/heads/Branch/GUIS/Emotes.lua", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "TRUE FE loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
     YoutubeTab:CreateButton({
         Name = "Youtube Msuic Player",
         Callback = function()
