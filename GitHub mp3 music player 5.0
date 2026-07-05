@@ -35,7 +35,6 @@ local function showNotification(title, text, duration)
             Duration = duration or 5
         }) 
     end)
-    -- Also print to console for debugging
     print("[MusicPlayer] " .. title .. ": " .. text)
 end
 
@@ -270,7 +269,6 @@ local function loadSettings()
         if rv.rememberKeyEnabled ~= nil then rememberKeyEnabled = rv.rememberKeyEnabled end
         if rv.isKeyCorrect then isKeyCorrect = true; pcall(function() loadPlaylist() end) end
     end
-    -- Load user playlist
     local up, upv = pcall(function() 
         if readfile and isfile and isfile(PLAYLIST_DATA_FILE) then 
             return HttpService:JSONDecode(readfile(PLAYLIST_DATA_FILE)) 
@@ -615,21 +613,6 @@ local function updateVolume(v)
     if VolumeTextBox then VolumeTextBox.Text = tostring(currentVolume) end
     if VolumeLabel then VolumeLabel.Text = "Volume: " .. math.floor(currentVolume) end
     if currentSound then currentSound.Volume = currentVolume end
-end
-
-local function updateVolumeFromText()
-    if not VolumeTextBox then return end
-    local t = string.gsub(VolumeTextBox.Text, "%s", "")
-    local v = tonumber(t)
-    if v then
-        local clampedV = math.clamp(v, 0, 100)
-        currentVolume = clampedV
-        if currentSound then currentSound.Volume = currentVolume end
-        VolumeLabel.Text = "Volume: " .. math.floor(currentVolume)
-        VolumeTextBox.Text = tostring(v)
-    else
-        VolumeTextBox.Text = tostring(currentVolume)
-    end
 end
 
 local function updateVolumeDisplayOnly()
@@ -984,7 +967,6 @@ function updatePlaylistDisplay()
     addPanel.Parent = PlaylistScrollFrame
     Instance.new("UICorner", addPanel).CornerRadius = UDim.new(0, 6)
     
-    -- MP3 URL Label
     local mp3Label = Instance.new("TextLabel")
     mp3Label.Size = UDim2.new(1, -10, 0, 18)
     mp3Label.Position = UDim2.new(0, 5, 0, 5)
@@ -996,7 +978,6 @@ function updatePlaylistDisplay()
     mp3Label.TextSize = 11
     mp3Label.Parent = addPanel
     
-    -- MP3 URL Container with horizontal scroll
     local mp3Container = Instance.new("Frame")
     mp3Container.Size = UDim2.new(1, -10, 0, 28)
     mp3Container.Position = UDim2.new(0, 5, 0, 26)
@@ -1043,7 +1024,6 @@ function updatePlaylistDisplay()
         mp3ScrollFrame.CanvasSize = tw > fw - 10 and UDim2.new(0, tw + 20, 0, 0) or UDim2.new(0, 0, 0, 0) 
     end)
     
-    -- Image URL Label
     local imgLabel = Instance.new("TextLabel")
     imgLabel.Size = UDim2.new(1, -10, 0, 18)
     imgLabel.Position = UDim2.new(0, 5, 0, 60)
@@ -1055,7 +1035,6 @@ function updatePlaylistDisplay()
     imgLabel.TextSize = 11
     imgLabel.Parent = addPanel
     
-    -- Image URL Container with horizontal scroll
     local imgContainer = Instance.new("Frame")
     imgContainer.Size = UDim2.new(1, -10, 0, 28)
     imgContainer.Position = UDim2.new(0, 5, 0, 81)
@@ -1832,7 +1811,6 @@ local function createMainGUI()
     ContentFrame.BackgroundTransparency = 1
     ContentFrame.Parent = MainFrame
     
-    -- URL Label
     local ul = Instance.new("TextLabel")
     ul.Size = UDim2.new(1, 0, 0, 18)
     ul.BackgroundTransparency = 1
@@ -1843,7 +1821,6 @@ local function createMainGUI()
     ul.TextSize = 12
     ul.Parent = ContentFrame
     
-    -- URL Container
     UrlContainer = Instance.new("Frame")
     UrlContainer.Size = UDim2.new(1, 0, 0, 32)
     UrlContainer.Position = UDim2.new(0, 0, 0, 22)
@@ -1889,7 +1866,6 @@ local function createMainGUI()
         usf.CanvasSize = tw > fw - 10 and UDim2.new(0, tw + 20, 0, 0) or UDim2.new(0, 0, 0, 0) 
     end)
     
-    -- Play/Pause/Stop Buttons
     local cb = Instance.new("Frame")
     cb.Size = UDim2.new(1, 0, 0, 35)
     cb.Position = UDim2.new(0, 0, 0, 60)
@@ -1931,7 +1907,6 @@ local function createMainGUI()
     StopButton.Parent = cb
     Instance.new("UICorner", StopButton).CornerRadius = UDim.new(0, 6)
     
-    -- Time Slider
     local tf = Instance.new("Frame")
     tf.Size = UDim2.new(1, 0, 0, 35)
     tf.Position = UDim2.new(0, 0, 0, 100)
@@ -1985,7 +1960,6 @@ local function createMainGUI()
         end 
     end)
     
-    -- History Button
     HistoryButton = Instance.new("TextButton")
     HistoryButton.Size = UDim2.new(1, 0, 0, 25)
     HistoryButton.Position = UDim2.new(0, 0, 0, 140)
@@ -1998,7 +1972,6 @@ local function createMainGUI()
     HistoryButton.Parent = ContentFrame
     Instance.new("UICorner", HistoryButton).CornerRadius = UDim.new(0, 6)
     
-    -- Mute/Key/Loop
     local tgf = Instance.new("Frame")
     tgf.Size = UDim2.new(1, 0, 0, 28)
     tgf.Position = UDim2.new(0, 0, 0, 170)
@@ -2195,7 +2168,6 @@ local function createMainGUI()
     SpeedUpButton.Parent = sf
     Instance.new("UICorner", SpeedUpButton).CornerRadius = UDim.new(0, 5)
     
-    -- Status Label
     StatusLabel = Instance.new("TextLabel")
     StatusLabel.Size = UDim2.new(1, 0, 0, 18)
     StatusLabel.Position = UDim2.new(0, 0, 1, -22)
@@ -2623,11 +2595,179 @@ local function createMainGUI()
     MiniShowButton.Parent = MiniFrame
     Instance.new("UICorner", MiniShowButton).CornerRadius = UDim.new(0, 8)
     
+    -- ========== DEFINE FUNCTIONS BEFORE EVENT CONNECTIONS ==========
+    local function applySpeedFromTextBox() 
+        local t = string.gsub(string.gsub(SpeedTextBox.Text, "x", ""), "X", "")
+        local s = tonumber(t)
+        if s then 
+            updateSpeed(math.clamp(s, 0, 100)) 
+        else 
+            SpeedTextBox.Text = string.format("%.2f", currentSpeed) .. "x" 
+        end 
+    end
+    
+    local function applyVolumeFromText()
+        if not VolumeTextBox then return end
+        local t = string.gsub(VolumeTextBox.Text, "%s", "")
+        local v = tonumber(t)
+        if v then
+            local clampedV = math.clamp(v, 0, 100)
+            currentVolume = clampedV
+            if currentSound then currentSound.Volume = currentVolume end
+            VolumeLabel.Text = "Volume: " .. math.floor(currentVolume)
+            VolumeTextBox.Text = tostring(v)
+        else
+            VolumeTextBox.Text = tostring(currentVolume)
+        end
+    end
+    
+    local function toggleMiniPlayMode()
+        miniPlayMode = not miniPlayMode
+        updateMiniPlayToggle()
+        if miniPlayMode then 
+            if extraMiniPlayMode then toggleExtraMiniMode() end
+            if ScreenGui then ScreenGui.Enabled = false end
+            MiniScreenGui.Enabled = true 
+        else 
+            if ScreenGui then ScreenGui.Enabled = true end
+            MiniScreenGui.Enabled = false 
+        end 
+    end
+    
+    local function searchMusic(st)
+        if not SearchScrollFrame then return end
+        for _, c in pairs(SearchScrollFrame:GetChildren()) do 
+            if c.Name == "SearchResultItem" then c:Destroy() end 
+        end
+        if st == "" then 
+            if SearchNoResultsLabel then 
+                SearchNoResultsLabel.Visible = true
+                SearchNoResultsLabel.Text = "Enter a search term or URL" 
+            end
+            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+            return 
+        end
+        SearchNoResultsLabel.Visible = false
+        local isFU = string.find(st, "http") and string.find(st, ".mp3")
+        if isFU then 
+            local s, r = pcall(function() return game:HttpGet(st) end)
+            if s and r and #r > 0 then 
+                local fn = "audio.mp3"
+                local pts = string.split(st, "/")
+                if #pts > 0 and string.find(pts[#pts], ".mp3") then 
+                    fn = string.gsub(string.gsub(pts[#pts], "%%20", " "), "%%25", "%%") 
+                end
+                local it = Instance.new("Frame")
+                it.Name = "SearchResultItem"
+                it.Size = UDim2.new(1, -10, 0, 50)
+                it.Position = UDim2.new(0, 5, 0, 0)
+                it.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                it.BorderSizePixel = 0
+                it.Parent = SearchScrollFrame
+                Instance.new("UICorner", it).CornerRadius = UDim.new(0, 4)
+                local lb = Instance.new("TextLabel")
+                lb.Size = UDim2.new(1, -70, 0, 20)
+                lb.Position = UDim2.new(0, 5, 0, 5)
+                lb.BackgroundTransparency = 1
+                lb.Text = fn
+                lb.TextColor3 = Color3.fromRGB(255, 255, 255)
+                lb.Font = Enum.Font.GothamBold
+                lb.TextSize = 12
+                lb.Parent = it
+                local pb = Instance.new("TextButton")
+                pb.Size = UDim2.new(0, 60, 0, 30)
+                pb.Position = UDim2.new(1, -65, 0, 10)
+                pb.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
+                pb.BorderSizePixel = 0
+                pb.Text = "PLAY"
+                pb.TextColor3 = Color3.fromRGB(255, 255, 255)
+                pb.Font = Enum.Font.GothamBold
+                pb.TextSize = 10
+                pb.Parent = it
+                Instance.new("UICorner", pb).CornerRadius = UDim.new(0, 4)
+                pb.MouseButton1Click:Connect(function() 
+                    if isSearchOpen then toggleSearchPanel() end
+                    playMusicFromUrl(st, fn) 
+                end)
+                SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 60)
+            else 
+                SearchNoResultsLabel.Visible = true
+                SearchNoResultsLabel.Text = "❌ URL not found"
+                SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
+            end
+        else 
+            local fd = {}
+            pcall(function() 
+                local bu = "https://github.com/Bro-broa3/PrimeMusic/raw/main/"
+                local tr = {
+                    string.gsub(st, " ", "%%20") .. ".mp3",
+                    string.gsub(string.lower(st), " ", "%%20") .. ".mp3",
+                    string.gsub(st, " ", "") .. ".mp3",
+                    string.gsub(string.lower(st), " ", "_") .. ".mp3",
+                    string.gsub(string.lower(st), " ", "-") .. ".mp3",
+                    string.lower(string.gsub(st, " ", "")) .. ".mp3"
+                }
+                for _, fn in ipairs(tr) do 
+                    pcall(function() 
+                        local rp = game:HttpGet(bu .. fn)
+                        if rp and #rp > 1000 then 
+                            table.insert(fd, {url = bu .. fn, fileName = string.gsub(fn, "%%20", " ")}) 
+                        end 
+                    end) 
+                end
+            end)
+            if #fd > 0 then 
+                local th = 0
+                for _, rs in ipairs(fd) do 
+                    local it = Instance.new("Frame")
+                    it.Name = "SearchResultItem"
+                    it.Size = UDim2.new(1, -10, 0, 50)
+                    it.Position = UDim2.new(0, 5, 0, th)
+                    it.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+                    it.BorderSizePixel = 0
+                    it.Parent = SearchScrollFrame
+                    Instance.new("UICorner", it).CornerRadius = UDim.new(0, 4)
+                    local lb = Instance.new("TextLabel")
+                    lb.Size = UDim2.new(1, -70, 0, 20)
+                    lb.Position = UDim2.new(0, 5, 0, 5)
+                    lb.BackgroundTransparency = 1
+                    lb.Text = rs.fileName
+                    lb.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    lb.Font = Enum.Font.GothamBold
+                    lb.TextSize = 12
+                    lb.Parent = it
+                    local pb = Instance.new("TextButton")
+                    pb.Size = UDim2.new(0, 60, 0, 30)
+                    pb.Position = UDim2.new(1, -65, 0, 10)
+                    pb.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
+                    pb.BorderSizePixel = 0
+                    pb.Text = "PLAY"
+                    pb.TextColor3 = Color3.fromRGB(255, 255, 255)
+                    pb.Font = Enum.Font.GothamBold
+                    pb.TextSize = 10
+                    pb.Parent = it
+                    Instance.new("UICorner", pb).CornerRadius = UDim.new(0, 4)
+                    local ru, rf = rs.url, rs.fileName
+                    pb.MouseButton1Click:Connect(function() 
+                        if isSearchOpen then toggleSearchPanel() end
+                        playMusicFromUrl(ru, rf) 
+                    end)
+                    th = th + 55
+                end
+                SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, th)
+            else 
+                SearchNoResultsLabel.Visible = true
+                SearchNoResultsLabel.Text = "❌ No results found"
+                SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
+            end
+        end
+    end
+    
     -- ========== EVENT CONNECTIONS ==========
     SpeedTextBox.FocusLost:Connect(function(ep) applySpeedFromTextBox() end)
     SpeedUpButton.MouseButton1Click:Connect(function() updateSpeed(math.min(currentSpeed + 0.25, 100)) end)
     SpeedDownButton.MouseButton1Click:Connect(function() updateSpeed(math.max(currentSpeed - 0.25, 0)) end)
-    VolumeTextBox.FocusLost:Connect(function(ep) updateVolumeFromText() end)
+    VolumeTextBox.FocusLost:Connect(function(ep) applyVolumeFromText() end)
     VolumeUpButton.MouseButton1Click:Connect(function() updateVolume(math.min(currentVolume + 0.5, 100)) end)
     VolumeDownButton.MouseButton1Click:Connect(function() updateVolume(math.max(currentVolume - 0.5, 0)) end)
     
@@ -2661,13 +2801,11 @@ local function createMainGUI()
     
     MuteToggle.MouseButton1Click:Connect(function() 
         if isGameMuted then
-            -- unmute
             isGameMuted = false
             MuteToggle.Text = "🔊 MUTE: OFF"
             MuteToggle.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
             if currentSound then currentSound.Volume = currentVolume end
         else
-            -- mute
             isGameMuted = true
             MuteToggle.Text = "🔇 MUTE: ON"
             MuteToggle.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
@@ -2722,198 +2860,13 @@ local function createMainGUI()
         updateTimeDisplay() 
     end)
     
-    local function toggleMiniPlayMode()
-        miniPlayMode = not miniPlayMode
-        updateMiniPlayToggle()
-        if miniPlayMode then 
-            if extraMiniPlayMode then toggleExtraMiniMode() end
-            if ScreenGui then ScreenGui.Enabled = false end
-            MiniScreenGui.Enabled = true 
-        else 
-            if ScreenGui then ScreenGui.Enabled = true end
-            MiniScreenGui.Enabled = false 
-        end 
-    end
-    
     MiniPlayToggle.MouseButton1Click:Connect(toggleMiniPlayMode)
     MiniShowButton.MouseButton1Click:Connect(function() toggleMiniPlayMode() end)
     
     print("[MusicPlayer] Main GUI created successfully!")
 end
 
--- ========== SLIDER DRAGGING ==========
-UserInputService.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        if isDraggingTimeSlider and currentSound and currentSound.TimeLength > 0 then 
-            local mx = mouse.X - TimeSliderBg.AbsolutePosition.X
-            local frac = math.clamp(mx / TimeSliderBg.AbsoluteSize.X, 0, 1)
-            currentSound.TimePosition = frac * currentSound.TimeLength
-            if isPaused then pausedTimePosition = currentSound.TimePosition end
-            updateTimeDisplay()
-        elseif isDraggingMiniTimeSlider and currentSound and currentSound.TimeLength > 0 then 
-            local mx = mouse.X - MiniTimeSliderBg.AbsolutePosition.X
-            local frac = math.clamp(mx / MiniTimeSliderBg.AbsoluteSize.X, 0, 1)
-            currentSound.TimePosition = frac * currentSound.TimeLength
-            if isPaused then pausedTimePosition = currentSound.TimePosition end
-            updateTimeDisplay()
-        elseif isDraggingExtraSlider and currentSound and currentSound.TimeLength > 0 and ExtraTimeSlider and ExtraTimeSlider.Parent then 
-            local mx = mouse.X - ExtraTimeSlider.Parent.AbsolutePosition.X
-            local frac = math.clamp(mx / ExtraTimeSlider.Parent.AbsoluteSize.X, 0, 1)
-            currentSound.TimePosition = frac * currentSound.TimeLength
-            if isPaused then pausedTimePosition = currentSound.TimePosition end
-            updateTimeDisplay() 
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input) 
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then 
-        isDraggingTimeSlider = false
-        isDraggingMiniTimeSlider = false
-        isDraggingExtraSlider = false 
-    end 
-end)
-
--- ========== FUNCTIONS ==========
-local function applySpeedFromTextBox() 
-    local t = string.gsub(string.gsub(SpeedTextBox.Text, "x", ""), "X", "")
-    local s = tonumber(t)
-    if s then 
-        updateSpeed(math.clamp(s, 0, 100)) 
-    else 
-        SpeedTextBox.Text = string.format("%.2f", currentSpeed) .. "x" 
-    end 
-end
-
-local function searchMusic(st)
-    if not SearchScrollFrame then return end
-    for _, c in pairs(SearchScrollFrame:GetChildren()) do 
-        if c.Name == "SearchResultItem" then c:Destroy() end 
-    end
-    if st == "" then 
-        if SearchNoResultsLabel then 
-            SearchNoResultsLabel.Visible = true
-            SearchNoResultsLabel.Text = "Enter a search term or URL" 
-        end
-        SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-        return 
-    end
-    SearchNoResultsLabel.Visible = false
-    local isFU = string.find(st, "http") and string.find(st, ".mp3")
-    if isFU then 
-        local s, r = pcall(function() return game:HttpGet(st) end)
-        if s and r and #r > 0 then 
-            local fn = "audio.mp3"
-            local pts = string.split(st, "/")
-            if #pts > 0 and string.find(pts[#pts], ".mp3") then 
-                fn = string.gsub(string.gsub(pts[#pts], "%%20", " "), "%%25", "%%") 
-            end
-            local it = Instance.new("Frame")
-            it.Name = "SearchResultItem"
-            it.Size = UDim2.new(1, -10, 0, 50)
-            it.Position = UDim2.new(0, 5, 0, 0)
-            it.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-            it.BorderSizePixel = 0
-            it.Parent = SearchScrollFrame
-            Instance.new("UICorner", it).CornerRadius = UDim.new(0, 4)
-            local lb = Instance.new("TextLabel")
-            lb.Size = UDim2.new(1, -70, 0, 20)
-            lb.Position = UDim2.new(0, 5, 0, 5)
-            lb.BackgroundTransparency = 1
-            lb.Text = fn
-            lb.TextColor3 = Color3.fromRGB(255, 255, 255)
-            lb.Font = Enum.Font.GothamBold
-            lb.TextSize = 12
-            lb.Parent = it
-            local pb = Instance.new("TextButton")
-            pb.Size = UDim2.new(0, 60, 0, 30)
-            pb.Position = UDim2.new(1, -65, 0, 10)
-            pb.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
-            pb.BorderSizePixel = 0
-            pb.Text = "PLAY"
-            pb.TextColor3 = Color3.fromRGB(255, 255, 255)
-            pb.Font = Enum.Font.GothamBold
-            pb.TextSize = 10
-            pb.Parent = it
-            Instance.new("UICorner", pb).CornerRadius = UDim.new(0, 4)
-            pb.MouseButton1Click:Connect(function() 
-                if isSearchOpen then toggleSearchPanel() end
-                playMusicFromUrl(st, fn) 
-            end)
-            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 60)
-        else 
-            SearchNoResultsLabel.Visible = true
-            SearchNoResultsLabel.Text = "❌ URL not found"
-            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
-        end
-    else 
-        local fd = {}
-        pcall(function() 
-            local bu = "https://github.com/Bro-broa3/PrimeMusic/raw/main/"
-            local tr = {
-                string.gsub(st, " ", "%%20") .. ".mp3",
-                string.gsub(string.lower(st), " ", "%%20") .. ".mp3",
-                string.gsub(st, " ", "") .. ".mp3",
-                string.gsub(string.lower(st), " ", "_") .. ".mp3",
-                string.gsub(string.lower(st), " ", "-") .. ".mp3",
-                string.lower(string.gsub(st, " ", "")) .. ".mp3"
-            }
-            for _, fn in ipairs(tr) do 
-                pcall(function() 
-                    local rp = game:HttpGet(bu .. fn)
-                    if rp and #rp > 1000 then 
-                        table.insert(fd, {url = bu .. fn, fileName = string.gsub(fn, "%%20", " ")}) 
-                    end 
-                end) 
-            end
-        end)
-        if #fd > 0 then 
-            local th = 0
-            for _, rs in ipairs(fd) do 
-                local it = Instance.new("Frame")
-                it.Name = "SearchResultItem"
-                it.Size = UDim2.new(1, -10, 0, 50)
-                it.Position = UDim2.new(0, 5, 0, th)
-                it.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-                it.BorderSizePixel = 0
-                it.Parent = SearchScrollFrame
-                Instance.new("UICorner", it).CornerRadius = UDim.new(0, 4)
-                local lb = Instance.new("TextLabel")
-                lb.Size = UDim2.new(1, -70, 0, 20)
-                lb.Position = UDim2.new(0, 5, 0, 5)
-                lb.BackgroundTransparency = 1
-                lb.Text = rs.fileName
-                lb.TextColor3 = Color3.fromRGB(255, 255, 255)
-                lb.Font = Enum.Font.GothamBold
-                lb.TextSize = 12
-                lb.Parent = it
-                local pb = Instance.new("TextButton")
-                pb.Size = UDim2.new(0, 60, 0, 30)
-                pb.Position = UDim2.new(1, -65, 0, 10)
-                pb.BackgroundColor3 = Color3.fromRGB(70, 150, 70)
-                pb.BorderSizePixel = 0
-                pb.Text = "PLAY"
-                pb.TextColor3 = Color3.fromRGB(255, 255, 255)
-                pb.Font = Enum.Font.GothamBold
-                pb.TextSize = 10
-                pb.Parent = it
-                Instance.new("UICorner", pb).CornerRadius = UDim.new(0, 4)
-                local ru, rf = rs.url, rs.fileName
-                pb.MouseButton1Click:Connect(function() 
-                    if isSearchOpen then toggleSearchPanel() end
-                    playMusicFromUrl(ru, rf) 
-                end)
-                th = th + 55
-            end
-            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, th)
-        else 
-            SearchNoResultsLabel.Visible = true
-            SearchNoResultsLabel.Text = "❌ No results found"
-            SearchScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) 
-        end
-    end
-end
-
+-- ========== TOGGLE PANELS ==========
 function toggleSettingsPanel()
     if not SettingsPanel then return end
     if isSettingsOpen then 
@@ -3060,10 +3013,42 @@ function updateHistoryList()
     HistoryScrollFrame.CanvasSize = UDim2.new(0, 0, 0, th)
 end
 
+-- ========== SLIDER DRAGGING ==========
+UserInputService.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if isDraggingTimeSlider and currentSound and currentSound.TimeLength > 0 then 
+            local mx = mouse.X - TimeSliderBg.AbsolutePosition.X
+            local frac = math.clamp(mx / TimeSliderBg.AbsoluteSize.X, 0, 1)
+            currentSound.TimePosition = frac * currentSound.TimeLength
+            if isPaused then pausedTimePosition = currentSound.TimePosition end
+            updateTimeDisplay()
+        elseif isDraggingMiniTimeSlider and currentSound and currentSound.TimeLength > 0 then 
+            local mx = mouse.X - MiniTimeSliderBg.AbsolutePosition.X
+            local frac = math.clamp(mx / MiniTimeSliderBg.AbsoluteSize.X, 0, 1)
+            currentSound.TimePosition = frac * currentSound.TimeLength
+            if isPaused then pausedTimePosition = currentSound.TimePosition end
+            updateTimeDisplay()
+        elseif isDraggingExtraSlider and currentSound and currentSound.TimeLength > 0 and ExtraTimeSlider and ExtraTimeSlider.Parent then 
+            local mx = mouse.X - ExtraTimeSlider.Parent.AbsolutePosition.X
+            local frac = math.clamp(mx / ExtraTimeSlider.Parent.AbsoluteSize.X, 0, 1)
+            currentSound.TimePosition = frac * currentSound.TimeLength
+            if isPaused then pausedTimePosition = currentSound.TimePosition end
+            updateTimeDisplay() 
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input) 
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then 
+        isDraggingTimeSlider = false
+        isDraggingMiniTimeSlider = false
+        isDraggingExtraSlider = false 
+    end 
+end)
+
 -- ========== INIT ==========
 print("[MusicPlayer] Starting initialization...")
 
--- Load settings first
 local initSuccess, initErr = pcall(function()
     loadSettings()
     imageCache = loadImageCache()
@@ -3075,7 +3060,6 @@ if not initSuccess then
     print("[MusicPlayer] Settings load error: " .. tostring(initErr))
 end
 
--- Create main GUI
 local guiSuccess, guiErr = pcall(function()
     createMainGUI()
 end)
@@ -3086,7 +3070,6 @@ if not guiSuccess then
     return
 end
 
--- Post-creation setup
 pcall(function()
     createExtraMiniGUI()
     updateExtraMiniToggle()
@@ -3104,7 +3087,6 @@ pcall(function()
         pcall(function() loadPlaylist() end) 
     end
     
-    -- Continuous time update
     spawn(function() 
         while true do 
             if currentSound then updateTimeDisplay() end
@@ -3133,7 +3115,6 @@ pcall(function()
     end)
 end)
 
--- Character/Player events
 player.CharacterAdded:Connect(function(char) 
     if currentSound and isPlaying then 
         currentSound.Parent = workspace
