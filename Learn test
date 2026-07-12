@@ -604,8 +604,8 @@ local function cleanupPlaylistLoop()
 end
 
 local function stopMusic() 
+    cleanupPlaylistLoop()
     if currentSound then 
-        cleanupPlaylistLoop()
         currentSound:Stop()
         currentSound:Destroy()
         currentSound = nil 
@@ -618,7 +618,6 @@ local function stopMusic()
     updateTimeDisplay() 
 end
 
--- Volume functions
 local function updateVolume(v)
     currentVolume = math.clamp(v, 0, 100)
     if VolumeTextBox then VolumeTextBox.Text = string.format("%.2f", currentVolume) end
@@ -666,7 +665,10 @@ local function setupPlaylistLoop()
                 if ni > #playlistSongs then ni = 1 end
                 local song = playlistSongs[ni]
                 if song then 
-                    playMusicFromUrl(song.url, song.fileName, ni)
+                    spawn(function()
+                        wait(0.1)
+                        playMusicFromUrl(song.url, song.fileName, ni)
+                    end)
                 end
             end
         end)
@@ -674,7 +676,17 @@ local function setupPlaylistLoop()
 end
 
 local function playMusicFromUrl(url, fn, playlistIdx)
-    stopMusic()
+    cleanupPlaylistLoop()
+    
+    if currentSound then 
+        currentSound:Stop()
+        currentSound:Destroy()
+        currentSound = nil 
+    end
+    isPlaying = false
+    isPaused = false
+    pausedTimePosition = 0
+    
     currentSongName = cleanSongName(fn)
     currentPlaylistIndex = playlistIdx or 0
     if StatusLabel then 
@@ -682,18 +694,25 @@ local function playMusicFromUrl(url, fn, playlistIdx)
         StatusLabel.TextColor3 = Color3.fromRGB(255,200,100) 
     end
     if MiniSongLabel then MiniSongLabel.Text = currentSongName end
+    
     if ExtraSongLabel then
         local oldContainer = ExtraSongLabel:FindFirstChild("ScrollContainer")
         if oldContainer then oldContainer:Destroy() end
         ExtraSongLabel.Text = currentSongName
         startAutoScroll(ExtraSongLabel)
     end
+    
     if ExtraMiniImage and currentPlaylistIndex > 0 and playlistSongs[currentPlaylistIndex] then
         local img = playlistSongs[currentPlaylistIndex].imageAsset
-        ExtraMiniImage.Image = (img and img ~= "") and img or ""
+        if img and img ~= "" then
+            ExtraMiniImage.Image = img
+        else
+            ExtraMiniImage.Image = ""
+        end
     elseif ExtraMiniImage then 
         ExtraMiniImage.Image = "" 
     end
+    
     if musicCache[url] and musicCache[url].fileName then
         local cf = musicCache[url].fileName
         if isfile and isfile(cf) then
@@ -969,7 +988,6 @@ function updatePlaylistDisplay()
         th = th + itemHeight + 4
     end
     
-    -- Add Music Button
     local addBtn = Instance.new("TextButton")
     addBtn.Name = "AddMusicButton"
     addBtn.Size = UDim2.new(1, -10, 0, 35)
@@ -985,7 +1003,6 @@ function updatePlaylistDisplay()
     
     local btnTh = th + 10 + 35 + 10
     
-    -- Add Music Panel
     local addPanel = Instance.new("Frame")
     addPanel.Name = "AddMusicPanel"
     addPanel.Size = UDim2.new(1, -10, 0, 140)
@@ -1236,12 +1253,11 @@ local function createExtraMiniGUI()
         updateExtraMiniToggle() 
     end)
     
-    -- Loop button (3 states: red=no loop, green=single loop, orange=playlist loop)
     local loopState = 0
     local loopStateImages = {
-        [0] = "rbxassetid://72571947341676",  -- Red - no loop
-        [1] = "rbxassetid://133261841375114",  -- Green - single loop
-        [2] = "rbxassetid://70388482182322",   -- Orange - playlist loop
+        [0] = "rbxassetid://72571947341676",
+        [1] = "rbxassetid://133261841375114",
+        [2] = "rbxassetid://70388482182322",
     }
     
     local ExtraLoopImageButton = Instance.new("ImageButton")
@@ -1572,7 +1588,6 @@ local function createMainGUI()
     CloseButton.Parent = TitleBar
     Instance.new("UICorner", CloseButton).CornerRadius = UDim.new(0, 8)
     
-    -- Settings Panel
     SettingsPanel = Instance.new("Frame")
     SettingsPanel.Size = UDim2.new(1, 0, 0, 240)
     SettingsPanel.Position = UDim2.new(0, 0, 0, -250)
@@ -1795,7 +1810,6 @@ local function createMainGUI()
     
     SettingsScrollFrame.CanvasSize = UDim2.new(0, 0, 0, yPos + 240)
     
-    -- Info Panel
     InfoPanel = Instance.new("Frame")
     InfoPanel.Size = UDim2.new(0, 280, 1, 0)
     InfoPanel.Position = UDim2.new(0, -290, 0, 0)
@@ -1863,7 +1877,6 @@ local function createMainGUI()
         isf.CanvasSize = UDim2.new(0, 0, 0, itx.TextBounds.Y + 20) 
     end)
     
-    -- Content Frame
     ContentFrame = Instance.new("Frame")
     ContentFrame.Size = UDim2.new(1, -20, 1, -55)
     ContentFrame.Position = UDim2.new(0, 10, 0, 45)
@@ -2111,7 +2124,6 @@ local function createMainGUI()
     LoopToggle.Parent = tgf
     Instance.new("UICorner", LoopToggle).CornerRadius = UDim.new(0, 6)
     
-    -- Volume Section
     local vf = Instance.new("Frame")
     vf.Size = UDim2.new(1, 0, 0, 35)
     vf.Position = UDim2.new(0, 0, 0, 205)
@@ -2169,7 +2181,6 @@ local function createMainGUI()
     VolumeUpButton.Parent = vf
     Instance.new("UICorner", VolumeUpButton).CornerRadius = UDim.new(0, 5)
     
-    -- Speed Section
     local sf = Instance.new("Frame")
     sf.Size = UDim2.new(1, 0, 0, 35)
     sf.Position = UDim2.new(0, 0, 0, 245)
@@ -2238,7 +2249,6 @@ local function createMainGUI()
     StatusLabel.TextSize = 11
     StatusLabel.Parent = ContentFrame
     
-    -- History Panel
     HistoryPanel = Instance.new("Frame")
     HistoryPanel.Size = UDim2.new(1, 0, 1, 0)
     HistoryPanel.Position = UDim2.new(1, 0, 0, 0)
@@ -2295,7 +2305,6 @@ local function createMainGUI()
     
     BackButton.MouseButton1Click:Connect(function() toggleHistoryPanel() end)
     
-    -- Search Panel
     SearchPanel = Instance.new("Frame")
     SearchPanel.Size = UDim2.new(0, 300, 1, 0)
     SearchPanel.Position = UDim2.new(1, 10, 0, 0)
@@ -2486,7 +2495,6 @@ local function createMainGUI()
         updatePlaylistDisplay() 
     end)
     
-    -- Mini GUI
     MiniScreenGui = Instance.new("ScreenGui")
     MiniScreenGui.Name = "MusicPlayerMiniGUI"
     MiniScreenGui.ResetOnSpawn = false
@@ -2654,7 +2662,6 @@ local function createMainGUI()
     MiniShowButton.Parent = MiniFrame
     Instance.new("UICorner", MiniShowButton).CornerRadius = UDim.new(0, 8)
     
-    -- ========== DEFINE FUNCTIONS BEFORE EVENT CONNECTIONS ==========
     local function applySpeedFromTextBox() 
         local t = string.gsub(string.gsub(SpeedTextBox.Text, "x", ""), "X", "")
         local s = tonumber(t)
@@ -2822,7 +2829,6 @@ local function createMainGUI()
         end
     end
     
-    -- ========== EVENT CONNECTIONS ==========
     SpeedTextBox.FocusLost:Connect(function(ep) applySpeedFromTextBox() end)
     SpeedUpButton.MouseButton1Click:Connect(function() updateSpeed(math.min(currentSpeed + 0.25, 100)) end)
     SpeedDownButton.MouseButton1Click:Connect(function() updateSpeed(math.max(currentSpeed - 0.25, 0)) end)
