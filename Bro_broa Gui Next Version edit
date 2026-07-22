@@ -183,8 +183,8 @@ local function CreateGUI()
     local SettingsTab = window:CreateTab("Settings", "settings")    
     local ServerTab = window:CreateTab("Server", "flag")
     local Bro_broaguiTab = window:CreateTab("Bro_broa GUI", "flag")
+    local MusicTab = window:CreateTab("Music", "flag")
     local FeTab = window:CreateTab("FE", "flag")
-    local YoutubeTab = window:CreateTab("YouTube", "flag")
     local TSBtab = window:CreateTab("TSB", "flag")
     local VBLTab = window:CreateTab("VBL", "flag")
     local DoorsTab = window:CreateTab("Doors", "flag")
@@ -481,175 +481,6 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "troll mp3 loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    MainTab:CreateButton({
-        Name = "Github mp3 player 1.0",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Github mp3 player 1.0...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%201.0', true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Github mp3 player 1.0 loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-    MainTab:CreateButton({
-        Name = "Github mp3 player 2.0",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Github mp3 player 2.0...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%202.0', true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Github mp3 player 2.0 loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    MainTab:CreateButton({
-        Name = "Github mp3 player 3.0",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Github mp3 player 3.0...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%203.0', true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Github mp3 player 3.0 loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    MainTab:CreateButton({
-        Name = "raw mp3 player",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing music play...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/reprenzy-hue/config/refs/heads/main/somefuckingapps", true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "music play loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    MainTab:CreateButton({
-        Name = "music play(music id)",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing music play...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Play%20music", true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "music play loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
@@ -2098,6 +1929,278 @@ local function CreateGUI()
         end
     })
 
+    MusicTab:CreateButton({
+        Name = "Github mp3 player 1.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Github mp3 player 1.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%201.0', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Github mp3 player 1.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MusicTab:CreateButton({
+        Name = "Github mp3 player 2.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Github mp3 player 2.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%202.0', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Github mp3 player 2.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MusicTab:CreateButton({
+        Name = "Github mp3 player 3.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Github mp3 player 3.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%203.0', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Github mp3 player 3.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MusicTab:CreateButton({
+        Name = "Github mp3 player 4.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Github mp3 player 4.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%204.0', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Github mp3 player 4.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MusicTab:CreateButton({
+        Name = "Github mp3 player 5.0",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Github mp3 player 5.0...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet('https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%205.0', true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Github mp3 player 5.0 loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MusicTab:CreateButton({
+        Name = "raw mp3 player",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing music play...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/reprenzy-hue/config/refs/heads/main/somefuckingapps", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "music play loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    MusicTab:CreateButton({
+        Name = "music play(music id)",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing music play...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Play%20music", true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "music play loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
+    Music:CreateButton({
+        Name = "Youtube Msuic Player",
+        Callback = function()
+            local loadNotify = Rayfield:Notify({
+                Title = "Loading",
+                Content = "Initializing Youtube Player...",
+                Duration = math.huge,
+                Image = 4483362458
+            })
+            
+            local success, err = pcall(function()
+                loadstring(game:HttpGet(('https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua'),true))()
+            end)
+            
+            loadNotify:Destroy()
+            
+            if success then
+                Rayfield:Notify({
+                    Title = "Success",
+                    Content = "Youtube Player loaded!",
+                    Duration = 3,
+                    Image = 4483362458
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Error",
+                    Content = "Failed: "..err,
+                    Duration = 5,
+                    Image = 4483362458
+                })
+            end
+        end
+    })
+
     FeTab:CreateButton({
         Name = "FE saitama",
         Callback = function()
@@ -2254,40 +2357,6 @@ local function CreateGUI()
                 Rayfield:Notify({
                     Title = "Success",
                     Content = "TRUE FE loaded!",
-                    Duration = 3,
-                    Image = 4483362458
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Error",
-                    Content = "Failed: "..err,
-                    Duration = 5,
-                    Image = 4483362458
-                })
-            end
-        end
-    })
-
-    YoutubeTab:CreateButton({
-        Name = "Youtube Msuic Player",
-        Callback = function()
-            local loadNotify = Rayfield:Notify({
-                Title = "Loading",
-                Content = "Initializing Youtube Player...",
-                Duration = math.huge,
-                Image = 4483362458
-            })
-            
-            local success, err = pcall(function()
-                loadstring(game:HttpGet(('https://raw.githubusercontent.com/Dan41/Roblox-Scripts/refs/heads/main/Youtube%20Music%20Player/YoutubeMusicPlayer.lua'),true))()
-            end)
-            
-            loadNotify:Destroy()
-            
-            if success then
-                Rayfield:Notify({
-                    Title = "Success",
-                    Content = "Youtube Player loaded!",
                     Duration = 3,
                     Image = 4483362458
                 })
