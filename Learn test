@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - Final with Smooth Rainbow Animation
+-- Roblox Exploit MP3 Player GUI - Final with Cooldown Fix + Auto Translate
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -40,6 +40,69 @@ pcall(function() local oldHide = CoreGui:FindFirstChild("MusicPlayerHideBtn"); i
 pcall(function() local oldShow = CoreGui:FindFirstChild("MusicPlayerShowGui"); if oldShow then oldShow:Destroy() end end)
 pcall(function() for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("Sound") and obj.Name == "MusicPlayerSound" then obj:Stop(); obj:Destroy() end end end)
 
+-- ========== AUTO TRANSLATE SYSTEM ==========
+local autoTranslateEnabled = false
+local translationCache = {}
+local userLanguage = "en"
+local translatableElements = {}
+
+local function detectUserLanguage()
+    local locale = "en"
+    pcall(function()
+        local localizationService = game:GetService("LocalizationService")
+        if localizationService and localizationService.RobloxLocaleId then
+            local fullLocale = localizationService.RobloxLocaleId:lower()
+            locale = fullLocale:match("^(%w+)") or "en"
+        end
+    end)
+    return locale
+end
+
+local function translateText(text, targetLang)
+    if not text or text == "" then return text end
+    if targetLang == "en" then return text end
+    
+    local cacheKey = text .. "|" .. targetLang
+    if translationCache[cacheKey] then
+        return translationCache[cacheKey]
+    end
+    
+    local translated = text
+    pcall(function()
+        local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=" .. targetLang .. "&dt=t&q=" .. HttpService:UrlEncode(text)
+        local response = game:HttpGet(url)
+        local decoded = HttpService:JSONDecode(response)
+        if decoded and decoded[1] and decoded[1][1] and decoded[1][1][1] then
+            translated = decoded[1][1][1]
+            translationCache[cacheKey] = translated
+        end
+    end)
+    
+    return translated
+end
+
+local function registerForTranslation(guiElement, originalText)
+    if not guiElement or not originalText then return end
+    table.insert(translatableElements, {
+        element = guiElement,
+        original = originalText,
+        translated = false
+    })
+end
+
+local function applyTranslations()
+    for _, item in ipairs(translatableElements) do
+        if item.element and item.element.Parent then
+            if autoTranslateEnabled then
+                local translated = translateText(item.original, userLanguage)
+                item.element.Text = translated
+            else
+                item.element.Text = item.original
+            end
+        end
+    end
+end
+
 -- ========== VARIABLES ==========
 local currentSound, isLooping = nil, true
 local currentVolume, currentSpeed = 1.0, 1.0
@@ -71,7 +134,6 @@ local keybindEnabled = false
 local keybindConnection = nil
 local hiddenGuis = {}
 local rainbowAnimation = nil
-local rainbowIndex = 1
 
 -- Sound Effect Presets
 local soundEffectPresets = {
@@ -90,6 +152,7 @@ local soundEffectPresets = {
     {name = "Underwater", bass = 0.3, treble = 0.3, reverb = 0.4, echo = 0.6, speed = 1},
     {name = "Stadium", bass = 2, treble = 1.5, reverb = 1, echo = 0.8, speed = 1},
     {name = "Jazz Club", bass = 1.2, treble = 0.9, reverb = 0.7, echo = 0.3, speed = 1},
+    {name = "Idk", bass = 1, treble = 1, reverb = 0, echo = 0, speed = 0.72},
 }
 
 -- GUI references
@@ -111,7 +174,7 @@ local SearchPanel, SearchPanelStroke, SearchTabBtn, PlaylistTabBtn
 local SearchTextBox, SearchScrollFrame, SearchNoResultsLabel
 local PlaylistScrollFrame, PlaylistNoResultsLabel
 local UrlContainer
-local SaveThemeToggle, RememberKeyToggle, MiniPlayToggle, SliderColorToggle, KeybindToggle
+local SaveThemeToggle, RememberKeyToggle, MiniPlayToggle, SliderColorToggle, KeybindToggle, AutoTranslateToggle
 local HistoryPanel, HistoryScrollFrame, NoHistoryLabel, BackButton
 local playingPanel, playingSongLabel, soundEffectScrollFrame
 
@@ -150,13 +213,34 @@ local themes = {
 -- ========== SETTINGS ==========
 local function loadSettings()
     local s, r = pcall(function() if readfile and isfile and isfile(SETTINGS_FILE) then return HttpService:JSONDecode(readfile(SETTINGS_FILE)) end end)
-    if s and r then if r.theme then currentTheme=r.theme end; if r.saveThemeEnabled~=nil then saveThemeEnabled=r.saveThemeEnabled end; if r.rememberKeyEnabled~=nil then rememberKeyEnabled=r.rememberKeyEnabled end; if r.timeSliderBlue~=nil then timeSliderBlue=r.timeSliderBlue end; if r.keybindEnabled~=nil then keybindEnabled=r.keybindEnabled end end
+    if s and r then
+        if r.theme then currentTheme=r.theme end
+        if r.saveThemeEnabled~=nil then saveThemeEnabled=r.saveThemeEnabled end
+        if r.rememberKeyEnabled~=nil then rememberKeyEnabled=r.rememberKeyEnabled end
+        if r.timeSliderBlue~=nil then timeSliderBlue=r.timeSliderBlue end
+        if r.keybindEnabled~=nil then keybindEnabled=r.keybindEnabled end
+        if r.autoTranslateEnabled~=nil then autoTranslateEnabled=r.autoTranslateEnabled end
+    end
     local rk, rv = pcall(function() if readfile and isfile and isfile(KEY_FILE) then return HttpService:JSONDecode(readfile(KEY_FILE)) end end)
     if rk and rv then if rv.rememberKeyEnabled~=nil then rememberKeyEnabled=rv.rememberKeyEnabled end; if rv.isKeyCorrect then isKeyCorrect=true; pcall(function() loadPlaylist() end) end end
     local up, upv = pcall(function() if readfile and isfile and isfile(PLAYLIST_DATA_FILE) then return HttpService:JSONDecode(readfile(PLAYLIST_DATA_FILE)) end end)
     if up and upv then userPlaylist=upv end
 end
-local function saveSettings() pcall(function() if writefile then writefile(SETTINGS_FILE, HttpService:JSONEncode({theme=currentTheme,saveThemeEnabled=saveThemeEnabled,rememberKeyEnabled=rememberKeyEnabled,timeSliderBlue=timeSliderBlue,keybindEnabled=keybindEnabled})) end end) end
+local function saveSettings()
+    pcall(function()
+        if writefile then
+            writefile(SETTINGS_FILE, HttpService:JSONEncode({
+                theme=currentTheme,
+                saveThemeEnabled=saveThemeEnabled,
+                rememberKeyEnabled=rememberKeyEnabled,
+                timeSliderBlue=timeSliderBlue,
+                keybindEnabled=keybindEnabled,
+                autoTranslateEnabled=autoTranslateEnabled
+            }))
+        end
+    end)
+end
+
 local function saveKeyState() pcall(function() if writefile then writefile(KEY_FILE, HttpService:JSONEncode({rememberKeyEnabled=rememberKeyEnabled,isKeyCorrect=isKeyCorrect})) end end) end
 local function deleteKeyFile() pcall(function() if isfile and isfile(KEY_FILE) then delfile(KEY_FILE) end end) end
 local function saveUserPlaylist() pcall(function() if writefile then writefile(PLAYLIST_DATA_FILE, HttpService:JSONEncode(userPlaylist)) end end) end
@@ -283,8 +367,16 @@ local function updateSoundEffectList()
         nameLabel.BackgroundTransparency=1; nameLabel.Text=effect.name; nameLabel.TextColor3=Color3.fromRGB(255,255,255)
         nameLabel.Font=Enum.Font.GothamBold; nameLabel.TextSize=11; nameLabel.TextXAlignment=Enum.TextXAlignment.Left; nameLabel.Parent=item
         local descText=""
-        if effect.name=="Default" then descText="Original" elseif effect.bass>1.5 then descText="Heavy bass" elseif effect.treble>2 then descText="High pitch" elseif effect.speed>1.2 then descText="Sped up" elseif effect.speed<0.85 then descText="Slowed" elseif effect.reverb>0.5 then descText="Reverb" elseif effect.echo>0.5 then descText="Echo" else descText="Custom" end
-        local descLabel=Instance.new("TextLabel"); descLabel.Size=UDim2.new(0,80,0,18); descLabel.Position=UDim2.new(0,8,0,18)
+        if effect.name=="Default" then descText="Original"
+        elseif effect.name=="Idk" then descText="maybe it's working sometimes"
+        elseif effect.bass>1.5 then descText="Heavy bass"
+        elseif effect.treble>2 then descText="High pitch"
+        elseif effect.speed>1.2 then descText="Sped up"
+        elseif effect.speed<0.85 then descText="Slowed"
+        elseif effect.reverb>0.5 then descText="Reverb"
+        elseif effect.echo>0.5 then descText="Echo"
+        else descText="Custom" end
+        local descLabel=Instance.new("TextLabel"); descLabel.Size=UDim2.new(0,180,0,18); descLabel.Position=UDim2.new(0,8,0,18)
         descLabel.BackgroundTransparency=1; descLabel.Text=descText; descLabel.TextColor3=Color3.fromRGB(150,150,170)
         descLabel.Font=Enum.Font.Gotham; descLabel.TextSize=9; descLabel.TextXAlignment=Enum.TextXAlignment.Left; descLabel.Parent=item
         local useBtn=Instance.new("TextButton"); useBtn.Size=UDim2.new(0,55,0,22); useBtn.Position=UDim2.new(1,-60,0,6)
@@ -563,6 +655,14 @@ local function updateRememberKeyToggle() if not RememberKeyToggle then return en
 local function updateMiniPlayToggle() if not MiniPlayToggle then return end; MiniPlayToggle.BackgroundColor3=miniPlayMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); MiniPlayToggle.Text=miniPlayMode and "ON" or "OFF" end
 local function updateExtraMiniToggle() if not ExtraMiniToggle then return end; if not isKeyCorrect then ExtraMiniToggle.BackgroundColor3=Color3.fromRGB(180,80,80); ExtraMiniToggle.Text="LOCKED"; return end; ExtraMiniToggle.BackgroundColor3=extraMiniPlayMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); ExtraMiniToggle.Text=extraMiniPlayMode and "ON" or "OFF" end
 local function updateKeybindToggle() if not KeybindToggle then return end; KeybindToggle.BackgroundColor3=keybindEnabled and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); KeybindToggle.Text=keybindEnabled and "ON" or "OFF" end
+local function updateAutoTranslateToggle() if not AutoTranslateToggle then return end; AutoTranslateToggle.BackgroundColor3=autoTranslateEnabled and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); AutoTranslateToggle.Text=autoTranslateEnabled and "ON" or "OFF" end
+
+local function toggleAutoTranslate()
+    autoTranslateEnabled = not autoTranslateEnabled
+    applyTranslations()
+    saveSettings()
+    updateAutoTranslateToggle()
+end
 
 -- ========== HIDE/SHOW SYSTEM ==========
 local function hideAllGuis()
@@ -606,7 +706,7 @@ local function createHideShowButtons()
     showButton.MouseButton1Click:Connect(showAllGuis)
 end
 
--- ========== EXTRA MINI GUI ==========
+-- ========== EXTRA MINI GUI (WITH COOLDOWN ON PREV/NEXT) ==========
 local function createExtraMiniGUI()
     if ExtraMiniScreenGui then ExtraMiniScreenGui:Destroy() end
     ExtraMiniScreenGui=Instance.new("ScreenGui"); ExtraMiniScreenGui.Name="MusicPlayerExtraMini"; ExtraMiniScreenGui.ResetOnSpawn=false; ExtraMiniScreenGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; ExtraMiniScreenGui.Parent=CoreGui; ExtraMiniScreenGui.Enabled=false
@@ -625,11 +725,30 @@ local function createExtraMiniGUI()
     local ecf=Instance.new("Frame"); ecf.Size=UDim2.new(1,-20,0,30); ecf.Position=UDim2.new(0,10,0,210); ecf.BackgroundTransparency=1; ecf.Parent=ExtraMiniFrame
     local btnSize=30; local totalBtns=5; local totalWidth=btnSize*totalBtns+5*(totalBtns-1); local startX=(200-totalWidth)/2
     local function meb(img,px) local btn=Instance.new("ImageButton"); btn.Size=UDim2.new(0,btnSize,0,btnSize); btn.Position=UDim2.new(0,px,0,0); btn.BackgroundTransparency=1; btn.BorderSizePixel=0; btn.Image=img; btn.Parent=ecf; Instance.new("UICorner",btn).CornerRadius=UDim.new(1,0); return btn end
-    local lastBtn=meb("rbxassetid://88757150664292",startX); lastBtn.MouseButton1Click:Connect(function() if #playlistSongs>0 then local ni=currentPlaylistIndex-1; if ni<1 then ni=#playlistSongs end; local song=playlistSongs[ni]; if song then playMusicFromUrl(song.url,song.fileName,ni) end end end)
+    
+    -- COOLDOWN: Previous button (0.25s)
+    local extraLastCooldown = false
+    local lastBtn=meb("rbxassetid://88757150664292",startX)
+    lastBtn.MouseButton1Click:Connect(function()
+        if extraLastCooldown then return end
+        extraLastCooldown = true
+        spawn(function() wait(0.25); extraLastCooldown = false end)
+        if #playlistSongs>0 then local ni=currentPlaylistIndex-1; if ni<1 then ni=#playlistSongs end; local song=playlistSongs[ni]; if song then playMusicFromUrl(song.url,song.fileName,ni) end end
+    end)
+    
     local rewindBtn=meb("rbxassetid://122950454234379",startX+btnSize+5); rewindBtn.MouseButton1Click:Connect(function() if not currentSound then return end; local nt=math.max(currentSound.TimePosition-10,0); currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end)
     ExtraPauseImageButton=meb("rbxassetid://80704722265943",startX+btnSize*2+10); ExtraPauseImageButton.MouseButton1Click:Connect(function() if not currentSound then return end; togglePause() end)
     local forwardBtn=meb("rbxassetid://102857578902137",startX+btnSize*3+15); forwardBtn.MouseButton1Click:Connect(function() if not currentSound then return end; local nt=math.min(currentSound.TimePosition+10,currentSound.TimeLength); currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end)
-    local nextBtn=meb("rbxassetid://82401540450034",startX+btnSize*4+20); nextBtn.MouseButton1Click:Connect(function() if #playlistSongs>0 then local ni=currentPlaylistIndex+1; if ni>#playlistSongs then ni=1 end; local song=playlistSongs[ni]; if song then playMusicFromUrl(song.url,song.fileName,ni) end end end)
+    
+    -- COOLDOWN: Next button (0.25s)
+    local extraNextCooldown = false
+    local nextBtn=meb("rbxassetid://82401540450034",startX+btnSize*4+20)
+    nextBtn.MouseButton1Click:Connect(function()
+        if extraNextCooldown then return end
+        extraNextCooldown = true
+        spawn(function() wait(0.25); extraNextCooldown = false end)
+        if #playlistSongs>0 then local ni=currentPlaylistIndex+1; if ni>#playlistSongs then ni=1 end; local song=playlistSongs[ni]; if song then playMusicFromUrl(song.url,song.fileName,ni) end end
+    end)
 end
 
 local function toggleExtraMiniMode()
@@ -748,7 +867,13 @@ local function createMainGUI()
     local KeybindLabel=Instance.new("TextLabel"); KeybindLabel.Size=UDim2.new(0,200,0,25); KeybindLabel.Position=UDim2.new(0,15,0,yPos+230); KeybindLabel.BackgroundTransparency=1; KeybindLabel.Text="Keybinds:"; KeybindLabel.TextColor3=Color3.fromRGB(220,220,230); KeybindLabel.TextXAlignment=Enum.TextXAlignment.Left; KeybindLabel.Font=Enum.Font.GothamBold; KeybindLabel.TextSize=13; KeybindLabel.Parent=SettingsScrollFrame
     KeybindToggle=Instance.new("TextButton"); KeybindToggle.Size=UDim2.new(0,60,0,28); KeybindToggle.Position=UDim2.new(0,220,0,yPos+230); KeybindToggle.BorderSizePixel=0; KeybindToggle.Font=Enum.Font.GothamBold; KeybindToggle.TextSize=12; KeybindToggle.TextColor3=Color3.fromRGB(255,255,255); KeybindToggle.Parent=SettingsScrollFrame; Instance.new("UICorner",KeybindToggle).CornerRadius=UDim.new(0,6)
     KeybindToggle.MouseButton1Click:Connect(function() keybindEnabled=not keybindEnabled; updateKeybindToggle(); saveSettings(); setupKeybind() end)
-    SettingsScrollFrame.CanvasSize=UDim2.new(0,0,0,yPos+270)
+    
+    -- Auto Translate Toggle
+    local AutoTranslateLabel=Instance.new("TextLabel"); AutoTranslateLabel.Size=UDim2.new(0,200,0,25); AutoTranslateLabel.Position=UDim2.new(0,15,0,yPos+265); AutoTranslateLabel.BackgroundTransparency=1; AutoTranslateLabel.Text="Auto Translate:"; AutoTranslateLabel.TextColor3=Color3.fromRGB(220,220,230); AutoTranslateLabel.TextXAlignment=Enum.TextXAlignment.Left; AutoTranslateLabel.Font=Enum.Font.GothamBold; AutoTranslateLabel.TextSize=13; AutoTranslateLabel.Parent=SettingsScrollFrame
+    AutoTranslateToggle=Instance.new("TextButton"); AutoTranslateToggle.Size=UDim2.new(0,60,0,28); AutoTranslateToggle.Position=UDim2.new(0,220,0,yPos+265); AutoTranslateToggle.BorderSizePixel=0; AutoTranslateToggle.Font=Enum.Font.GothamBold; AutoTranslateToggle.TextSize=12; AutoTranslateToggle.TextColor3=Color3.fromRGB(255,255,255); AutoTranslateToggle.Parent=SettingsScrollFrame; Instance.new("UICorner",AutoTranslateToggle).CornerRadius=UDim.new(0,6)
+    AutoTranslateToggle.MouseButton1Click:Connect(function() toggleAutoTranslate() end)
+    
+    SettingsScrollFrame.CanvasSize=UDim2.new(0,0,0,yPos+300)
     
     -- Sound Effects Tab
     playingPanel=Instance.new("Frame"); playingPanel.Size=UDim2.new(1,0,1,-35); playingPanel.Position=UDim2.new(0,0,0,33); playingPanel.BackgroundColor3=Color3.fromRGB(35,35,42); playingPanel.BorderSizePixel=0; playingPanel.Visible=false; playingPanel.Parent=SettingsPanel; playingPanel.ZIndex=11
@@ -886,6 +1011,35 @@ Green Show button to restore
     MiniForwardImageButton=Instance.new("ImageButton"); MiniForwardImageButton.Size=UDim2.new(0,35,0,35); MiniForwardImageButton.Position=UDim2.new(0,100,0,0); MiniForwardImageButton.BackgroundTransparency=1; MiniForwardImageButton.BorderSizePixel=0; MiniForwardImageButton.Image="rbxassetid://102857578902137"; MiniForwardImageButton.Parent=mbf; Instance.new("UICorner",MiniForwardImageButton).CornerRadius=UDim.new(1,0)
     MiniShowButton=Instance.new("TextButton"); MiniShowButton.Size=UDim2.new(0,35,0,35); MiniShowButton.Position=UDim2.new(1,-42,0,8); MiniShowButton.BackgroundColor3=Color3.fromRGB(80,80,80); MiniShowButton.BorderSizePixel=0; MiniShowButton.Text="📂"; MiniShowButton.TextColor3=Color3.fromRGB(255,255,255); MiniShowButton.Font=Enum.Font.GothamBold; MiniShowButton.TextSize=18; MiniShowButton.Parent=MiniFrame; Instance.new("UICorner",MiniShowButton).CornerRadius=UDim.new(0,8)
     
+    -- ========== REGISTER ELEMENTS FOR TRANSLATION ==========
+    registerForTranslation(ul, "GitHub MP3 URL:")
+    registerForTranslation(PlayButton, "▶ PLAY")
+    registerForTranslation(PauseButton, "⏸ PAUSE")
+    registerForTranslation(StopButton, "⏹ STOP")
+    registerForTranslation(HistoryButton, "→ HISTORY")
+    registerForTranslation(MuteToggle, "🔇 MUTE GAME")
+    registerForTranslation(VolumeLabel, "Volume: 1.00")
+    registerForTranslation(SpeedLabel, "Speed: 1.00x")
+    registerForTranslation(StatusLabel, "Ready to play music")
+    registerForTranslation(settingsTabBtn, "⚙ Settings")
+    registerForTranslation(playingTabBtn, "🎵 Playing")
+    registerForTranslation(SaveThemeLabel, "Save Theme:")
+    registerForTranslation(RememberKeyLabel, "Remember Key:")
+    registerForTranslation(SliderColorLabel, "Slider Color:")
+    registerForTranslation(MiniPlayLabel, "Mini Play Mode:")
+    registerForTranslation(ExtraMiniLabel, "Extra Mini Mode:")
+    registerForTranslation(KeybindLabel, "Keybinds:")
+    registerForTranslation(AutoTranslateLabel, "Auto Translate:")
+    registerForTranslation(itt, "HOW TO USE")
+    registerForTranslation(SearchTabBtn, "🔍 Search")
+    registerForTranslation(PlaylistTabBtn, "📋 Playlist")
+    registerForTranslation(htitle, "DOWNLOAD HISTORY")
+    registerForTranslation(BackButton, "← BACK")
+    registerForTranslation(hideButton, "👁 Hide")
+    registerForTranslation(showButton, "🎵 SHOW")
+    registerForTranslation(si, "Enter song name or full GitHub raw URL")
+    registerForTranslation(NoHistoryLabel, "No download history yet")
+    
     local function applySpeedFromTextBox() local t=string.gsub(string.gsub(SpeedTextBox.Text,"x",""),"X",""); local s=tonumber(t); if s then updateSpeed(math.clamp(s,0,100)) else SpeedTextBox.Text=string.format("%.2f",currentSpeed).."x" end end
     local function applyVolumeFromText() if not VolumeTextBox then return end; local t=string.gsub(VolumeTextBox.Text,"%s",""); local v=tonumber(t); if v then local clampedV=math.clamp(v,0,100); currentVolume=clampedV; if currentSound then currentSound.Volume=currentVolume end; VolumeLabel.Text="Volume: "..string.format("%.2f",currentVolume); VolumeTextBox.Text=string.format("%.2f",currentVolume) else VolumeTextBox.Text=string.format("%.2f",currentVolume) end end
     local function toggleMiniPlayMode() miniPlayMode=not miniPlayMode; updateMiniPlayToggle(); if miniPlayMode then if extraMiniPlayMode then toggleExtraMiniMode() end; if ScreenGui then ScreenGui.Enabled=false end; if MiniScreenGui then MiniScreenGui.Enabled=true end else if ScreenGui then ScreenGui.Enabled=true end; if MiniScreenGui then MiniScreenGui.Enabled=false end end end
@@ -955,12 +1109,17 @@ Green Show button to restore
     createHideShowButtons()
     spawn(function() animateTextboxPlaceholder(SearchTextBox, {"search by name or paste URL","type a song name to find...","paste GitHub raw URL here...","find your favorite music...","enter URL ending with .mp3..."}) end)
     spawn(function() animateTextboxPlaceholder(SecretKeyTextBox, {"enter a secret key","unlock the playlist...","type the key to access..."}) end)
+    
+    -- Apply initial translation state
+    applyTranslations()
+    updateAutoTranslateToggle()
+    
     print("[MusicPlayer] Main GUI created!")
 end
 
 -- ========== INIT ==========
 print("[MusicPlayer] Starting...")
-pcall(function() loadSettings(); imageCache=loadImageCache(); musicCache=loadCache(); downloadHistory=loadHistory() end)
+pcall(function() loadSettings(); imageCache=loadImageCache(); musicCache=loadCache(); downloadHistory=loadHistory(); userLanguage=detectUserLanguage() end)
 pcall(function() createMainGUI() end)
 pcall(function()
     createExtraMiniGUI(); applyLoopState(); updateExtraLoopButton(); updateExtraMiniToggle()
