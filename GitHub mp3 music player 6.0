@@ -86,8 +86,27 @@ local function registerForTranslation(guiElement, originalText)
     table.insert(translatableElements, {
         element = guiElement,
         original = originalText,
-        translated = false
     })
+end
+
+local function updateTranslatableText(guiElement, newText)
+    if not guiElement or not newText then return end
+    local found = false
+    for _, item in ipairs(translatableElements) do
+        if item.element == guiElement then
+            item.original = newText
+            found = true
+            break
+        end
+    end
+    if not found then
+        registerForTranslation(guiElement, newText)
+    end
+    if autoTranslateEnabled then
+        guiElement.Text = translateText(newText, userLanguage)
+    else
+        guiElement.Text = newText
+    end
 end
 
 local function applyTranslations()
@@ -261,8 +280,13 @@ local function updateSliderColorToggle() if not SliderColorToggle then return en
 local function updateLoopToggleDisplay()
     if not LoopToggle then return end
     local t=themes[currentTheme] or themes["Default"]
-    if mainLoopOn then LoopToggle.BackgroundColor3=t.loopOn or Color3.fromRGB(70,180,70); LoopToggle.Text="🔁 LOOP: ON"
-    else LoopToggle.BackgroundColor3=t.loopOff or Color3.fromRGB(130,130,130); LoopToggle.Text="🔁 LOOP: OFF" end
+    if mainLoopOn then
+        LoopToggle.BackgroundColor3=t.loopOn or Color3.fromRGB(70,180,70)
+        updateTranslatableText(LoopToggle, "🔁 LOOP: ON")
+    else
+        LoopToggle.BackgroundColor3=t.loopOff or Color3.fromRGB(130,130,130)
+        updateTranslatableText(LoopToggle, "🔁 LOOP: OFF")
+    end
 end
 local function updateExtraLoopButton()
     if not ExtraLoopImageButton then return end
@@ -418,7 +442,7 @@ local function updateTimeDisplay()
         if songEnded then ExtraPauseImageButton.Image="rbxassetid://110560238983134"
         else ExtraPauseImageButton.Image=isPaused and "rbxassetid://110560238983134" or "rbxassetid://80704722265943" end
     end
-    if songEnded and currentSound then if PauseButton then PauseButton.Text="▶ RESUME" end end
+    if songEnded and currentSound then updateTranslatableText(PauseButton, "▶ RESUME") end
 end
 
 -- ========== SIMPLE AUTO SCROLL ==========
@@ -463,7 +487,8 @@ local function stopMusic()
     if currentSound then pcall(function() currentSound:Stop(); currentSound:Destroy() end); currentSound=nil end
     isPlaying=false; isPaused=false; pausedTimePosition=0; currentSongName=""; currentPlaylistIndex=0
     stopRainbowAnimation()
-    if PauseButton then PauseButton.Text="⏸ PAUSE" end; if PlayButton then PlayButton.Text="▶ PLAY" end
+    updateTranslatableText(PauseButton, "⏸ PAUSE")
+    updateTranslatableText(PlayButton, "▶ PLAY")
     if playingSongLabel then playingSongLabel.Text='Now Playing: <font color="#888888">Nothing</font>' end
     updateTimeDisplay() 
 end
@@ -488,13 +513,16 @@ local function togglePause()
     if not currentSound then return end
     if isPaused then 
         currentSound.TimePosition=pausedTimePosition; currentSound:Resume(); isPaused=false; isPlaying=true
-        if PauseButton then PauseButton.Text="⏸ PAUSE" end; if PlayButton then PlayButton.Text="▶ PLAY" end
+        updateTranslatableText(PauseButton, "⏸ PAUSE")
+        updateTranslatableText(PlayButton, "▶ PLAY")
     elseif isPlaying then
         pausedTimePosition=currentSound.TimePosition; currentSound:Pause(); isPaused=true; isPlaying=false
-        if PauseButton then PauseButton.Text="▶ RESUME" end; if PlayButton then PlayButton.Text="▶ PLAY" end
+        updateTranslatableText(PauseButton, "▶ RESUME")
+        updateTranslatableText(PlayButton, "▶ PLAY")
     else
         currentSound.TimePosition=0; currentSound:Play(); isPlaying=true; isPaused=false
-        if PauseButton then PauseButton.Text="⏸ PAUSE" end; if PlayButton then PlayButton.Text="▶ PLAY" end
+        updateTranslatableText(PauseButton, "⏸ PAUSE")
+        updateTranslatableText(PlayButton, "▶ PLAY")
     end
     updateTimeDisplay()
 end
@@ -510,9 +538,11 @@ local function playMusicFromUrl(url, fn, playlistIdx)
     isPlaying=false; isPaused=false; pausedTimePosition=0
     currentSongName=cleanSongName(fn); currentPlaylistIndex=newIndex
     
-    if StatusLabel then StatusLabel.Text="⏬ Loading..."; StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
+    updateTranslatableText(StatusLabel, "⏬ Loading...")
+    if StatusLabel then StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
     if MiniSongLabel then MiniSongLabel.Text=currentSongName end
-    if PauseButton then PauseButton.Text="⏸ PAUSE" end; if PlayButton then PlayButton.Text="▶ PLAY" end
+    updateTranslatableText(PauseButton, "⏸ PAUSE")
+    updateTranslatableText(PlayButton, "▶ PLAY")
     if playingSongLabel and playingTabOpen then playingSongLabel.Text='Now Playing: <font color="#ff9944">'..currentSongName..'</font>' end
     
     if TimeLabel and currentSongName~="" then stopRainbowAnimation(); startRainbowAnimation() end
@@ -532,7 +562,7 @@ local function playMusicFromUrl(url, fn, playlistIdx)
                 if song then pcall(function() playMusicFromUrl(song.url,song.fileName,ni) end) end
             elseif currentSound and not currentSound.Looped then
                 isPlaying=false; isPaused=false
-                if PauseButton then PauseButton.Text="▶ RESUME" end
+                updateTranslatableText(PauseButton, "▶ RESUME")
                 if MiniPauseImageButton then MiniPauseImageButton.Image="rbxassetid://110560238983134" end
                 if ExtraPauseImageButton then ExtraPauseImageButton.Image="rbxassetid://110560238983134" end
             end
@@ -690,6 +720,7 @@ local function createHideShowButtons()
         hideButton.Font=Enum.Font.GothamBold; hideButton.TextSize=11; hideButton.Parent=ContentFrame; hideButton.Visible=true; hideButton.ZIndex=5
         Instance.new("UICorner",hideButton).CornerRadius=UDim.new(0,5)
         hideButton.MouseButton1Click:Connect(hideAllGuis)
+        registerForTranslation(hideButton, "👁 Hide")
     end
     
     if showButton then if showButton.Parent then showButton.Parent:Destroy() end end
@@ -704,6 +735,7 @@ local function createHideShowButtons()
     Instance.new("UIStroke",showButton).Thickness=2
     showButton.UIStroke.Color=Color3.fromRGB(255,255,255); showButton.UIStroke.Transparency=0.5
     showButton.MouseButton1Click:Connect(showAllGuis)
+    registerForTranslation(showButton, "🎵 SHOW")
 end
 
 -- ========== EXTRA MINI GUI (WITH COOLDOWN ON PREV/NEXT) ==========
@@ -766,7 +798,7 @@ function toggleSettingsPanel()
 end
 function toggleInfoPanel() if not InfoPanel then return end; if isInfoOpen then TweenService:Create(InfoPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,-290,0,0)}):Play(); wait(0.3); InfoPanel.Visible=false; isInfoOpen=false else if isSearchOpen then toggleSearchPanel() end; if isHistoryOpen then toggleHistoryPanel() end; InfoPanel.Visible=true; isInfoOpen=true; TweenService:Create(InfoPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,-290,0,0)}):Play() end end
 function toggleSearchPanel() if not SearchPanel then return end; if isHistoryOpen then toggleHistoryPanel() end; isSearchOpen=not isSearchOpen; if isSearchOpen then SearchPanel.Visible=true; TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(1,10,0,0)}):Play(); SearchTextBox.Text=""; for _,c in pairs(SearchScrollFrame:GetChildren()) do if c.Name=="SearchResultItem" then c:Destroy() end end; SearchNoResultsLabel.Visible=true; SearchNoResultsLabel.Text="Enter a search term or URL" else TweenService:Create(SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,310,0,0)}):Play(); wait(0.3); SearchPanel.Visible=false end end
-function toggleHistoryPanel() if not HistoryPanel then return end; isHistoryOpen=not isHistoryOpen; if isHistoryOpen then HistoryPanel.Visible=true; TweenService:Create(HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)}):Play(); HistoryButton.Text="← HISTORY"; updateHistoryList() else TweenService:Create(HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); HistoryButton.Text="→ HISTORY"; wait(0.3); HistoryPanel.Visible=false end end
+function toggleHistoryPanel() if not HistoryPanel then return end; isHistoryOpen=not isHistoryOpen; if isHistoryOpen then HistoryPanel.Visible=true; TweenService:Create(HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)}):Play(); updateTranslatableText(HistoryButton, "← HISTORY"); updateHistoryList() else TweenService:Create(HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); updateTranslatableText(HistoryButton, "→ HISTORY"); wait(0.3); HistoryPanel.Visible=false end end
 function updateHistoryList() if not HistoryScrollFrame then return end; for _,c in pairs(HistoryScrollFrame:GetChildren()) do if c.Name=="HistoryItem" then c:Destroy() end end; NoHistoryLabel.Visible=#downloadHistory==0; if #downloadHistory==0 then HistoryScrollFrame.CanvasSize=UDim2.new(0,0,0,0); return end; local ih,spc,th=45,5,0; for i,e in ipairs(downloadHistory) do local ce,ci={url=e.url,fileName=e.fileName,date=e.date},i; local it=Instance.new("Frame"); it.Name="HistoryItem"; it.Size=UDim2.new(1,-10,0,ih); it.Position=UDim2.new(0,5,0,th); it.BackgroundColor3=i%2==0 and Color3.fromRGB(55,55,55) or Color3.fromRGB(50,50,50); it.BorderSizePixel=0; it.Parent=HistoryScrollFrame; Instance.new("UICorner",it).CornerRadius=UDim.new(0,4); local fl=Instance.new("TextLabel"); fl.Size=UDim2.new(0.6,-5,0,20); fl.Position=UDim2.new(0,5,0,5); fl.BackgroundTransparency=1; fl.Text=ce.fileName or "Unknown"; fl.TextColor3=Color3.fromRGB(255,255,255); fl.Font=Enum.Font.Gotham; fl.TextSize=11; fl.TextTruncate=Enum.TextTruncate.AtEnd; fl.Parent=it; local dl=Instance.new("TextLabel"); dl.Size=UDim2.new(0.6,-5,0,15); dl.Position=UDim2.new(0,5,0,25); dl.BackgroundTransparency=1; dl.Text=ce.date or "Unknown"; dl.TextColor3=Color3.fromRGB(180,180,180); dl.Font=Enum.Font.Gotham; dl.TextSize=9; dl.Parent=it; local pb=Instance.new("TextButton"); pb.Size=UDim2.new(0.15,-5,0,25); pb.Position=UDim2.new(0.6,5,0,10); pb.BackgroundColor3=Color3.fromRGB(70,150,70); pb.BorderSizePixel=0; pb.Text="▶"; pb.TextColor3=Color3.fromRGB(255,255,255); pb.Font=Enum.Font.GothamBold; pb.TextSize=12; pb.Parent=it; Instance.new("UICorner",pb).CornerRadius=UDim.new(0,4); local db=Instance.new("TextButton"); db.Size=UDim2.new(0.15,-5,0,25); db.Position=UDim2.new(0.8,10,0,10); db.BackgroundColor3=Color3.fromRGB(200,80,80); db.BorderSizePixel=0; db.Text="🗑️"; db.TextColor3=Color3.fromRGB(255,255,255); db.Font=Enum.Font.Gotham; db.TextSize=12; db.Parent=it; Instance.new("UICorner",db).CornerRadius=UDim.new(0,4); pb.MouseButton1Click:Connect(function() if ce and ce.url then if isHistoryOpen then toggleHistoryPanel() end; playMusicFromUrl(ce.url,ce.fileName or "audio.mp3") end end); db.MouseButton1Click:Connect(function() if removeFromHistory(ci) then updateHistoryList() end end); th=th+ih+spc end; HistoryScrollFrame.CanvasSize=UDim2.new(0,0,0,th) end
 
 -- ========== SLIDER DRAGGING ==========
@@ -784,15 +816,15 @@ local function setupKeybind()
         elseif input.KeyCode==Enum.KeyCode.P then
             if currentSound then togglePause() end
         elseif input.KeyCode==Enum.KeyCode.S then
-            stopMusic(); if StatusLabel then StatusLabel.Text="⏹ Music Stopped" end; updateTimeDisplay()
+            stopMusic(); updateTranslatableText(StatusLabel, "⏹ Music Stopped"); updateTimeDisplay()
         elseif input.KeyCode==Enum.KeyCode.M then
             local t=themes[currentTheme] or themes["Default"]
             if isGameMuted then
-                isGameMuted=false; if MuteToggle then MuteToggle.Text="🔇 MUTE GAME"; MuteToggle.BackgroundColor3=t.muteColor or Color3.fromRGB(180,80,80) end
+                isGameMuted=false; updateTranslatableText(MuteToggle, "🔇 MUTE GAME"); MuteToggle.BackgroundColor3=t.muteColor or Color3.fromRGB(180,80,80)
                 for sound,vol in pairs(gameSoundsMuted) do pcall(function() if sound and sound.Parent then sound.Volume=vol end end) end
                 gameSoundsMuted={}; pcall(function() SoundService.Volume=1 end)
             else
-                isGameMuted=true; if MuteToggle then MuteToggle.Text="🔊 UNMUTE"; MuteToggle.BackgroundColor3=t.muteOnColor or Color3.fromRGB(80,180,80) end
+                isGameMuted=true; updateTranslatableText(MuteToggle, "🔊 UNMUTE"); MuteToggle.BackgroundColor3=t.muteOnColor or Color3.fromRGB(80,180,80)
                 gameSoundsMuted={}
                 pcall(function() for _,v in pairs(workspace:GetDescendants()) do if v:IsA("Sound") and v~=currentSound then gameSoundsMuted[v]=v.Volume; v.Volume=0 end end end)
                 pcall(function() SoundService.Volume=0 end)
@@ -1035,10 +1067,9 @@ Green Show button to restore
     registerForTranslation(PlaylistTabBtn, "📋 Playlist")
     registerForTranslation(htitle, "DOWNLOAD HISTORY")
     registerForTranslation(BackButton, "← BACK")
-    registerForTranslation(hideButton, "👁 Hide")
-    registerForTranslation(showButton, "🎵 SHOW")
     registerForTranslation(si, "Enter song name or full GitHub raw URL")
     registerForTranslation(NoHistoryLabel, "No download history yet")
+    registerForTranslation(LoopToggle, "🔁 LOOP: ON")
     
     local function applySpeedFromTextBox() local t=string.gsub(string.gsub(SpeedTextBox.Text,"x",""),"X",""); local s=tonumber(t); if s then updateSpeed(math.clamp(s,0,100)) else SpeedTextBox.Text=string.format("%.2f",currentSpeed).."x" end end
     local function applyVolumeFromText() if not VolumeTextBox then return end; local t=string.gsub(VolumeTextBox.Text,"%s",""); local v=tonumber(t); if v then local clampedV=math.clamp(v,0,100); currentVolume=clampedV; if currentSound then currentSound.Volume=currentVolume end; VolumeLabel.Text="Volume: "..string.format("%.2f",currentVolume); VolumeTextBox.Text=string.format("%.2f",currentVolume) else VolumeTextBox.Text=string.format("%.2f",currentVolume) end end
@@ -1086,20 +1117,20 @@ Green Show button to restore
     MuteToggle.MouseButton1Click:Connect(function() 
         local t=themes[currentTheme] or themes["Default"]
         if isGameMuted then
-            isGameMuted=false; MuteToggle.Text="🔇 MUTE GAME"; MuteToggle.BackgroundColor3=t.muteColor or Color3.fromRGB(180,80,80)
+            isGameMuted=false; updateTranslatableText(MuteToggle, "🔇 MUTE GAME"); MuteToggle.BackgroundColor3=t.muteColor or Color3.fromRGB(180,80,80)
             for sound,vol in pairs(gameSoundsMuted) do pcall(function() if sound and sound.Parent then sound.Volume=vol end end) end
             gameSoundsMuted={}; pcall(function() SoundService.Volume=1 end)
         else
-            isGameMuted=true; MuteToggle.Text="🔊 UNMUTE"; MuteToggle.BackgroundColor3=t.muteOnColor or Color3.fromRGB(80,180,80)
+            isGameMuted=true; updateTranslatableText(MuteToggle, "🔊 UNMUTE"); MuteToggle.BackgroundColor3=t.muteOnColor or Color3.fromRGB(80,180,80)
             gameSoundsMuted={}
             pcall(function() for _,v in pairs(workspace:GetDescendants()) do if v:IsA("Sound") and v~=currentSound then gameSoundsMuted[v]=v.Volume; v.Volume=0 end end end)
             pcall(function() SoundService.Volume=0 end)
         end
     end)
     
-    PlayButton.MouseButton1Click:Connect(function() local url=UrlTextBox.Text; if url=="" then StatusLabel.Text="❌ Error: Please enter URL"; return end; if string.sub(string.lower(url),-4)~=".mp3" then StatusLabel.Text="❌ Error: URL must end with .mp3"; return end; local fn="audio.mp3"; local pts=string.split(url,"/"); if #pts>0 and string.find(pts[#pts],".mp3") then fn=string.gsub(string.gsub(pts[#pts],"%%20"," "),"%%25","%%") end; playMusicFromUrl(url,fn) end)
+    PlayButton.MouseButton1Click:Connect(function() local url=UrlTextBox.Text; if url=="" then updateTranslatableText(StatusLabel, "❌ Error: Please enter URL"); return end; if string.sub(string.lower(url),-4)~=".mp3" then updateTranslatableText(StatusLabel, "❌ Error: URL must end with .mp3"); return end; local fn="audio.mp3"; local pts=string.split(url,"/"); if #pts>0 and string.find(pts[#pts],".mp3") then fn=string.gsub(string.gsub(pts[#pts],"%%20"," "),"%%25","%%") end; playMusicFromUrl(url,fn) end)
     PauseButton.MouseButton1Click:Connect(function() if not currentSound then return end; togglePause() end)
-    StopButton.MouseButton1Click:Connect(function() stopMusic(); StatusLabel.Text="⏹ Music Stopped"; updateTimeDisplay() end)
+    StopButton.MouseButton1Click:Connect(function() stopMusic(); updateTranslatableText(StatusLabel, "⏹ Music Stopped"); updateTimeDisplay() end)
     MiniPlayToggle.MouseButton1Click:Connect(toggleMiniPlayMode)
     MiniShowButton.MouseButton1Click:Connect(function() toggleMiniPlayMode() end)
     MiniRewindImageButton.MouseButton1Click:Connect(function() if not currentSound then return end; local nt=math.max(currentSound.TimePosition-10,0); currentSound.TimePosition=nt; if isPaused then pausedTimePosition=nt end; updateTimeDisplay() end)
