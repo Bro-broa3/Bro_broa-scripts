@@ -1,6 +1,5 @@
 local reloadURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Auto%20Reload"
-local mainURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"
-
+lcoal mainURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"
 local isQueued = false
 
 -- 排队函数
@@ -16,8 +15,15 @@ local function QueueReload()
     isQueued = true
 end
 
--- 立即加载主脚本（当前会话）
-loadstring(game:HttpGet(mainURL))()
+-- 高频轮询，但 isQueued 保证只排一次
+coroutine.wrap(function()
+    while true do
+        pcall(QueueReload)  -- pcall 防止任何可能的报错
+        task.wait(0.1)
+    end
+end)()
 
--- 只排一次队，不需要轮询
+-- 立即排第一次
 QueueReload()
+
+-- 加载主脚本
