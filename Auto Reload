@@ -1,4 +1,5 @@
-local reloadURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"
+local reloadURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Auto%20Reload"
+
 local isQueued = false
 
 -- 排队函数
@@ -9,6 +10,7 @@ local function QueueReload()
     queue_on_teleport([[
         task.wait(0.1)
         loadstring(game:HttpGet("]] .. reloadURL .. [["))()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"))()
     ]])
     isQueued = true
 end
