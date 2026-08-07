@@ -1,4 +1,4 @@
-local reloadURL = ""
+local reloadURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"
 local isQueued = false
 
 -- 排队函数
