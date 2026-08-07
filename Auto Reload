@@ -28,3 +28,4 @@ QueueReload()
 
 -- 加载主脚本
 loadstring(game:HttpGet(reloadURL))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"))()
