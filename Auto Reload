@@ -9,7 +9,6 @@ local function QueueReload()
     queue_on_teleport([[
         task.wait(0.1)
         loadstring(game:HttpGet("]] .. reloadURL .. [["))()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Auto%20Reload"))()
     ]])
     isQueued = true
 end
