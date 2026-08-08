@@ -1,0 +1,30 @@
+local reloadURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/Auto%20Reload"
+local mainURL = "https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"
+local isQueued = false
+
+-- 排队函数
+local function QueueReload()
+    if isQueued then return end
+    if not queue_on_teleport then return end
+    
+    queue_on_teleport([[
+        task.wait(0.1)
+        loadstring(game:HttpGet("]] .. reloadURL .. [["))()
+        loadstring(game:HttpGet("]] .. mainURL .. [["))()
+    ]])
+    isQueued = true
+end
+
+-- 高频轮询，但 isQueued 保证只排一次
+coroutine.wrap(function()
+    while true do
+        pcall(QueueReload)  -- pcall 防止任何可能的报错
+        task.wait(0.1)
+    end
+end)()
+
+-- 立即排第一次
+QueueReload()
+
+-- 加载主脚本
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/Bro_broa-scripts/refs/heads/main/GitHub%20mp3%20music%20player%206.0"))()
