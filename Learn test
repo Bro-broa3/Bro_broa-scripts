@@ -403,7 +403,11 @@ function checkSecretKey(input)
         isKeyCorrect=true
         SecretKeyTextBox.Text=""
         loadPlaylist()
-        updateExtraMiniToggle()
+        -- Force update the ExtraMiniToggle after key is correct
+        if ExtraMiniToggle then
+            ExtraMiniToggle.Text = extraMiniPlayMode and "ON" or "OFF"
+            ExtraMiniToggle.BackgroundColor3 = Color3.fromRGB(80,180,80)
+        end
         showNotification("GitHub MP3 Player","Key correct!",3)
         if isSearchOpen and currentSearchTab=="Playlist" then updatePlaylistDisplay() end
         return true
@@ -460,7 +464,17 @@ end
 local function updateSaveThemeToggle() if SaveThemeToggle then SaveThemeToggle.Text=saveThemeEnabled and "ON" or "OFF" end end
 local function updateRememberKeyToggle() if RememberKeyToggle then RememberKeyToggle.Text=rememberKeyEnabled and "ON" or "OFF" end end
 local function updateMiniPlayToggle() if MiniPlayToggle then MiniPlayToggle.Text=miniPlayMode and "ON" or "OFF" end end
-local function updateExtraMiniToggle() if ExtraMiniToggle then if isKeyCorrect then ExtraMiniToggle.Text=extraMiniPlayMode and "ON" or "OFF" else ExtraMiniToggle.Text="LOCKED" end end end
+local function updateExtraMiniToggle() 
+    if ExtraMiniToggle then 
+        if isKeyCorrect then 
+            ExtraMiniToggle.Text = extraMiniPlayMode and "ON" or "OFF"
+            ExtraMiniToggle.BackgroundColor3 = Color3.fromRGB(80,180,80)
+        else 
+            ExtraMiniToggle.Text = "LOCKED"
+            ExtraMiniToggle.BackgroundColor3 = Color3.fromRGB(180,80,80)
+        end 
+    end 
+end
 local function updateKeybindToggle() if KeybindToggle then KeybindToggle.Text=keybindEnabled and "ON" or "OFF" end end
 local function updateAutoTranslateToggle() if AutoTranslateToggle then AutoTranslateToggle.Text=autoTranslateEnabled and "ON" or "OFF" end end
 
@@ -706,42 +720,98 @@ end
 function updateDataTab()
     if not DataScrollFrame then return end
     for _,c in pairs(DataScrollFrame:GetChildren()) do c:Destroy() end
+    
+    -- Title for the data tab
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1,-20,0,30)
+    titleLabel.Position = UDim2.new(0,10,0,5)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = "TOP 3 MOST PLAYED SONGS"
+    titleLabel.TextColor3 = Color3.fromRGB(255,255,255)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 14
+    titleLabel.Parent = DataScrollFrame
+    
     local topSongs = getTopPlayedSongs(3)
     if #topSongs == 0 then
         local label = Instance.new("TextLabel")
-        label.Size = UDim2.new(1,0,0,50)
+        label.Size = UDim2.new(1,-20,0,50)
+        label.Position = UDim2.new(0,10,0,45)
         label.BackgroundTransparency = 1
-        label.Text = "No play data yet"
-        label.TextColor3 = Color3.fromRGB(255,255,255)
+        label.Text = "No play data yet\n\nPlay songs to see your statistics!"
+        label.TextColor3 = Color3.fromRGB(150,150,150)
         label.Font = Enum.Font.Gotham
-        label.TextSize = 14
+        label.TextSize = 13
+        label.TextWrapped = true
         label.Parent = DataScrollFrame
+        DataScrollFrame.CanvasSize = UDim2.new(0,0,0,150)
     else
         for i, songData in ipairs(topSongs) do
-            local label = Instance.new("TextLabel")
-            label.Size = UDim2.new(1,-20,0,40)
-            label.Position = UDim2.new(0,10,0,(i-1)*45)
-            label.BackgroundTransparency = 1
-            label.Text = "#" .. i .. " " .. songData.name .. " - Played: " .. songData.count .. " times"
-            label.TextColor3 = Color3.fromRGB(255,255,255)
-            label.Font = Enum.Font.GothamBold
-            label.TextSize = 12
-            label.TextXAlignment = Enum.TextXAlignment.Left
-            label.Parent = DataScrollFrame
+            -- Medal/rank display
+            local medal = ""
+            local medalColor = Color3.fromRGB(255,255,255)
+            if i == 1 then
+                medal = "1."
+                medalColor = Color3.fromRGB(255,215,0)
+            elseif i == 2 then
+                medal = "2."
+                medalColor = Color3.fromRGB(192,192,192)
+            elseif i == 3 then
+                medal = "3."
+                medalColor = Color3.fromRGB(205,127,50)
+            end
+            
+            local rankLabel = Instance.new("TextLabel")
+            rankLabel.Size = UDim2.new(0,40,0,40)
+            rankLabel.Position = UDim2.new(0,10,0,45+(i-1)*50)
+            rankLabel.BackgroundTransparency = 1
+            rankLabel.Text = medal
+            rankLabel.TextColor3 = medalColor
+            rankLabel.Font = Enum.Font.GothamBold
+            rankLabel.TextSize = 24
+            rankLabel.Parent = DataScrollFrame
+            
+            local songLabel = Instance.new("TextLabel")
+            songLabel.Size = UDim2.new(1,-60,0,20)
+            songLabel.Position = UDim2.new(0,55,0,45+(i-1)*50)
+            songLabel.BackgroundTransparency = 1
+            songLabel.Text = songData.name
+            songLabel.TextColor3 = Color3.fromRGB(255,255,255)
+            songLabel.TextXAlignment = Enum.TextXAlignment.Left
+            songLabel.Font = Enum.Font.GothamBold
+            songLabel.TextSize = 12
+            songLabel.TextTruncate = Enum.TextTruncate.AtEnd
+            songLabel.Parent = DataScrollFrame
+            
+            local countLabel = Instance.new("TextLabel")
+            countLabel.Size = UDim2.new(1,-60,0,18)
+            countLabel.Position = UDim2.new(0,55,0,68+(i-1)*50)
+            countLabel.BackgroundTransparency = 1
+            countLabel.Text = "Played " .. songData.count .. " time" .. (songData.count > 1 and "s" or "")
+            countLabel.TextColor3 = Color3.fromRGB(150,200,255)
+            countLabel.TextXAlignment = Enum.TextXAlignment.Left
+            countLabel.Font = Enum.Font.Gotham
+            countLabel.TextSize = 11
+            countLabel.Parent = DataScrollFrame
         end
+        
         local refreshBtn = Instance.new("TextButton")
-        refreshBtn.Size = UDim2.new(1,-20,0,30)
-        refreshBtn.Position = UDim2.new(0,10,0,#topSongs*45+10)
+        refreshBtn.Size = UDim2.new(1,-20,0,35)
+        refreshBtn.Position = UDim2.new(0,10,0,45+#topSongs*50+10)
         refreshBtn.BackgroundColor3 = Color3.fromRGB(70,130,200)
         refreshBtn.BorderSizePixel = 0
-        refreshBtn.Text = "Refresh"
+        refreshBtn.Text = "REFRESH DATA"
         refreshBtn.TextColor3 = Color3.fromRGB(255,255,255)
         refreshBtn.Font = Enum.Font.GothamBold
-        refreshBtn.TextSize = 12
+        refreshBtn.TextSize = 13
         refreshBtn.Parent = DataScrollFrame
         Instance.new("UICorner",refreshBtn).CornerRadius = UDim.new(0,6)
-        refreshBtn.MouseButton1Click:Connect(function() loadPlayCount(); updateDataTab() end)
-        DataScrollFrame.CanvasSize = UDim2.new(0,0,0,#topSongs*45+50)
+        refreshBtn.MouseButton1Click:Connect(function() 
+            loadPlayCount() 
+            updateDataTab() 
+        end)
+        
+        DataScrollFrame.CanvasSize = UDim2.new(0,0,0,45+#topSongs*50+55)
     end
 end
 
@@ -813,14 +883,17 @@ local function playMusicFromUrl(url, fn, playlistIdx)
         currentSound.Parent=workspace
         
         currentSound.Ended:Connect(function()
+            isPlaying = false
+            isPaused = false
+            -- Only increment play count when song actually ends
+            incrementPlayCount(currentSongName)
+            updateTranslatableText(PauseButton, "RESUME")
+            
             if playlistLoopEnabled and #playlistSongs>0 then
-                local ni=currentPlaylistIndex+1; if ni>#playlistSongs then ni=1 end
+                local ni=currentPlaylistIndex+1
+                if ni>#playlistSongs then ni=1 end
                 local song=playlistSongs[ni]
                 if song then playMusicFromUrl(song.url,song.fileName,ni) end
-            elseif not currentSound.Looped then
-                isPlaying=false; isPaused=false
-                incrementPlayCount(currentSongName)
-                updateTranslatableText(PauseButton, "RESUME")
             end
         end)
         
@@ -1592,11 +1665,15 @@ DataScrollFrame.Parent = InfoPanel
 howToTabBtn.MouseButton1Click:Connect(function()
     HowToScrollFrame.Visible = true
     DataScrollFrame.Visible = false
+    howToTabBtn.BackgroundColor3 = Color3.fromRGB(100,150,255)
+    dataTabBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
 end)
 
 dataTabBtn.MouseButton1Click:Connect(function()
     HowToScrollFrame.Visible = false
     DataScrollFrame.Visible = true
+    howToTabBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+    dataTabBtn.BackgroundColor3 = Color3.fromRGB(100,150,255)
     updateDataTab()
 end)
 
@@ -1710,8 +1787,20 @@ PlaylistNoResultsLabel.TextWrapped=true
 PlaylistNoResultsLabel.Visible=true
 PlaylistNoResultsLabel.Parent=PlaylistScrollFrame
 
-SearchTabBtn.MouseButton1Click:Connect(function() scf.Visible=true; pcf.Visible=false end)
-PlaylistTabBtn.MouseButton1Click:Connect(function() scf.Visible=false; pcf.Visible=true; updatePlaylistDisplay() end)
+SearchTabBtn.MouseButton1Click:Connect(function() 
+    scf.Visible=true
+    pcf.Visible=false
+    SearchTabBtn.BackgroundColor3 = Color3.fromRGB(100,150,255)
+    PlaylistTabBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+end)
+
+PlaylistTabBtn.MouseButton1Click:Connect(function() 
+    scf.Visible=false
+    pcf.Visible=true
+    SearchTabBtn.BackgroundColor3 = Color3.fromRGB(60,60,70)
+    PlaylistTabBtn.BackgroundColor3 = Color3.fromRGB(100,150,255)
+    updatePlaylistDisplay() 
+end)
 
 -- HISTORY PANEL
 HistoryPanel=Instance.new("Frame")
