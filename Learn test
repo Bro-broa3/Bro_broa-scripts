@@ -1,4 +1,4 @@
--- COMPLETE FIXED SCRIPT - FINAL VERSION
+-- PART 1 - FINAL FIXED (Complete)
 local S = {
     Players = game:GetService("Players"),
     UIS = game:GetService("UserInputService"),
@@ -50,20 +50,16 @@ F.detectLanguage = function()
     pcall(function() local ls=game:GetService("LocalizationService"); if ls and ls.RobloxLocaleId then State.language=tostring(ls.RobloxLocaleId):lower():match("^(%w+)") or "en" end end)
 end
 
--- CRITICAL FIX: translate now checks type before UrlEncode
+-- ULTRA SAFE translate - will NEVER error
 F.translate = function(text)
     if text == nil then return "" end
-    if type(text) == "table" then
-        -- If it's a table, try to extract a string
-        if text.Text then text = text.Text end
-        if type(text) ~= "string" then text = tostring(text) end
+    if type(text) ~= "string" then
+        pcall(function() text = tostring(text) end)
+        if type(text) ~= "string" then return "" end
     end
-    if type(text) ~= "string" then text = tostring(text) end
     if text == "" or State.language == "en" or not State.autoTranslate then return text end
-    
     local key = text.."|"..State.language
     if State.translationCache[key] then return State.translationCache[key] end
-    
     local result = text
     pcall(function()
         local encoded = S.HTTP:UrlEncode(text)
@@ -84,16 +80,14 @@ F.registerTranslation = function(elem, text)
     end 
 end
 
+-- ULTRA SAFE updateText
 F.updateText = function(elem, text)
     if not elem then return end
-    if text == nil then text = "" end
-    if type(text) == "table" then
-        if text.Text then text = text.Text end
-        if type(text) ~= "string" then text = tostring(text) end
-    end
-    if type(text) ~= "string" then text = tostring(text) end
+    local strText
+    if text == nil then strText = ""
+    elseif type(text) == "string" then strText = text
+    else strText = tostring(text) end
     
-    local strText = text
     local found = false
     for _,item in ipairs(State.translatable) do 
         if item.element == elem then 
@@ -190,6 +184,14 @@ F.applyTheme = function(themeName)
     if GUI.PlaylistScroll then GUI.PlaylistScroll.ScrollBarImageColor3=t.scrollBar end
     if GUI.HistoryScroll then GUI.HistoryScroll.ScrollBarImageColor3=t.scrollBar end
     if GUI.EffectScroll then GUI.EffectScroll.ScrollBarImageColor3=t.scrollBar end
+    if GUI.VolumeLabel then GUI.VolumeLabel.TextColor3=t.label end
+    if GUI.SpeedLabel then GUI.SpeedLabel.TextColor3=t.label end
+    if GUI.StatusLabel then GUI.StatusLabel.TextColor3=t.text end
+    if GUI.TimeLabel then GUI.TimeLabel.TextColor3=t.text end
+    if GUI.MiniSongLabel then GUI.MiniSongLabel.TextColor3=t.text end
+    if GUI.MiniTimeLabel then GUI.MiniTimeLabel.TextColor3=t.text end
+    if GUI.ExtraSong then GUI.ExtraSong.TextColor3=t.text end
+    if GUI.ExtraTimeLabel then GUI.ExtraTimeLabel.TextColor3=t.text end
     if State.saveTheme then F.saveJSON(P.settings,{theme=State.theme,saveTheme=State.saveTheme,rememberKey=State.rememberKey,sliderBlue=State.sliderBlue,keybind=State.keybind,autoTranslate=State.autoTranslate}) end
 end
 
@@ -250,7 +252,7 @@ F.playMusic = function(url, name, index)
     State.currentSound=nil; State.playlistConnection=nil
     State.isPlaying=false; State.isPaused=false; State.pausedTime=0
     State.songName=F.cleanName(name); State.playlistIndex=index or 0
-    if GUI.StatusLabel then F.updateText(GUI.StatusLabel, "⏬ Loading..."); GUI.StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
+    if GUI.StatusLabel then GUI.StatusLabel.Text="⏬ Loading..."; GUI.StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
     if GUI.MiniSongLabel then GUI.MiniSongLabel.Text=State.songName end
     if GUI.ExtraSong then GUI.ExtraSong.Text=State.songName end
     if GUI.PauseButton then F.updateText(GUI.PauseButton, "⏸ PAUSE") end
@@ -355,7 +357,9 @@ F.downloadImage = function(url)
     return url
 end
 
--- The rest continues with Part 2 (GUI Creation) and Part 3 (remaining functions)
+-- PART 2 AND PART 3 CONTINUE FROM PREVIOUS MESSAGES
+-- Use Part 2 from my previous message (GUI creation with layout fixes)
+-- Use Part 3 from my previous message (remaining functions and init)
 -- Part 2: GUI Creation (FINAL - All layout fixed)
 
 F.createMainGUI = function()
