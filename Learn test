@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - OPTIMIZED (Under 200 Locals, Full Features)
+-- Roblox Exploit MP3 Player GUI - OPTIMIZED FIXED
 local S = {
     Players = game:GetService("Players"),
     UIS = game:GetService("UserInputService"),
@@ -47,30 +47,32 @@ pcall(function() for _,obj in pairs(workspace:GetDescendants()) do if obj:IsA("S
 
 F.detectLanguage = function()
     State.language = "en"
-    pcall(function() local ls=game:GetService("LocalizationService"); if ls and ls.RobloxLocaleId then State.language=ls.RobloxLocaleId:lower():match("^(%w+)") or "en" end end)
+    pcall(function() local ls=game:GetService("LocalizationService"); if ls and ls.RobloxLocaleId then State.language=tostring(ls.RobloxLocaleId):lower():match("^(%w+)") or "en" end end)
 end
 
 F.translate = function(text)
-    if not text or text=="" or State.language=="en" then return text end
-    local key = text.."|"..State.language
+    if type(text) ~= "string" or text=="" or State.language=="en" then return text end
+    local key = tostring(text).."|"..State.language
     if State.translationCache[key] then return State.translationCache[key] end
     local result = text
     pcall(function()
-        local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="..State.language.."&dt=t&q="..S.HTTP:UrlEncode(text)
-        local decoded = S.HTTP:JSONDecode(game:HttpGet(url))
+        local encoded = S.HTTP:UrlEncode(tostring(text))
+        local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl="..State.language.."&dt=t&q="..encoded
+        local response = game:HttpGet(url)
+        local decoded = S.HTTP:JSONDecode(response)
         if decoded and decoded[1] and decoded[1][1] and decoded[1][1][1] then result=decoded[1][1][1]; State.translationCache[key]=result end
     end)
     return result
 end
 
-F.registerTranslation = function(elem, text) if elem and text then table.insert(State.translatable, {element=elem, original=text}) end end
+F.registerTranslation = function(elem, text) if elem and text then table.insert(State.translatable, {element=elem, original=tostring(text)}) end end
 
 F.updateText = function(elem, text)
     if not elem or not text then return end
     local found = false
-    for _,item in ipairs(State.translatable) do if item.element==elem then item.original=text; found=true; break end end
-    if not found then F.registerTranslation(elem, text) end
-    elem.Text = State.autoTranslate and F.translate(text) or text
+    for _,item in ipairs(State.translatable) do if item.element==elem then item.original=tostring(text); found=true; break end end
+    if not found then F.registerTranslation(elem, tostring(text)) end
+    elem.Text = State.autoTranslate and F.translate(tostring(text)) or tostring(text)
 end
 
 F.applyTranslations = function()
@@ -119,8 +121,34 @@ end
 
 F.loadJSON = function(path) local ok,r=pcall(function() if readfile and isfile and isfile(path) then return S.HTTP:JSONDecode(readfile(path)) end end); return ok and r or {} end
 F.saveJSON = function(path, data) pcall(function() if writefile then writefile(path, S.HTTP:JSONEncode(data)) end end) end
-F.cleanName = function(n) if not n then return "Unknown" end; return n:gsub("%.mp3$",""):gsub("%.MP3$",""):gsub("%%20"," ") end
+F.cleanName = function(n) if type(n) ~= "string" then return "Unknown" end; return n:gsub("%.mp3$",""):gsub("%.MP3$",""):gsub("%%20"," ") end
 F.formatTime = function(s) if s<0 then s=0 end; return string.format("%d:%02d",math.floor(s/60),math.floor(s%60)) end
+
+F.applyTheme = function(themeName)
+    local t = Themes[themeName] or Themes["Default"]
+    if not t then return end
+    if GUI.Main then GUI.Main.BackgroundColor3=t.mainBg end
+    if GUI.TitleBar then GUI.TitleBar.BackgroundColor3=t.titleBg end
+    if GUI.Stroke then GUI.Stroke.Color=t.outline end
+    if GUI.PlayButton then GUI.PlayButton.BackgroundColor3=t.play end
+    if GUI.PauseButton then GUI.PauseButton.BackgroundColor3=t.pause end
+    if GUI.StopButton then GUI.StopButton.BackgroundColor3=t.stop end
+    if GUI.HistoryBtn then GUI.HistoryBtn.BackgroundColor3=t.history end
+    if GUI.MuteButton then GUI.MuteButton.BackgroundColor3=State.gameMuted and t.muteOn or t.mute end
+    if GUI.LoopButton then GUI.LoopButton.BackgroundColor3=State.mainLoop and t.loopGreen or t.loopOff end
+    if GUI.SearchBtn then GUI.SearchBtn.BackgroundColor3=t.search end
+    if GUI.InfoBtn then GUI.InfoBtn.BackgroundColor3=t.info end
+    if GUI.SettingsBtn then GUI.SettingsBtn.BackgroundColor3=t.setting end
+    if GUI.UrlContainer then GUI.UrlContainer.BackgroundColor3=t.input end
+    if GUI.KeyBox then GUI.KeyBox.BackgroundColor3=t.input end
+    if GUI.TimeSliderBg then GUI.TimeSliderBg.BackgroundColor3=t.input end
+    if GUI.MiniTimeSliderBg then GUI.MiniTimeSliderBg.BackgroundColor3=t.input end
+    if GUI.TimeSlider then GUI.TimeSlider.BackgroundColor3=State.sliderBlue and Color3.fromRGB(100,180,255) or Color3.fromRGB(255,80,80) end
+    if GUI.MiniTimeSlider then GUI.MiniTimeSlider.BackgroundColor3=State.sliderBlue and Color3.fromRGB(100,180,255) or Color3.fromRGB(255,80,80) end
+    if GUI.ExtraTimeSlider then GUI.ExtraTimeSlider.BackgroundColor3=State.sliderBlue and Color3.fromRGB(100,180,255) or Color3.fromRGB(255,80,80) end
+    if GUI.MiniFrame then GUI.MiniFrame.BackgroundColor3=t.mainBg end
+    if GUI.ExtraFrame then GUI.ExtraFrame.BackgroundColor3=Color3.fromRGB(20,20,20) end
+end
 
 F.updateTimeDisplay = function()
     if not State.currentSound then
@@ -154,7 +182,8 @@ F.stopMusic = function()
     if State.playlistConnection then pcall(function() State.playlistConnection:Disconnect() end); State.playlistConnection=nil end
     if State.currentSound then pcall(function() State.currentSound:Stop(); State.currentSound:Destroy() end); State.currentSound=nil end
     State.isPlaying=false; State.isPaused=false; State.pausedTime=0; State.songName=""; State.playlistIndex=0
-    F.updateText(GUI.PauseButton, "⏸ PAUSE"); F.updateText(GUI.PlayButton, "▶ PLAY")
+    if GUI.PauseButton then F.updateText(GUI.PauseButton, "⏸ PAUSE") end
+    if GUI.PlayButton then F.updateText(GUI.PlayButton, "▶ PLAY") end
     if GUI.playingSong then GUI.playingSong.Text='Now Playing: <font color="#888888">Nothing</font>' end
     F.updateTimeDisplay()
 end
@@ -177,10 +206,11 @@ F.playMusic = function(url, name, index)
     State.currentSound=nil; State.playlistConnection=nil
     State.isPlaying=false; State.isPaused=false; State.pausedTime=0
     State.songName=F.cleanName(name); State.playlistIndex=index or 0
-    F.updateText(GUI.StatusLabel, "⏬ Loading...")
-    if GUI.StatusLabel then GUI.StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
+    if GUI.StatusLabel then F.updateText(GUI.StatusLabel, "⏬ Loading..."); GUI.StatusLabel.TextColor3=Color3.fromRGB(255,200,100) end
     if GUI.MiniSongLabel then GUI.MiniSongLabel.Text=State.songName end
-    F.updateText(GUI.PauseButton, "⏸ PAUSE"); F.updateText(GUI.PlayButton, "▶ PLAY")
+    if GUI.PauseButton then F.updateText(GUI.PauseButton, "⏸ PAUSE") end
+    if GUI.PlayButton then F.updateText(GUI.PlayButton, "▶ PLAY") end
+    if GUI.playingSong and State.playingTab then GUI.playingSong.Text='Now Playing: <font color="#ff9944">'..State.songName..'</font>' end
     
     local function createPlay(soundId)
         State.currentSound=Instance.new("Sound")
@@ -193,7 +223,7 @@ F.playMusic = function(url, name, index)
                 if State.songs[ni] then pcall(function() F.playMusic(State.songs[ni].url,State.songs[ni].fileName,ni) end) end
             elseif not State.isLooping then
                 State.isPlaying=false; State.isPaused=false
-                F.updateText(GUI.PauseButton, "▶ RESUME")
+                if GUI.PauseButton then F.updateText(GUI.PauseButton, "▶ RESUME") end
                 if GUI.MiniPauseBtn then GUI.MiniPauseBtn.Image="rbxassetid://110560238983134" end
                 if GUI.ExtraPauseBtn then GUI.ExtraPauseBtn.Image="rbxassetid://110560238983134" end
             end
@@ -217,7 +247,8 @@ F.togglePause = function()
     if State.isPaused then State.currentSound.TimePosition=State.pausedTime; State.currentSound:Resume(); State.isPaused=false; State.isPlaying=true; F.updateText(GUI.PauseButton,"⏸ PAUSE")
     elseif State.isPlaying then State.pausedTime=State.currentSound.TimePosition; State.currentSound:Pause(); State.isPaused=true; State.isPlaying=false; F.updateText(GUI.PauseButton,"▶ RESUME")
     else State.currentSound.TimePosition=0; State.currentSound:Play(); State.isPlaying=true; State.isPaused=false; F.updateText(GUI.PauseButton,"⏸ PAUSE") end
-    F.updateText(GUI.PlayButton,"▶ PLAY"); F.updateTimeDisplay()
+    if GUI.PlayButton then F.updateText(GUI.PlayButton,"▶ PLAY") end
+    F.updateTimeDisplay()
 end
 
 F.updateVolume = function(v) State.volume=math.clamp(v,0,100); if GUI.VolumeBox then GUI.VolumeBox.Text=string.format("%.2f",State.volume) end; if GUI.VolumeLabel then GUI.VolumeLabel.Text="Volume: "..string.format("%.2f",State.volume) end; if State.currentSound then State.currentSound.Volume=State.volume end end
@@ -232,13 +263,13 @@ end
 
 F.checkKey = function(input)
     local ok,fetched=pcall(function() return game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/PrimeMusic/refs/heads/main/Key") end)
-    if ok and fetched then State.secretKey=fetched:gsub("^%s+",""):gsub("%s+$","") end
-    if input==State.secretKey then State.keyCorrect=true; GUI.KeyBox.Text=""; if State.rememberKey then F.saveJSON(P.key,{rememberKey=State.rememberKey,isKeyCorrect=true}) end; F.loadPlaylist(); F.notify("GitHub MP3 Player","✅ Key correct!",3); return true
-    else GUI.KeyBox.Text=""; F.notify("GitHub MP3 Player","❌ Wrong key!",3); return false end
+    if ok and fetched then State.secretKey=tostring(fetched):gsub("^%s+",""):gsub("%s+$","") end
+    if input==State.secretKey then State.keyCorrect=true; if GUI.KeyBox then GUI.KeyBox.Text="" end; if State.rememberKey then F.saveJSON(P.key,{rememberKey=State.rememberKey,isKeyCorrect=true}) end; F.loadPlaylist(); F.notify("GitHub MP3 Player","✅ Key correct!",3); if GUI.PlaylistScroll then F.updatePlaylistDisplay() end; return true
+    else if GUI.KeyBox then GUI.KeyBox.Text="" end; F.notify("GitHub MP3 Player","❌ Wrong key!",3); return false end
 end
 
 F.downloadImage = function(url)
-    if not url or url=="" then return "" end
+    if type(url) ~= "string" or url=="" then return "" end
     url=url:gsub("^%s+",""):gsub("%s+$","")
     if State.imageCache[url] and isfile and isfile(State.imageCache[url].file) then return State.imageCache[url].asset end
     local hash=0; for i=1,#url do hash=(hash*31+string.byte(url,i))%10000000 end
@@ -249,8 +280,11 @@ F.downloadImage = function(url)
     return url
 end
 
--- Continue in Part 2...
--- Part 2: GUI Creation with ALL features
+-- Include Part 2 and Part 3 here (the GUI creation and remaining functions from my previous messages)
+-- The code continues with F.createMainGUI, F.createMiniGUI, F.createExtraMini, 
+-- F.updateEffectList, F.searchMusic, F.updatePlaylistDisplay, F.updateHistoryList,
+-- F.setupKeybind, F.loadSettings, and F.init
+-- Part 2: GUI Creation (FIXED - using TweenInfo.new directly)
 
 F.createMainGUI = function()
     GUI.Screen = Instance.new("ScreenGui"); GUI.Screen.Name="MusicPlayerGUI"; GUI.Screen.ResetOnSpawn=false; GUI.Screen.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; GUI.Screen.Parent=S.CoreGui
@@ -260,7 +294,7 @@ F.createMainGUI = function()
     GUI.Outline = Instance.new("Frame"); GUI.Outline.Size=UDim2.new(1,6,1,6); GUI.Outline.Position=UDim2.new(0,-3,0,-3); GUI.Outline.BackgroundColor3=Color3.fromRGB(40,40,40); GUI.Outline.BorderSizePixel=0; GUI.Outline.ZIndex=0; GUI.Outline.Parent=GUI.Main
     Instance.new("UICorner",GUI.Outline).CornerRadius=UDim.new(0,12)
     GUI.Stroke = Instance.new("UIStroke"); GUI.Stroke.Thickness=3; GUI.Stroke.Color=Color3.fromRGB(80,80,80); GUI.Stroke.Parent=GUI.Outline
-    spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while GUI.Stroke and GUI.Stroke.Parent do S.Tween:Create(GUI.Stroke,S.TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
+    spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while GUI.Stroke and GUI.Stroke.Parent do S.Tween:Create(GUI.Stroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
     
     GUI.TitleBar = Instance.new("Frame"); GUI.TitleBar.Size=UDim2.new(1,0,0,35); GUI.TitleBar.BackgroundColor3=Color3.fromRGB(30,30,30); GUI.TitleBar.BorderSizePixel=0; GUI.TitleBar.Parent=GUI.Main
     Instance.new("UICorner",GUI.TitleBar).CornerRadius=UDim.new(0,10)
@@ -293,7 +327,7 @@ F.createMainGUI = function()
     local themeList=Instance.new("ScrollingFrame"); themeList.Size=UDim2.new(1,-30,0,55); themeList.Position=UDim2.new(0,15,0,yPos); themeList.BackgroundColor3=Color3.fromRGB(50,50,58); themeList.BorderSizePixel=0; themeList.ScrollBarThickness=6; themeList.CanvasSize=UDim2.new(0,0,0,0); themeList.Visible=false; themeList.Parent=GUI.SettingsScroll
     Instance.new("UICorner",themeList).CornerRadius=UDim.new(0,5)
     local allThemes={"Default","Dark Blue","Light","Neon Light","Dark Light","Bright","Blue","Purple","Red","Green","Midnight"}
-    for i,n in ipairs(allThemes) do local b=Instance.new("TextButton"); b.Size=UDim2.new(1,-10,0,28); b.Position=UDim2.new(0,5,0,(i-1)*30+3); b.BackgroundColor3=Color3.fromRGB(55,55,63); b.BorderSizePixel=0; b.Text=n; b.TextColor3=Color3.fromRGB(255,255,255); b.Font=Enum.Font.Gotham; b.TextSize=12; b.Parent=themeList; Instance.new("UICorner",b).CornerRadius=UDim.new(0,4); b.MouseButton1Click:Connect(function() State.theme=n; themeDropdown.Text=n.." ▼"; themeList.Visible=false; if State.saveTheme then F.saveJSON(P.settings,{theme=State.theme,saveTheme=State.saveTheme,rememberKey=State.rememberKey,sliderBlue=State.sliderBlue,keybind=State.keybind,autoTranslate=State.autoTranslate}) end end) end
+    for i,n in ipairs(allThemes) do local b=Instance.new("TextButton"); b.Size=UDim2.new(1,-10,0,28); b.Position=UDim2.new(0,5,0,(i-1)*30+3); b.BackgroundColor3=Color3.fromRGB(55,55,63); b.BorderSizePixel=0; b.Text=n; b.TextColor3=Color3.fromRGB(255,255,255); b.Font=Enum.Font.Gotham; b.TextSize=12; b.Parent=themeList; Instance.new("UICorner",b).CornerRadius=UDim.new(0,4); b.MouseButton1Click:Connect(function() State.theme=n; themeDropdown.Text=n.." ▼"; themeList.Visible=false; F.applyTheme(n); if State.saveTheme then F.saveJSON(P.settings,{theme=State.theme,saveTheme=State.saveTheme,rememberKey=State.rememberKey,sliderBlue=State.sliderBlue,keybind=State.keybind,autoTranslate=State.autoTranslate}) end end) end
     themeList.CanvasSize=UDim2.new(0,0,0,#allThemes*30+6)
     themeDropdown.MouseButton1Click:Connect(function() themeList.Visible=not themeList.Visible end); yPos=yPos+5
     
@@ -310,8 +344,8 @@ F.createMainGUI = function()
     GUI.SaveThemeToggle = createToggle("Save Theme:", yPos+55, function() State.saveTheme=not State.saveTheme; GUI.SaveThemeToggle.BackgroundColor3=State.saveTheme and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.SaveThemeToggle.Text=State.saveTheme and "ON" or "OFF"; if State.saveTheme then F.saveJSON(P.settings,{theme=State.theme,saveTheme=State.saveTheme,rememberKey=State.rememberKey,sliderBlue=State.sliderBlue,keybind=State.keybind,autoTranslate=State.autoTranslate}) else pcall(function() if isfile and isfile(P.settings) then delfile(P.settings) end end) end end)
     GUI.RememberKeyToggle = createToggle("Remember Key:", yPos+90, function() State.rememberKey=not State.rememberKey; GUI.RememberKeyToggle.BackgroundColor3=State.rememberKey and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.RememberKeyToggle.Text=State.rememberKey and "ON" or "OFF"; if State.rememberKey then if State.keyCorrect then F.saveJSON(P.key,{rememberKey=State.rememberKey,isKeyCorrect=true}) end else pcall(function() if isfile and isfile(P.key) then delfile(P.key) end end) end end)
     GUI.SliderColorToggle = createToggle("Slider Color:", yPos+125, function() State.sliderBlue=not State.sliderBlue; GUI.SliderColorToggle.BackgroundColor3=State.sliderBlue and Color3.fromRGB(80,180,255) or Color3.fromRGB(255,80,80); GUI.SliderColorToggle.Text=State.sliderBlue and "BLUE" or "RED"; local sc=State.sliderBlue and Color3.fromRGB(100,180,255) or Color3.fromRGB(255,80,80); if GUI.TimeSlider then GUI.TimeSlider.BackgroundColor3=sc end; if GUI.MiniTimeSlider then GUI.MiniTimeSlider.BackgroundColor3=sc end; if GUI.ExtraTimeSlider then GUI.ExtraTimeSlider.BackgroundColor3=sc end end)
-    GUI.MiniPlayToggle = createToggle("Mini Play Mode:", yPos+160, function() State.miniMode=not State.miniMode; GUI.MiniPlayToggle.BackgroundColor3=State.miniMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.MiniPlayToggle.Text=State.miniMode and "ON" or "OFF"; if State.miniMode then if State.extraMini then State.extraMini=false; if GUI.ExtraScreen then GUI.ExtraScreen.Enabled=false end end; GUI.Screen.Enabled=false; GUI.MiniScreen.Enabled=true else GUI.Screen.Enabled=true; GUI.MiniScreen.Enabled=false end end)
-    GUI.ExtraMiniToggle = createToggle("Extra Mini Mode:", yPos+195, function() if not State.keyCorrect then GUI.ExtraMiniToggle.BackgroundColor3=Color3.fromRGB(180,80,80); GUI.ExtraMiniToggle.Text="LOCKED"; F.notify("GitHub MP3 Player","Unlock playlist first!",2); wait(1); GUI.ExtraMiniToggle.BackgroundColor3=State.extraMini and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.ExtraMiniToggle.Text=State.extraMini and "ON" or "OFF"; return end; State.extraMini=not State.extraMini; GUI.ExtraMiniToggle.BackgroundColor3=State.extraMini and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.ExtraMiniToggle.Text=State.extraMini and "ON" or "OFF"; if State.extraMini then F.createExtraMini(); GUI.ExtraScreen.Enabled=true; GUI.Screen.Enabled=false; GUI.MiniScreen.Enabled=false else GUI.ExtraScreen.Enabled=false; GUI.Screen.Enabled=true; GUI.MiniScreen.Enabled=State.miniMode end end)
+    GUI.MiniPlayToggle = createToggle("Mini Play Mode:", yPos+160, function() State.miniMode=not State.miniMode; GUI.MiniPlayToggle.BackgroundColor3=State.miniMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.MiniPlayToggle.Text=State.miniMode and "ON" or "OFF"; if State.miniMode then if State.extraMini then State.extraMini=false; if GUI.ExtraScreen then GUI.ExtraScreen.Enabled=false end end; GUI.Screen.Enabled=false; if GUI.MiniScreen then GUI.MiniScreen.Enabled=true end else GUI.Screen.Enabled=true; if GUI.MiniScreen then GUI.MiniScreen.Enabled=false end end end)
+    GUI.ExtraMiniToggle = createToggle("Extra Mini Mode:", yPos+195, function() if not State.keyCorrect then GUI.ExtraMiniToggle.BackgroundColor3=Color3.fromRGB(180,80,80); GUI.ExtraMiniToggle.Text="LOCKED"; F.notify("GitHub MP3 Player","Unlock playlist first!",2); wait(1); GUI.ExtraMiniToggle.BackgroundColor3=State.extraMini and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.ExtraMiniToggle.Text=State.extraMini and "ON" or "OFF"; return end; State.extraMini=not State.extraMini; GUI.ExtraMiniToggle.BackgroundColor3=State.extraMini and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.ExtraMiniToggle.Text=State.extraMini and "ON" or "OFF"; if State.extraMini then F.createExtraMini(); if GUI.ExtraScreen then GUI.ExtraScreen.Enabled=true end; GUI.Screen.Enabled=false; if GUI.MiniScreen then GUI.MiniScreen.Enabled=false end else if GUI.ExtraScreen then GUI.ExtraScreen.Enabled=false end; GUI.Screen.Enabled=true; if GUI.MiniScreen then GUI.MiniScreen.Enabled=State.miniMode end end end)
     GUI.KeybindToggle = createToggle("Keybinds:", yPos+230, function() State.keybind=not State.keybind; GUI.KeybindToggle.BackgroundColor3=State.keybind and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.KeybindToggle.Text=State.keybind and "ON" or "OFF"; F.saveJSON(P.settings,{theme=State.theme,saveTheme=State.saveTheme,rememberKey=State.rememberKey,sliderBlue=State.sliderBlue,keybind=State.keybind,autoTranslate=State.autoTranslate}); F.setupKeybind() end)
     GUI.AutoTranslateToggle = createToggle("Auto Translate:", yPos+265, function() State.autoTranslate=not State.autoTranslate; GUI.AutoTranslateToggle.BackgroundColor3=State.autoTranslate and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.AutoTranslateToggle.Text=State.autoTranslate and "ON" or "OFF"; F.applyTranslations(); F.saveJSON(P.settings,{theme=State.theme,saveTheme=State.saveTheme,rememberKey=State.rememberKey,sliderBlue=State.sliderBlue,keybind=State.keybind,autoTranslate=State.autoTranslate}) end)
     
@@ -402,7 +436,7 @@ Green Show button to restore
     Instance.new("UICorner",GUI.MuteButton).CornerRadius=UDim.new(0,6)
     GUI.KeyBox = Instance.new("TextBox"); GUI.KeyBox.Size=UDim2.new(0.32,0,0,28); GUI.KeyBox.Position=UDim2.new(0.34,0,0,170); GUI.KeyBox.BackgroundColor3=Color3.fromRGB(60,60,70); GUI.KeyBox.BorderSizePixel=0; GUI.KeyBox.PlaceholderText="🔑 Key"; GUI.KeyBox.PlaceholderColor3=Color3.fromRGB(150,150,160); GUI.KeyBox.TextColor3=Color3.fromRGB(255,255,255); GUI.KeyBox.Font=Enum.Font.Gotham; GUI.KeyBox.TextSize=9; GUI.KeyBox.ClearTextOnFocus=false; GUI.KeyBox.Parent=GUI.Content
     Instance.new("UICorner",GUI.KeyBox).CornerRadius=UDim.new(0,6)
-    GUI.KeyBox.FocusLost:Connect(function(ep) if ep and GUI.KeyBox.Text~="" then F.checkKey(GUI.KeyBox.Text) end end)
+    GUI.KeyBox.FocusLost:Connect(function(ep) if ep and GUI.KeyBox.Text~="" then F.checkKey(tostring(GUI.KeyBox.Text)) end end)
     GUI.LoopButton = Instance.new("TextButton"); GUI.LoopButton.Size=UDim2.new(0.32,0,0,28); GUI.LoopButton.Position=UDim2.new(0.68,0,0,170); GUI.LoopButton.BackgroundColor3=Color3.fromRGB(70,180,70); GUI.LoopButton.BorderSizePixel=0; GUI.LoopButton.Text="🔁 LOOP: ON"; GUI.LoopButton.TextColor3=Color3.fromRGB(255,255,255); GUI.LoopButton.Font=Enum.Font.Gotham; GUI.LoopButton.TextSize=11; GUI.LoopButton.Parent=GUI.Content
     Instance.new("UICorner",GUI.LoopButton).CornerRadius=UDim.new(0,6)
     
@@ -426,7 +460,7 @@ Green Show button to restore
     
     GUI.StatusLabel = Instance.new("TextLabel"); GUI.StatusLabel.Size=UDim2.new(1,0,0,18); GUI.StatusLabel.Position=UDim2.new(0,0,1,-22); GUI.StatusLabel.BackgroundTransparency=1; GUI.StatusLabel.Text="Ready to play music"; GUI.StatusLabel.TextColor3=Color3.fromRGB(200,200,200); GUI.StatusLabel.TextXAlignment=Enum.TextXAlignment.Center; GUI.StatusLabel.Font=Enum.Font.Gotham; GUI.StatusLabel.TextSize=11; GUI.StatusLabel.Parent=GUI.Content
     
-    -- Hide/Show buttons
+    -- Hide button
     GUI.HideBtn = Instance.new("TextButton"); GUI.HideBtn.Name="MusicPlayerHideBtn"; GUI.HideBtn.Size=UDim2.new(0,50,0,25); GUI.HideBtn.Position=UDim2.new(0,5,1,-30); GUI.HideBtn.BackgroundColor3=Color3.fromRGB(60,60,70); GUI.HideBtn.BorderSizePixel=0; GUI.HideBtn.Text="👁 Hide"; GUI.HideBtn.TextColor3=Color3.fromRGB(255,255,255); GUI.HideBtn.Font=Enum.Font.GothamBold; GUI.HideBtn.TextSize=11; GUI.HideBtn.Parent=GUI.Content; GUI.HideBtn.ZIndex=5
     Instance.new("UICorner",GUI.HideBtn).CornerRadius=UDim.new(0,5)
     
@@ -477,17 +511,17 @@ Green Show button to restore
     GUI.PlayButton.MouseButton1Click:Connect(function() local url=GUI.UrlBox.Text; if url=="" then F.updateText(GUI.StatusLabel,"❌ Error: Please enter URL"); return end; if url:lower():sub(-4)~=".mp3" then F.updateText(GUI.StatusLabel,"❌ Error: URL must end with .mp3"); return end; local fn="audio.mp3"; local pts=url:split("/"); if #pts>0 and pts[#pts]:find(".mp3") then fn=pts[#pts]:gsub("%%20"," "):gsub("%%25","%%") end; F.playMusic(url,fn) end)
     GUI.PauseButton.MouseButton1Click:Connect(function() if State.currentSound then F.togglePause() end end)
     GUI.StopButton.MouseButton1Click:Connect(function() F.stopMusic(); F.updateText(GUI.StatusLabel,"⏹ Music Stopped") end)
-    GUI.HistoryBtn.MouseButton1Click:Connect(function() State.panels.history=not State.panels.history; if State.panels.history then GUI.HistoryPanel.Visible=true; S.Tween:Create(GUI.HistoryPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)}):Play(); F.updateText(GUI.HistoryBtn,"← HISTORY"); F.updateHistoryList() else S.Tween:Create(GUI.HistoryPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); F.updateText(GUI.HistoryBtn,"→ HISTORY"); wait(0.3); GUI.HistoryPanel.Visible=false end end)
-    GUI.BackBtn.MouseButton1Click:Connect(function() State.panels.history=false; S.Tween:Create(GUI.HistoryPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); F.updateText(GUI.HistoryBtn,"→ HISTORY"); wait(0.3); GUI.HistoryPanel.Visible=false end)
+    GUI.HistoryBtn.MouseButton1Click:Connect(function() State.panels.history=not State.panels.history; if State.panels.history then GUI.HistoryPanel.Visible=true; S.Tween:Create(GUI.HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)}):Play(); F.updateText(GUI.HistoryBtn,"← HISTORY"); F.updateHistoryList() else S.Tween:Create(GUI.HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); F.updateText(GUI.HistoryBtn,"→ HISTORY"); wait(0.3); GUI.HistoryPanel.Visible=false end end)
+    GUI.BackBtn.MouseButton1Click:Connect(function() State.panels.history=false; S.Tween:Create(GUI.HistoryPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,0,0,0)}):Play(); F.updateText(GUI.HistoryBtn,"→ HISTORY"); wait(0.3); GUI.HistoryPanel.Visible=false end)
     GUI.MuteButton.MouseButton1Click:Connect(function() if State.gameMuted then State.gameMuted=false; F.updateText(GUI.MuteButton,"🔇 MUTE GAME"); GUI.MuteButton.BackgroundColor3=Color3.fromRGB(180,80,80); for sound,vol in pairs(State.mutedSounds) do pcall(function() if sound and sound.Parent then sound.Volume=vol end end) end; State.mutedSounds={}; pcall(function() S.SoundService.Volume=1 end) else State.gameMuted=true; F.updateText(GUI.MuteButton,"🔊 UNMUTE"); GUI.MuteButton.BackgroundColor3=Color3.fromRGB(80,180,80); State.mutedSounds={}; pcall(function() for _,v in pairs(workspace:GetDescendants()) do if v:IsA("Sound") and v~=State.currentSound then State.mutedSounds[v]=v.Volume; v.Volume=0 end end end); pcall(function() S.SoundService.Volume=0 end) end end)
     GUI.LoopButton.MouseButton1Click:Connect(function() State.mainLoop=not State.mainLoop; State.isLooping=State.mainLoop; State.playlistLoop=false; if State.currentSound then State.currentSound.Looped=State.mainLoop end; F.updateText(GUI.LoopButton,State.mainLoop and "🔁 LOOP: ON" or "🔁 LOOP: OFF"); GUI.LoopButton.BackgroundColor3=State.mainLoop and Color3.fromRGB(70,180,70) or Color3.fromRGB(130,130,130) end)
     GUI.CloseBtn.MouseButton1Click:Connect(function() if State.playlistConnection then pcall(function() State.playlistConnection:Disconnect() end) end; F.stopMusic(); GUI.Screen:Destroy(); if GUI.MiniScreen then GUI.MiniScreen:Destroy() end; if GUI.ExtraScreen then GUI.ExtraScreen:Destroy() end; if GUI.ShowScreen then GUI.ShowScreen:Destroy() end end)
     GUI.MinimizeBtn.MouseButton1Click:Connect(function() if State.isMinimized then GUI.Main.Size=UDim2.new(0,400,0,345); GUI.Content.Visible=true; GUI.Outline.Visible=true; State.isMinimized=false else GUI.Main.Size=UDim2.new(0,400,0,35); GUI.Content.Visible=false; GUI.Outline.Visible=false; State.isMinimized=true end end)
-    GUI.SettingsBtn.MouseButton1Click:Connect(function() State.panels.settings=not State.panels.settings; if State.panels.settings then GUI.SettingsPanel.Visible=true; S.Tween:Create(GUI.SettingsPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,-290)}):Play() else S.Tween:Create(GUI.SettingsPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,0,0,-290)}):Play(); wait(0.3); GUI.SettingsPanel.Visible=false end end)
-    GUI.InfoBtn.MouseButton1Click:Connect(function() State.panels.info=not State.panels.info; if State.panels.info then GUI.InfoPanel.Visible=true; S.Tween:Create(GUI.InfoPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,-290,0,0)}):Play() else S.Tween:Create(GUI.InfoPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,-290,0,0)}):Play(); wait(0.3); GUI.InfoPanel.Visible=false end end)
-    GUI.SearchBtn.MouseButton1Click:Connect(function() State.panels.search=not State.panels.search; if State.panels.search then GUI.SearchPanel.Visible=true; S.Tween:Create(GUI.SearchPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(1,10,0,0)}):Play() else S.Tween:Create(GUI.SearchPanel,S.TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,310,0,0)}):Play(); wait(0.3); GUI.SearchPanel.Visible=false end end)
-    searchGo.MouseButton1Click:Connect(function() F.searchMusic(GUI.SearchBox.Text) end)
-    GUI.SearchBox.FocusLost:Connect(function(ep) if ep then F.searchMusic(GUI.SearchBox.Text) end end)
+    GUI.SettingsBtn.MouseButton1Click:Connect(function() State.panels.settings=not State.panels.settings; if State.panels.settings then if State.panels.search then State.panels.search=false; GUI.SearchPanel.Visible=false end; if State.panels.info then State.panels.info=false; GUI.InfoPanel.Visible=false end; GUI.SettingsPanel.Visible=true; S.Tween:Create(GUI.SettingsPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,-290)}):Play() else S.Tween:Create(GUI.SettingsPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,0,0,-290)}):Play(); wait(0.3); GUI.SettingsPanel.Visible=false end end)
+    GUI.InfoBtn.MouseButton1Click:Connect(function() State.panels.info=not State.panels.info; if State.panels.info then if State.panels.search then State.panels.search=false; GUI.SearchPanel.Visible=false end; GUI.InfoPanel.Visible=true; S.Tween:Create(GUI.InfoPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,-290,0,0)}):Play() else S.Tween:Create(GUI.InfoPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(0,-290,0,0)}):Play(); wait(0.3); GUI.InfoPanel.Visible=false end end)
+    GUI.SearchBtn.MouseButton1Click:Connect(function() State.panels.search=not State.panels.search; if State.panels.search then if State.panels.history then State.panels.history=false; GUI.HistoryPanel.Visible=false end; GUI.SearchPanel.Visible=true; S.Tween:Create(GUI.SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(1,10,0,0)}):Play() else S.Tween:Create(GUI.SearchPanel,TweenInfo.new(0.3,Enum.EasingStyle.Back,Enum.EasingDirection.In),{Position=UDim2.new(1,310,0,0)}):Play(); wait(0.3); GUI.SearchPanel.Visible=false end end)
+    searchGo.MouseButton1Click:Connect(function() F.searchMusic(tostring(GUI.SearchBox.Text)) end)
+    GUI.SearchBox.FocusLost:Connect(function(ep) if ep then F.searchMusic(tostring(GUI.SearchBox.Text)) end end)
     GUI.VolumeBox.FocusLost:Connect(function() local v=tonumber(GUI.VolumeBox.Text); if v then F.updateVolume(v) else F.updateVolume(State.volume) end end)
     GUI.SpeedBox.FocusLost:Connect(function() local v=tonumber(GUI.SpeedBox.Text:gsub("x",""):gsub("X","")); if v then F.updateSpeed(v) else F.updateSpeed(State.speed) end end)
     volUp.MouseButton1Click:Connect(function() F.updateVolume(math.min(State.volume+0.5,100)) end)
@@ -588,9 +622,7 @@ F.createExtraMini = function()
     GUI.ExtraPauseBtn.MouseButton1Click:Connect(function() if State.currentSound then F.togglePause() end end)
     forwardBtn.MouseButton1Click:Connect(function() if State.currentSound then State.currentSound.TimePosition=math.min(State.currentSound.TimePosition+10,State.currentSound.TimeLength); if State.isPaused then State.pausedTime=State.currentSound.TimePosition end; F.updateTimeDisplay() end end)
 end
-
--- Continue in Part 3 (remaining functions: updateEffectList, searchMusic, updatePlaylistDisplay, updateHistoryList, setupKeybind, slider dragging, init)
--- Part 3: Remaining functions and initialization
+-- Part 3: Remaining Functions and Init (FIXED)
 
 F.updateEffectList = function()
     if not GUI.EffectScroll then return end
@@ -732,7 +764,7 @@ end
 F.updateHistoryList = function()
     if not GUI.HistoryScroll then return end
     for _,c in pairs(GUI.HistoryScroll:GetChildren()) do if c.Name=="HistoryItem" then c:Destroy() end end
-    GUI.NoHistory.Visible=#State.history==0
+    if GUI.NoHistory then GUI.NoHistory.Visible=#State.history==0 end
     if #State.history==0 then GUI.HistoryScroll.CanvasSize=UDim2.new(0,0,0,0); return end
     local th=0
     for i,e in ipairs(State.history) do
@@ -761,18 +793,27 @@ F.setupKeybind = function()
         if input.KeyCode==Enum.KeyCode.H then
             if #State.hiddenGuis>0 or (GUI.ShowBtn and GUI.ShowBtn.Visible) then
                 for _,g in pairs(State.hiddenGuis) do pcall(function() g.Enabled=true end) end
-                State.hiddenGuis={}; GUI.HideBtn.Visible=true; GUI.ShowBtn.Visible=false
+                State.hiddenGuis={}; if GUI.HideBtn then GUI.HideBtn.Visible=true end; if GUI.ShowBtn then GUI.ShowBtn.Visible=false end
             else
-                State.hiddenGuis={}; if GUI.Screen.Enabled then GUI.Screen.Enabled=false; table.insert(State.hiddenGuis,GUI.Screen) end; if GUI.MiniScreen and GUI.MiniScreen.Enabled then GUI.MiniScreen.Enabled=false; table.insert(State.hiddenGuis,GUI.MiniScreen) end; if GUI.ExtraScreen and GUI.ExtraScreen.Enabled then GUI.ExtraScreen.Enabled=false; table.insert(State.hiddenGuis,GUI.ExtraScreen) end; GUI.HideBtn.Visible=false; GUI.ShowBtn.Visible=true
+                State.hiddenGuis={}; if GUI.Screen.Enabled then GUI.Screen.Enabled=false; table.insert(State.hiddenGuis,GUI.Screen) end; if GUI.MiniScreen and GUI.MiniScreen.Enabled then GUI.MiniScreen.Enabled=false; table.insert(State.hiddenGuis,GUI.MiniScreen) end; if GUI.ExtraScreen and GUI.ExtraScreen.Enabled then GUI.ExtraScreen.Enabled=false; table.insert(State.hiddenGuis,GUI.ExtraScreen) end; if GUI.HideBtn then GUI.HideBtn.Visible=false end; if GUI.ShowBtn then GUI.ShowBtn.Visible=true end
             end
         elseif input.KeyCode==Enum.KeyCode.P then
             if State.currentSound then F.togglePause() end
         elseif input.KeyCode==Enum.KeyCode.S then
-            F.stopMusic(); F.updateText(GUI.StatusLabel,"⏹ Music Stopped")
+            F.stopMusic(); if GUI.StatusLabel then F.updateText(GUI.StatusLabel,"⏹ Music Stopped") end
         elseif input.KeyCode==Enum.KeyCode.M then
-            if State.gameMuted then State.gameMuted=false; F.updateText(GUI.MuteButton,"🔇 MUTE GAME"); GUI.MuteButton.BackgroundColor3=Color3.fromRGB(180,80,80); for sound,vol in pairs(State.mutedSounds) do pcall(function() if sound and sound.Parent then sound.Volume=vol end end) end; State.mutedSounds={}; pcall(function() S.SoundService.Volume=1 end) else State.gameMuted=true; F.updateText(GUI.MuteButton,"🔊 UNMUTE"); GUI.MuteButton.BackgroundColor3=Color3.fromRGB(80,180,80); State.mutedSounds={}; pcall(function() for _,v in pairs(workspace:GetDescendants()) do if v:IsA("Sound") and v~=State.currentSound then State.mutedSounds[v]=v.Volume; v.Volume=0 end end end); pcall(function() S.SoundService.Volume=0 end) end
+            if State.gameMuted then
+                State.gameMuted=false; if GUI.MuteButton then F.updateText(GUI.MuteButton,"🔇 MUTE GAME"); GUI.MuteButton.BackgroundColor3=Color3.fromRGB(180,80,80) end
+                for sound,vol in pairs(State.mutedSounds) do pcall(function() if sound and sound.Parent then sound.Volume=vol end end) end
+                State.mutedSounds={}; pcall(function() S.SoundService.Volume=1 end)
+            else
+                State.gameMuted=true; if GUI.MuteButton then F.updateText(GUI.MuteButton,"🔊 UNMUTE"); GUI.MuteButton.BackgroundColor3=Color3.fromRGB(80,180,80) end
+                State.mutedSounds={}; pcall(function() for _,v in pairs(workspace:GetDescendants()) do if v:IsA("Sound") and v~=State.currentSound then State.mutedSounds[v]=v.Volume; v.Volume=0 end end end); pcall(function() S.SoundService.Volume=0 end)
+            end
         elseif input.KeyCode==Enum.KeyCode.L then
-            State.mainLoop=not State.mainLoop; State.isLooping=State.mainLoop; State.playlistLoop=false; if State.currentSound then State.currentSound.Looped=State.mainLoop end; F.updateText(GUI.LoopButton,State.mainLoop and "🔁 LOOP: ON" or "🔁 LOOP: OFF"); GUI.LoopButton.BackgroundColor3=State.mainLoop and Color3.fromRGB(70,180,70) or Color3.fromRGB(130,130,130)
+            State.mainLoop=not State.mainLoop; State.isLooping=State.mainLoop; State.playlistLoop=false
+            if State.currentSound then State.currentSound.Looped=State.mainLoop end
+            if GUI.LoopButton then F.updateText(GUI.LoopButton,State.mainLoop and "🔁 LOOP: ON" or "🔁 LOOP: OFF"); GUI.LoopButton.BackgroundColor3=State.mainLoop and Color3.fromRGB(70,180,70) or Color3.fromRGB(130,130,130) end
         end
     end)
     print("[MusicPlayer] Keybinds: H=Hide/Show, P=Play/Pause, S=Stop, M=Mute Game, L=Loop")
@@ -797,14 +838,17 @@ F.init = function()
     State.history=F.loadJSON(P.history)
     State.musicCache=F.loadJSON(P.cache)
     State.imageCache=F.loadJSON(P.imageCache)
-    F.createMainGUI(); F.createMiniGUI(); F.createExtraMini()
+    
+    pcall(function() F.createMainGUI() end)
+    pcall(function() F.createMiniGUI() end)
+    pcall(function() F.createExtraMini() end)
     
     -- Slider dragging
     S.UIS.InputChanged:Connect(function(input)
         if input.UserInputType==Enum.UserInputType.MouseMovement then
-            if State.dragging.time and State.currentSound and State.currentSound.TimeLength>0 then
+            if State.dragging.time and State.currentSound and State.currentSound.TimeLength>0 and GUI.TimeSliderBg then
                 local mx=Mouse.X-GUI.TimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/GUI.TimeSliderBg.AbsoluteSize.X,0,1); State.currentSound.TimePosition=frac*State.currentSound.TimeLength; if State.isPaused then State.pausedTime=State.currentSound.TimePosition end; F.updateTimeDisplay()
-            elseif State.dragging.mini and State.currentSound and State.currentSound.TimeLength>0 then
+            elseif State.dragging.mini and State.currentSound and State.currentSound.TimeLength>0 and GUI.MiniTimeSliderBg then
                 local mx=Mouse.X-GUI.MiniTimeSliderBg.AbsolutePosition.X; local frac=math.clamp(mx/GUI.MiniTimeSliderBg.AbsoluteSize.X,0,1); State.currentSound.TimePosition=frac*State.currentSound.TimeLength; if State.isPaused then State.pausedTime=State.currentSound.TimePosition end; F.updateTimeDisplay()
             elseif State.dragging.extra and State.currentSound and State.currentSound.TimeLength>0 and GUI.ExtraTimeSlider and GUI.ExtraTimeSlider.Parent then
                 local mx=Mouse.X-GUI.ExtraTimeSlider.Parent.AbsolutePosition.X; local frac=math.clamp(mx/GUI.ExtraTimeSlider.Parent.AbsoluteSize.X,0,1); State.currentSound.TimePosition=frac*State.currentSound.TimeLength; if State.isPaused then State.pausedTime=State.currentSound.TimePosition end; F.updateTimeDisplay()
@@ -820,9 +864,10 @@ F.init = function()
         while GUI.SearchBox and GUI.SearchBox.Parent do
             local ft=texts[ti]; local ct=""
             for i=1,#ft do if not GUI.SearchBox or not GUI.SearchBox.Parent then return end; ct=ct..ft:sub(i,i); GUI.SearchBox.PlaceholderText=ct.."_"; wait(0.15) end
+            if not GUI.SearchBox or not GUI.SearchBox.Parent then return end
             GUI.SearchBox.PlaceholderText=ft.."_"; wait(0.3)
-            for b=1,3 do GUI.SearchBox.PlaceholderText=ft; wait(0.2); GUI.SearchBox.PlaceholderText=ft.."_"; wait(0.2) end
-            wait(1.5); GUI.SearchBox.PlaceholderText=""; wait(0.5)
+            for b=1,3 do if not GUI.SearchBox or not GUI.SearchBox.Parent then return end; GUI.SearchBox.PlaceholderText=ft; wait(0.2); if not GUI.SearchBox or not GUI.SearchBox.Parent then return end; GUI.SearchBox.PlaceholderText=ft.."_"; wait(0.2) end
+            wait(1.5); if not GUI.SearchBox or not GUI.SearchBox.Parent then return end; GUI.SearchBox.PlaceholderText=""; wait(0.5)
             ti=ti+1; if ti>#texts then ti=1 end
         end
     end)
@@ -832,9 +877,10 @@ F.init = function()
         while GUI.KeyBox and GUI.KeyBox.Parent do
             local ft=texts[ti]; local ct=""
             for i=1,#ft do if not GUI.KeyBox or not GUI.KeyBox.Parent then return end; ct=ct..ft:sub(i,i); GUI.KeyBox.PlaceholderText=ct.."_"; wait(0.15) end
+            if not GUI.KeyBox or not GUI.KeyBox.Parent then return end
             GUI.KeyBox.PlaceholderText=ft.."_"; wait(0.3)
-            for b=1,3 do GUI.KeyBox.PlaceholderText=ft; wait(0.2); GUI.KeyBox.PlaceholderText=ft.."_"; wait(0.2) end
-            wait(1.5); GUI.KeyBox.PlaceholderText=""; wait(0.5)
+            for b=1,3 do if not GUI.KeyBox or not GUI.KeyBox.Parent then return end; GUI.KeyBox.PlaceholderText=ft; wait(0.2); if not GUI.KeyBox or not GUI.KeyBox.Parent then return end; GUI.KeyBox.PlaceholderText=ft.."_"; wait(0.2) end
+            wait(1.5); if not GUI.KeyBox or not GUI.KeyBox.Parent then return end; GUI.KeyBox.PlaceholderText=""; wait(0.5)
             ti=ti+1; if ti>#texts then ti=1 end
         end
     end)
@@ -845,9 +891,10 @@ F.init = function()
     F.updateVolume(State.volume)
     F.updateSpeed(State.speed)
     F.setupKeybind()
+    F.applyTheme(State.theme)
     if State.keyCorrect then pcall(function() F.loadPlaylist() end) end
     
-    -- GUI state toggles
+    -- Toggle states
     if GUI.SaveThemeToggle then GUI.SaveThemeToggle.BackgroundColor3=State.saveTheme and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.SaveThemeToggle.Text=State.saveTheme and "ON" or "OFF" end
     if GUI.RememberKeyToggle then GUI.RememberKeyToggle.BackgroundColor3=State.rememberKey and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); GUI.RememberKeyToggle.Text=State.rememberKey and "ON" or "OFF" end
     if GUI.SliderColorToggle then GUI.SliderColorToggle.BackgroundColor3=State.sliderBlue and Color3.fromRGB(80,180,255) or Color3.fromRGB(255,80,80); GUI.SliderColorToggle.Text=State.sliderBlue and "BLUE" or "RED" end
@@ -863,7 +910,7 @@ F.init = function()
     Player.CharacterAdded:Connect(function() if State.currentSound and State.isPlaying then State.currentSound.Parent=workspace; if not State.currentSound.IsPlaying then State.currentSound:Play() end end end)
     
     -- Player leaving
-    S.Players.PlayerRemoving:Connect(function(lp) if lp==Player then if State.playlistConnection then pcall(function() State.playlistConnection:Disconnect() end) end; F.stopMusic(); pcall(function() GUI.Screen:Destroy() end); pcall(function() if GUI.MiniScreen then GUI.MiniScreen:Destroy() end end); pcall(function() if GUI.ExtraScreen then GUI.ExtraScreen:Destroy() end end); pcall(function() if GUI.ShowScreen then GUI.ShowScreen:Destroy() end end) end end)
+    S.Players.PlayerRemoving:Connect(function(lp) if lp==Player then if State.playlistConnection then pcall(function() State.playlistConnection:Disconnect() end) end; F.stopMusic(); pcall(function() if GUI.Screen then GUI.Screen:Destroy() end end); pcall(function() if GUI.MiniScreen then GUI.MiniScreen:Destroy() end end); pcall(function() if GUI.ExtraScreen then GUI.ExtraScreen:Destroy() end end); pcall(function() if GUI.ShowScreen then GUI.ShowScreen:Destroy() end end) end end)
     
     print("[MusicPlayer] Ready!")
     F.notify("GitHub MP3 Player","✅ GUI Loaded!",3)
