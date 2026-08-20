@@ -1337,18 +1337,134 @@ Green Show button to restore
 end
 
 -- ========== INIT ==========
+print("[MusicPlayer] ===============================")
 print("[MusicPlayer] Starting...")
-pcall(function() loadSettings(); S.imageCache=loadImageCache(); S.musicCache=loadCache(); S.downloadHistory=loadHistory(); S.musicStats=loadMusicStats(); S.userLanguage=detectUserLanguage() end)
-pcall(function() createMainGUI() end)
-pcall(function()
-    createExtraMiniGUI(); applyLoopState(); updateExtraLoopButton(); updateExtraMiniToggle()
-    applyTheme(S.currentTheme); updateSaveThemeToggle(); updateRememberKeyToggle(); updateMiniPlayToggle()
-    updateKeybindToggle(); setupKeybind()
-    updateSliderColors(); updateSliderColorToggle(); updateVolumeDisplayOnly(); updateSpeed(S.currentSpeed); updateTimeDisplay(); updateMusicStatsDisplay()
-    if S.isKeyCorrect then pcall(function() loadPlaylist() end) end
-    spawn(function() while true do if S.currentSound then updateTimeDisplay() end; wait(0.05) end end)
+print("[MusicPlayer] Loading saved data...")
+
+local function runSafe(name, fn)
+    local ok, err = xpcall(fn, function(e)
+        return tostring(e) .. "\n" .. debug.traceback()
+    end)
+
+    if not ok then
+        warn("[MusicPlayer] ERROR in " .. name .. ":")
+        warn(err)
+        print("[MusicPlayer] ERROR in " .. name .. ": " .. tostring(err))
+    else
+        print("[MusicPlayer] " .. name .. " OK")
+    end
+
+    return ok
+end
+
+runSafe("loadSettings/data", function()
+    loadSettings()
+    S.imageCache = loadImageCache()
+    S.musicCache = loadCache()
+    S.downloadHistory = loadHistory()
+    S.musicStats = loadMusicStats()
+    S.userLanguage = detectUserLanguage()
 end)
-S.player.CharacterAdded:Connect(function(char) if S.currentSound and S.isPlaying then S.currentSound.Parent=workspace; if not S.currentSound.IsPlaying then S.currentSound:Play() end end end)
-S.Players.PlayerRemoving:Connect(function(lp) if lp==S.player then if S.playlistCheckConnection then pcall(function() S.playlistCheckConnection:Disconnect() end); S.playlistCheckConnection=nil end; stopMusic(); pcall(function() S.ScreenGui:Destroy() end); pcall(function() if S.MiniScreenGui then S.MiniScreenGui:Destroy() end end); pcall(function() if S.ExtraMiniScreenGui then S.ExtraMiniScreenGui:Destroy() end end); pcall(function() if S.hideButton then S.hideButton:Destroy() end end); pcall(function() if S.showButton and S.showButton.Parent then S.showButton.Parent:Destroy() end end) end end)
+
+local guiOK = runSafe("createMainGUI", function()
+    createMainGUI()
+end)
+
+if not guiOK then
+    warn("[MusicPlayer] MAIN GUI FAILED TO CREATE.")
+    warn("[MusicPlayer] Check the error above.")
+    return
+end
+
+runSafe("post-GUI setup", function()
+    createExtraMiniGUI()
+    applyLoopState()
+    updateExtraLoopButton()
+    updateExtraMiniToggle()
+
+    applyTheme(S.currentTheme)
+    updateSaveThemeToggle()
+    updateRememberKeyToggle()
+    updateMiniPlayToggle()
+
+    updateKeybindToggle()
+    setupKeybind()
+
+    updateSliderColors()
+    updateSliderColorToggle()
+    updateVolumeDisplayOnly()
+    updateSpeed(S.currentSpeed)
+    updateTimeDisplay()
+    updateMusicStatsDisplay()
+
+    if S.isKeyCorrect then
+        loadPlaylist()
+    end
+end)
+
+task.spawn(function()
+    while task.wait(0.05) do
+        if S.currentSound then
+            pcall(updateTimeDisplay)
+        end
+    end
+end)
+
+S.player.CharacterAdded:Connect(function(char)
+    if S.currentSound and S.isPlaying then
+        S.currentSound.Parent = workspace
+
+        if not S.currentSound.IsPlaying then
+            S.currentSound:Play()
+        end
+    end
+end)
+
+S.Players.PlayerRemoving:Connect(function(lp)
+    if lp ~= S.player then
+        return
+    end
+
+    if S.playlistCheckConnection then
+        pcall(function()
+            S.playlistCheckConnection:Disconnect()
+        end)
+        S.playlistCheckConnection = nil
+    end
+
+    pcall(stopMusic)
+
+    pcall(function()
+        if S.ScreenGui then
+            S.ScreenGui:Destroy()
+        end
+    end)
+
+    pcall(function()
+        if S.MiniScreenGui then
+            S.MiniScreenGui:Destroy()
+        end
+    end)
+
+    pcall(function()
+        if S.ExtraMiniScreenGui then
+            S.ExtraMiniScreenGui:Destroy()
+        end
+    end)
+
+    pcall(function()
+        if S.hideButton then
+            S.hideButton:Destroy()
+        end
+    end)
+
+    pcall(function()
+        if S.showButton and S.showButton.Parent then
+            S.showButton.Parent:Destroy()
+        end
+    end)
+end)
+
+print("[MusicPlayer] ===============================")
 print("[MusicPlayer] Ready!")
-showNotification("GitHub MP3 Player","✅ GUI Loaded!",
+showNotification("GitHub MP3 Player", "✅ GUI Loaded!", 3)
