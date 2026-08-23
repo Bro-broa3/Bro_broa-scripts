@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - Final with all fixes
+-- Roblox Exploit MP3 Player GUI - Final with all fixes including textbox sliders
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -40,6 +40,64 @@ pcall(function() local oldExtra = CoreGui:FindFirstChild("MusicPlayerExtraMini")
 pcall(function() local oldHide = CoreGui:FindFirstChild("MusicPlayerHideBtn"); if oldHide then oldHide:Destroy() end end)
 pcall(function() local oldShow = CoreGui:FindFirstChild("MusicPlayerShowGui"); if oldShow then oldShow:Destroy() end end)
 pcall(function() for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("Sound") and obj.Name == "MusicPlayerSound" then obj:Stop(); obj:Destroy() end end end)
+
+-- ========== TEXTBOX SCROLLING HELPER ==========
+local function createScrollableTextBox(parent, size, position, placeholder)
+    local container = Instance.new("Frame")
+    container.Size = size
+    container.Position = position
+    container.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+    container.BorderSizePixel = 0
+    container.ClipsDescendants = true
+    container.Parent = parent
+    Instance.new("UICorner", container).CornerRadius = UDim.new(0, 4)
+
+    local scrollFrame = Instance.new("ScrollingFrame")
+    scrollFrame.Size = UDim2.new(1, 0, 1, 0)
+    scrollFrame.BackgroundTransparency = 1
+    scrollFrame.BorderSizePixel = 0
+    scrollFrame.ScrollBarThickness = 5
+    scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 160)
+    scrollFrame.VerticalScrollBarInset = Enum.ScrollBarInset.None
+    scrollFrame.HorizontalScrollBarInset = Enum.ScrollBarInset.Always
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    scrollFrame.ElasticBehavior = Enum.ElasticBehavior.Never
+    scrollFrame.ScrollingDirection = Enum.ScrollingDirection.X
+    scrollFrame.Parent = container
+
+    local textBox = Instance.new("TextBox")
+    textBox.Size = UDim2.new(1, 0, 1, 0)
+    textBox.Position = UDim2.new(0, 5, 0, 0)
+    textBox.BackgroundTransparency = 1
+    textBox.Text = ""
+    textBox.PlaceholderText = placeholder or ""
+    textBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 160)
+    textBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textBox.Font = Enum.Font.Gotham
+    textBox.TextSize = 10
+    textBox.ClearTextOnFocus = false
+    textBox.TextXAlignment = Enum.TextXAlignment.Left
+    textBox.TextWrapped = false
+    textBox.Parent = scrollFrame
+
+    -- Update scrolling frame properly
+    local function updateScrollingFrame()
+        local textWidth = textBox.TextBounds.X
+        local frameWidth = scrollFrame.AbsoluteSize.X
+        
+        if textWidth > frameWidth - 10 then
+            scrollFrame.CanvasSize = UDim2.new(0, textWidth + 20, 0, 0)
+        else
+            scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+        end
+    end
+
+    textBox:GetPropertyChangedSignal("Text"):Connect(updateScrollingFrame)
+    textBox:GetPropertyChangedSignal("TextBounds"):Connect(updateScrollingFrame)
+    scrollFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScrollingFrame)
+
+    return container, textBox
+end
 
 -- ========== AUTO TRANSLATE SYSTEM ==========
 
@@ -523,7 +581,6 @@ updateDataPanel = function()
             rank.TextSize=16
             rank.Parent=item
 
-            -- Image for playlist songs
             local img=Instance.new("ImageLabel")
             img.Size=UDim2.new(0,46,0,46)
             img.Position=UDim2.new(0,38,0,6)
@@ -533,7 +590,6 @@ updateDataPanel = function()
             img.Parent=item
             Instance.new("UICorner",img).CornerRadius=UDim.new(0,4)
             
-            -- Try to find image from playlist
             for _,song in pairs(S.playlistSongs or {}) do
                 if song.url==entry.url and song.imageAsset and song.imageAsset~="" then
                     img.Image=song.imageAsset
@@ -541,7 +597,6 @@ updateDataPanel = function()
                 end
             end
 
-            -- Auto-scroll frame for name
             local nameFrame=Instance.new("Frame")
             nameFrame.Size=UDim2.new(1,-92,0,25)
             nameFrame.Position=UDim2.new(0,92,0,6)
@@ -561,7 +616,6 @@ updateDataPanel = function()
             name.TextTruncate=Enum.TextTruncate.None
             name.Parent=nameFrame
 
-            -- Auto-scroll for long names
             spawn(function()
                 while nameFrame and nameFrame.Parent do
                     local textWidth=name.TextBounds.X
@@ -700,23 +754,19 @@ local function playMusicFromUrl(url, fn, playlistIdx)
 
         sound.Ended:Connect(function()
             if S.currentSound~=sound then return end
-            -- ALWAYS record completed play when the sound ends
             recordCompletedPlay(url,fn)
             
             if S.playlistLoopEnabled and #S.playlistSongs>0 then
-                -- Auto-advance to next song
                 local ni=S.currentPlaylistIndex+1; if ni>#S.playlistSongs then ni=1 end
                 local song=S.playlistSongs[ni]
                 if song then pcall(function() playMusicFromUrl(song.url,song.fileName,ni) end) end
             elseif S.isLooping then
-                -- Manual loop: restart the same song
                 sound.TimePosition=0
                 sound:Play()
                 S.isPlaying=true
                 S.isPaused=false
                 updateTimeDisplay()
             else
-                -- Song ended and no loop
                 S.isPlaying=false; S.isPaused=false
                 updateTranslatableText(S.PauseButton, "▶ RESUME")
                 if S.MiniPauseImageButton then S.MiniPauseImageButton.Image="rbxassetid://110560238983134" end
@@ -813,13 +863,14 @@ function updatePlaylistDisplay()
     local addPanel=Instance.new("Frame"); addPanel.Name="AddMusicPanel"; addPanel.Size=UDim2.new(1,-10,0,140); addPanel.Position=UDim2.new(0,5,0,btnTh)
     addPanel.BackgroundColor3=Color3.fromRGB(45,45,55); addPanel.BorderSizePixel=0; addPanel.Visible=false; addPanel.Parent=S.PlaylistScrollFrame; Instance.new("UICorner",addPanel).CornerRadius=UDim.new(0,6)
     local mp3Label=Instance.new("TextLabel"); mp3Label.Size=UDim2.new(1,-10,0,18); mp3Label.Position=UDim2.new(0,5,0,5); mp3Label.BackgroundTransparency=1; mp3Label.Text="GitHub MP3 URL:"; mp3Label.TextColor3=Color3.fromRGB(255,255,255); mp3Label.TextXAlignment=Enum.TextXAlignment.Left; mp3Label.Font=Enum.Font.Gotham; mp3Label.TextSize=11; mp3Label.Parent=addPanel
-    local mp3Container=Instance.new("Frame"); mp3Container.Size=UDim2.new(1,-10,0,28); mp3Container.Position=UDim2.new(0,5,0,26); mp3Container.BackgroundColor3=Color3.fromRGB(60,60,70); mp3Container.BorderSizePixel=0; mp3Container.ClipsDescendants=true; mp3Container.Parent=addPanel; Instance.new("UICorner",mp3Container).CornerRadius=UDim.new(0,4)
-    local mp3ScrollFrame=Instance.new("ScrollingFrame"); mp3ScrollFrame.Size=UDim2.new(1,0,1,0); mp3ScrollFrame.BackgroundTransparency=1; mp3ScrollFrame.BorderSizePixel=0; mp3ScrollFrame.ScrollBarThickness=5; mp3ScrollFrame.CanvasSize=UDim2.new(0,0,0,0); mp3ScrollFrame.ElasticBehavior=Enum.ElasticBehavior.Never; mp3ScrollFrame.ScrollingDirection=Enum.ScrollingDirection.X; mp3ScrollFrame.Parent=mp3Container
-    local mp3TextBox=Instance.new("TextBox"); mp3TextBox.Size=UDim2.new(1,0,1,0); mp3TextBox.Position=UDim2.new(0,5,0,0); mp3TextBox.BackgroundTransparency=1; mp3TextBox.Text=""; mp3TextBox.PlaceholderText="https://raw.githubusercontent.com/.../audio.mp3"; mp3TextBox.PlaceholderColor3=Color3.fromRGB(150,150,160); mp3TextBox.TextColor3=Color3.fromRGB(255,255,255); mp3TextBox.Font=Enum.Font.Gotham; mp3TextBox.TextSize=10; mp3TextBox.ClearTextOnFocus=false; mp3TextBox.TextXAlignment=Enum.TextXAlignment.Left; mp3TextBox.TextWrapped=false; mp3TextBox.Parent=mp3ScrollFrame
+    
+    -- Use scrollable textbox for MP3 URL
+    local mp3Container, mp3TextBox = createScrollableTextBox(addPanel, UDim2.new(1,-10,0,28), UDim2.new(0,5,0,26), "https://raw.githubusercontent.com/.../audio.mp3")
+    
     local imgLabel=Instance.new("TextLabel"); imgLabel.Size=UDim2.new(1,-10,0,18); imgLabel.Position=UDim2.new(0,5,0,60); imgLabel.BackgroundTransparency=1; imgLabel.Text="Raw Image Link (optional):"; imgLabel.TextColor3=Color3.fromRGB(255,255,255); imgLabel.TextXAlignment=Enum.TextXAlignment.Left; imgLabel.Font=Enum.Font.Gotham; imgLabel.TextSize=11; imgLabel.Parent=addPanel
-    local imgContainer=Instance.new("Frame"); imgContainer.Size=UDim2.new(1,-10,0,28); imgContainer.Position=UDim2.new(0,5,0,81); imgContainer.BackgroundColor3=Color3.fromRGB(60,60,70); imgContainer.BorderSizePixel=0; imgContainer.ClipsDescendants=true; imgContainer.Parent=addPanel; Instance.new("UICorner",imgContainer).CornerRadius=UDim.new(0,4)
-    local imgScrollFrame=Instance.new("ScrollingFrame"); imgScrollFrame.Size=UDim2.new(1,0,1,0); imgScrollFrame.BackgroundTransparency=1; imgScrollFrame.BorderSizePixel=0; imgScrollFrame.ScrollBarThickness=5; imgScrollFrame.CanvasSize=UDim2.new(0,0,0,0); imgScrollFrame.ElasticBehavior=Enum.ElasticBehavior.Never; imgScrollFrame.ScrollingDirection=Enum.ScrollingDirection.X; imgScrollFrame.Parent=imgContainer
-    local imgTextBox=Instance.new("TextBox"); imgTextBox.Size=UDim2.new(1,0,1,0); imgTextBox.Position=UDim2.new(0,5,0,0); imgTextBox.BackgroundTransparency=1; imgTextBox.Text=""; imgTextBox.PlaceholderText="https://raw.githubusercontent.com/.../image.png"; imgTextBox.PlaceholderColor3=Color3.fromRGB(150,150,160); imgTextBox.TextColor3=Color3.fromRGB(255,255,255); imgTextBox.Font=Enum.Font.Gotham; imgTextBox.TextSize=10; imgTextBox.ClearTextOnFocus=false; imgTextBox.TextXAlignment=Enum.TextXAlignment.Left; imgTextBox.TextWrapped=false; imgTextBox.Parent=imgScrollFrame
+    
+    -- Use scrollable textbox for Image URL
+    local imgContainer, imgTextBox = createScrollableTextBox(addPanel, UDim2.new(1,-10,0,28), UDim2.new(0,5,0,81), "https://raw.githubusercontent.com/.../image.png")
     
     local addConfirmBtn=Instance.new("TextButton"); addConfirmBtn.Size=UDim2.new(1,-10,0,25); addConfirmBtn.Position=UDim2.new(0,5,0,115); addConfirmBtn.BackgroundColor3=Color3.fromRGB(70,150,70); addConfirmBtn.BorderSizePixel=0; addConfirmBtn.Text="Add"; addConfirmBtn.TextColor3=Color3.fromRGB(255,255,255); addConfirmBtn.Font=Enum.Font.GothamBold; addConfirmBtn.TextSize=12; addConfirmBtn.Parent=addPanel; Instance.new("UICorner",addConfirmBtn).CornerRadius=UDim.new(0,4)
     
@@ -913,7 +964,6 @@ local function createExtraMiniGUI()
     local btnSize=30; local totalBtns=5; local totalWidth=btnSize*totalBtns+5*(totalBtns-1); local startX=(200-totalWidth)/2
     local function meb(img,px) local btn=Instance.new("ImageButton"); btn.Size=UDim2.new(0,btnSize,0,btnSize); btn.Position=UDim2.new(0,px,0,0); btn.BackgroundTransparency=1; btn.BorderSizePixel=0; btn.Image=img; btn.Parent=ecf; Instance.new("UICorner",btn).CornerRadius=UDim.new(1,0); return btn end
     
-    -- COOLDOWN: Previous button (0.25s)
     local extraLastCooldown = false
     local lastBtn=meb("rbxassetid://88757150664292",startX)
     lastBtn.MouseButton1Click:Connect(function()
@@ -927,7 +977,6 @@ local function createExtraMiniGUI()
     S.ExtraPauseImageButton=meb("rbxassetid://80704722265943",startX+btnSize*2+10); S.ExtraPauseImageButton.MouseButton1Click:Connect(function() if not S.currentSound then return end; togglePause() end)
     local forwardBtn=meb("rbxassetid://102857578902137",startX+btnSize*3+15); forwardBtn.MouseButton1Click:Connect(function() if not S.currentSound then return end; local nt=math.min(S.currentSound.TimePosition+10,S.currentSound.TimeLength); S.currentSound.TimePosition=nt; if S.isPaused then S.pausedTimePosition=nt end; updateTimeDisplay() end)
     
-    -- COOLDOWN: Next button (0.25s)
     local extraNextCooldown = false
     local nextBtn=meb("rbxassetid://82401540450034",startX+btnSize*4+20)
     nextBtn.MouseButton1Click:Connect(function()
@@ -1159,14 +1208,13 @@ Green Show button to restore
         updateDataPanel()
     end)
 
-    -- Initialize interval display
     setDataRefreshInterval(S.dataRefreshInterval)
 
     S.ContentFrame=Instance.new("Frame"); S.ContentFrame.Size=UDim2.new(1,-20,1,-55); S.ContentFrame.Position=UDim2.new(0,10,0,45); S.ContentFrame.BackgroundTransparency=1; S.ContentFrame.Parent=S.MainFrame
     local ul=Instance.new("TextLabel"); ul.Size=UDim2.new(1,0,0,18); ul.BackgroundTransparency=1; ul.Text="GitHub MP3 URL:"; ul.TextColor3=Color3.fromRGB(255,255,255); ul.TextXAlignment=Enum.TextXAlignment.Left; ul.Font=Enum.Font.Gotham; ul.TextSize=12; ul.Parent=S.ContentFrame
-    S.UrlContainer=Instance.new("Frame"); S.UrlContainer.Size=UDim2.new(1,0,0,32); S.UrlContainer.Position=UDim2.new(0,0,0,22); S.UrlContainer.BackgroundColor3=Color3.fromRGB(60,60,60); S.UrlContainer.BorderSizePixel=0; S.UrlContainer.ClipsDescendants=true; S.UrlContainer.Parent=S.ContentFrame; Instance.new("UICorner",S.UrlContainer).CornerRadius=UDim.new(0,6)
-    local usf=Instance.new("ScrollingFrame"); usf.Size=UDim2.new(1,0,1,0); usf.BackgroundTransparency=1; usf.BorderSizePixel=0; usf.ScrollBarThickness=8; usf.VerticalScrollBarInset=Enum.ScrollBarInset.None; usf.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; usf.CanvasSize=UDim2.new(0,0,0,0); usf.ElasticBehavior=Enum.ElasticBehavior.Never; usf.ScrollingDirection=Enum.ScrollingDirection.X; usf.Parent=S.UrlContainer
-    S.UrlTextBox=Instance.new("TextBox"); S.UrlTextBox.Size=UDim2.new(1,0,1,0); S.UrlTextBox.Position=UDim2.new(0,5,0,0); S.UrlTextBox.BackgroundTransparency=1; S.UrlTextBox.Text=""; S.UrlTextBox.PlaceholderText="https://github.com/.../audio.mp3"; S.UrlTextBox.TextColor3=Color3.fromRGB(255,255,255); S.UrlTextBox.Font=Enum.Font.Gotham; S.UrlTextBox.TextSize=12; S.UrlTextBox.ClearTextOnFocus=false; S.UrlTextBox.TextXAlignment=Enum.TextXAlignment.Left; S.UrlTextBox.TextWrapped=false; S.UrlTextBox.Parent=usf
+    
+    -- Use scrollable textbox for main URL input
+    S.UrlContainer, S.UrlTextBox = createScrollableTextBox(S.ContentFrame, UDim2.new(1,0,0,32), UDim2.new(0,0,0,22), "https://github.com/.../audio.mp3")
     
     local cb=Instance.new("Frame"); cb.Size=UDim2.new(1,0,0,35); cb.Position=UDim2.new(0,0,0,60); cb.BackgroundTransparency=1; cb.Parent=S.ContentFrame
     S.PlayButton=Instance.new("TextButton"); S.PlayButton.Size=UDim2.new(0.31,0,1,0); S.PlayButton.BackgroundColor3=Color3.fromRGB(70,180,70); S.PlayButton.BorderSizePixel=0; S.PlayButton.Text="▶ PLAY"; S.PlayButton.TextColor3=Color3.fromRGB(255,255,255); S.PlayButton.Font=Enum.Font.GothamBold; S.PlayButton.TextSize=13; S.PlayButton.Parent=cb; Instance.new("UICorner",S.PlayButton).CornerRadius=UDim.new(0,6)
@@ -1185,9 +1233,8 @@ Green Show button to restore
     local tgf=Instance.new("Frame"); tgf.Size=UDim2.new(1,0,0,28); tgf.Position=UDim2.new(0,0,0,170); tgf.BackgroundTransparency=1; tgf.Parent=S.ContentFrame; local bw,sp=0.32,0.02
     S.MuteToggle=Instance.new("TextButton"); S.MuteToggle.Size=UDim2.new(bw,0,0,28); S.MuteToggle.Position=UDim2.new(0,0,0,0); S.MuteToggle.BackgroundColor3=Color3.fromRGB(180,80,80); S.MuteToggle.BorderSizePixel=0; S.MuteToggle.Text="🔇 MUTE GAME"; S.MuteToggle.TextColor3=Color3.fromRGB(255,255,255); S.MuteToggle.Font=Enum.Font.Gotham; S.MuteToggle.TextSize=10; S.MuteToggle.Parent=tgf; Instance.new("UICorner",S.MuteToggle).CornerRadius=UDim.new(0,6)
     
-    S.SecretKeyContainer=Instance.new("Frame"); S.SecretKeyContainer.Size=UDim2.new(bw,0,0,28); S.SecretKeyContainer.Position=UDim2.new(bw+sp,0,0,0); S.SecretKeyContainer.BackgroundColor3=Color3.fromRGB(60,60,70); S.SecretKeyContainer.BorderSizePixel=0; S.SecretKeyContainer.ClipsDescendants=true; S.SecretKeyContainer.Parent=tgf; Instance.new("UICorner",S.SecretKeyContainer).CornerRadius=UDim.new(0,6)
-    local sksf=Instance.new("ScrollingFrame"); sksf.Size=UDim2.new(1,0,1,0); sksf.BackgroundTransparency=1; sksf.BorderSizePixel=0; sksf.ScrollBarThickness=5; sksf.VerticalScrollBarInset=Enum.ScrollBarInset.None; sksf.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; sksf.CanvasSize=UDim2.new(0,0,0,0); sksf.ElasticBehavior=Enum.ElasticBehavior.Never; sksf.ScrollingDirection=Enum.ScrollingDirection.X; sksf.Parent=S.SecretKeyContainer
-    S.SecretKeyTextBox=Instance.new("TextBox"); S.SecretKeyTextBox.Size=UDim2.new(1,0,1,0); S.SecretKeyTextBox.Position=UDim2.new(0,3,0,0); S.SecretKeyTextBox.BackgroundTransparency=1; S.SecretKeyTextBox.Text=""; S.SecretKeyTextBox.PlaceholderText=""; S.SecretKeyTextBox.PlaceholderColor3=Color3.fromRGB(150,150,160); S.SecretKeyTextBox.TextColor3=Color3.fromRGB(255,255,255); S.SecretKeyTextBox.Font=Enum.Font.Gotham; S.SecretKeyTextBox.TextSize=9; S.SecretKeyTextBox.ClearTextOnFocus=false; S.SecretKeyTextBox.TextXAlignment=Enum.TextXAlignment.Left; S.SecretKeyTextBox.TextWrapped=false; S.SecretKeyTextBox.Parent=sksf
+    S.SecretKeyContainer, S.SecretKeyTextBox = createScrollableTextBox(tgf, UDim2.new(bw,0,0,28), UDim2.new(bw+sp,0,0,0), "")
+    S.SecretKeyTextBox.TextSize = 9
     S.SecretKeyTextBox.FocusLost:Connect(function(ep) if ep and S.SecretKeyTextBox.Text~="" then checkSecretKey(S.SecretKeyTextBox.Text) end end)
     
     S.LoopToggle=Instance.new("TextButton"); S.LoopToggle.Size=UDim2.new(bw,0,0,28); S.LoopToggle.Position=UDim2.new(bw*2+sp*2,0,0,0); S.LoopToggle.BackgroundColor3=Color3.fromRGB(70,180,70); S.LoopToggle.BorderSizePixel=0; S.LoopToggle.Text="🔁 LOOP: ON"; S.LoopToggle.TextColor3=Color3.fromRGB(255,255,255); S.LoopToggle.Font=Enum.Font.Gotham; S.LoopToggle.TextSize=11; S.LoopToggle.Parent=tgf; Instance.new("UICorner",S.LoopToggle).CornerRadius=UDim.new(0,6)
@@ -1220,10 +1267,14 @@ Green Show button to restore
     S.SearchTabBtn=Instance.new("TextButton"); S.SearchTabBtn.Size=UDim2.new(0.48,0,1,0); S.SearchTabBtn.BackgroundColor3=Color3.fromRGB(100,150,255); S.SearchTabBtn.BorderSizePixel=0; S.SearchTabBtn.Text="🔍 Search"; S.SearchTabBtn.TextColor3=Color3.fromRGB(255,255,255); S.SearchTabBtn.Font=Enum.Font.GothamBold; S.SearchTabBtn.TextSize=12; S.SearchTabBtn.Parent=tbf; Instance.new("UICorner",S.SearchTabBtn).CornerRadius=UDim.new(0,6)
     S.PlaylistTabBtn=Instance.new("TextButton"); S.PlaylistTabBtn.Size=UDim2.new(0.48,0,1,0); S.PlaylistTabBtn.Position=UDim2.new(0.52,0,0,0); S.PlaylistTabBtn.BackgroundColor3=Color3.fromRGB(60,60,70); S.PlaylistTabBtn.BorderSizePixel=0; S.PlaylistTabBtn.Text="📋 Playlist"; S.PlaylistTabBtn.TextColor3=Color3.fromRGB(255,255,255); S.PlaylistTabBtn.Font=Enum.Font.GothamBold; S.PlaylistTabBtn.TextSize=12; S.PlaylistTabBtn.Parent=tbf; Instance.new("UICorner",S.PlaylistTabBtn).CornerRadius=UDim.new(0,6)
     local scf=Instance.new("Frame"); scf.Size=UDim2.new(1,0,1,-35); scf.Position=UDim2.new(0,0,0,35); scf.BackgroundTransparency=1; scf.Visible=true; scf.Parent=S.SearchPanel
-    local sif=Instance.new("Frame"); sif.Size=UDim2.new(1,-20,0,40); sif.Position=UDim2.new(0,10,0,0); sif.BackgroundColor3=Color3.fromRGB(60,60,70); sif.BorderSizePixel=0; sif.ClipsDescendants=true; sif.Parent=scf; Instance.new("UICorner",sif).CornerRadius=UDim.new(0,6)
-    local ssf2=Instance.new("ScrollingFrame"); ssf2.Size=UDim2.new(1,-40,1,0); ssf2.BackgroundTransparency=1; ssf2.BorderSizePixel=0; ssf2.ScrollBarThickness=6; ssf2.VerticalScrollBarInset=Enum.ScrollBarInset.None; ssf2.HorizontalScrollBarInset=Enum.ScrollBarInset.Always; ssf2.CanvasSize=UDim2.new(0,0,0,0); ssf2.ElasticBehavior=Enum.ElasticBehavior.Never; ssf2.ScrollingDirection=Enum.ScrollingDirection.X; ssf2.Parent=sif
-    S.SearchTextBox=Instance.new("TextBox"); S.SearchTextBox.Size=UDim2.new(1,0,1,0); S.SearchTextBox.Position=UDim2.new(0,5,0,0); S.SearchTextBox.BackgroundTransparency=1; S.SearchTextBox.Text=""; S.SearchTextBox.PlaceholderText=""; S.SearchTextBox.PlaceholderColor3=Color3.fromRGB(180,180,180); S.SearchTextBox.TextColor3=Color3.fromRGB(255,255,255); S.SearchTextBox.Font=Enum.Font.Gotham; S.SearchTextBox.TextSize=12; S.SearchTextBox.ClearTextOnFocus=false; S.SearchTextBox.TextXAlignment=Enum.TextXAlignment.Left; S.SearchTextBox.TextWrapped=false; S.SearchTextBox.Parent=ssf2
-    local spb=Instance.new("TextButton"); spb.Size=UDim2.new(0,30,0,30); spb.Position=UDim2.new(1,-35,0,5); spb.BackgroundColor3=Color3.fromRGB(100,150,255); spb.BorderSizePixel=0; spb.Text="🔍"; spb.TextColor3=Color3.fromRGB(255,255,255); spb.Font=Enum.Font.GothamBold; spb.TextSize=14; spb.Parent=sif; Instance.new("UICorner",spb).CornerRadius=UDim.new(0,4)
+    
+    -- Search textbox with scrolling
+    local sif, sifTextBox = createScrollableTextBox(scf, UDim2.new(1,-40,0,40), UDim2.new(0,10,0,0), "")
+    S.SearchTextBox = sifTextBox
+    S.SearchTextBox.TextSize = 12
+    
+    local spb=Instance.new("TextButton"); spb.Size=UDim2.new(0,30,0,30); spb.Position=UDim2.new(1,-35,0,5); spb.BackgroundColor3=Color3.fromRGB(100,150,255); spb.BorderSizePixel=0; spb.Text="🔍"; spb.TextColor3=Color3.fromRGB(255,255,255); spb.Font=Enum.Font.GothamBold; spb.TextSize=14; spb.Parent=scf; Instance.new("UICorner",spb).CornerRadius=UDim.new(0,4)
+    
     local si=Instance.new("TextLabel"); si.Size=UDim2.new(1,-20,0,25); si.Position=UDim2.new(0,10,0,45); si.BackgroundTransparency=1; si.Text="Enter song name or full GitHub raw URL"; si.TextColor3=Color3.fromRGB(200,200,220); si.TextXAlignment=Enum.TextXAlignment.Left; si.TextWrapped=true; si.Font=Enum.Font.Gotham; si.TextSize=10; si.Parent=scf
     S.SearchScrollFrame=Instance.new("ScrollingFrame"); S.SearchScrollFrame.Size=UDim2.new(1,-20,1,-80); S.SearchScrollFrame.Position=UDim2.new(0,10,0,75); S.SearchScrollFrame.BackgroundColor3=Color3.fromRGB(45,45,55); S.SearchScrollFrame.BorderSizePixel=0; S.SearchScrollFrame.ScrollBarThickness=8; S.SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0); S.SearchScrollFrame.Parent=scf; Instance.new("UICorner",S.SearchScrollFrame).CornerRadius=UDim.new(0,6)
     S.SearchNoResultsLabel=Instance.new("TextLabel"); S.SearchNoResultsLabel.Size=UDim2.new(1,0,0,50); S.SearchNoResultsLabel.Position=UDim2.new(0,0,0.5,-25); S.SearchNoResultsLabel.BackgroundTransparency=1; S.SearchNoResultsLabel.Text="Enter a search term or URL"; S.SearchNoResultsLabel.TextColor3=Color3.fromRGB(150,150,160); S.SearchNoResultsLabel.Font=Enum.Font.Gotham; S.SearchNoResultsLabel.TextSize=12; S.SearchNoResultsLabel.TextWrapped=true; S.SearchNoResultsLabel.Visible=true; S.SearchNoResultsLabel.Parent=S.SearchScrollFrame
@@ -1348,7 +1399,6 @@ Green Show button to restore
     spawn(function() animateTextboxPlaceholder(S.SearchTextBox, {"search by name or paste URL","type a song name to find...","paste GitHub raw URL here...","find your favorite music...","enter URL ending with .mp3..."}) end)
     spawn(function() animateTextboxPlaceholder(S.SecretKeyTextBox, {"enter a secret key","unlock the playlist...","type the key to access..."}) end)
     
-    -- Apply initial translation state
     applyTranslations()
     updateAutoTranslateToggle()
     
@@ -1427,7 +1477,6 @@ if guiOK then
         end
     end)
 
-    -- Single refresh loop using the configured interval
     task.spawn(function()
         while task.wait(S.dataRefreshInterval or 15) do
             if S.InfoDataFrame and S.InfoDataFrame.Visible then
