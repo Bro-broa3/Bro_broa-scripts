@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - Final with all fixes including textbox sliders
+-- Roblox Exploit MP3 Player GUI - Fixed initialization order and folder creation
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -15,6 +15,8 @@ local mouse = player:GetMouse()
 local MUSIC_FOLDER = "MusicPlayerData"
 local CACHE_FOLDER = MUSIC_FOLDER .. "/Cache"
 local IMAGES_FOLDER = MUSIC_FOLDER .. "/Images"
+
+-- Create folders one by one with individual pcall
 pcall(function() if makefolder then makefolder(MUSIC_FOLDER) end end)
 pcall(function() if makefolder then makefolder(CACHE_FOLDER) end end)
 pcall(function() if makefolder then makefolder(IMAGES_FOLDER) end end)
@@ -80,7 +82,6 @@ local function createScrollableTextBox(parent, size, position, placeholder)
     textBox.TextWrapped = false
     textBox.Parent = scrollFrame
 
-    -- Update scrolling frame properly
     local function updateScrollingFrame()
         local textWidth = textBox.TextBounds.X
         local frameWidth = scrollFrame.AbsoluteSize.X
@@ -211,8 +212,10 @@ S = {
     }, themes={}, rainbowColorList={}, musicStats={}, dataRefreshInterval=15
 }
 
--- Forward declaration
+-- Forward declarations for functions that may be called before definition
 local updateDataPanel
+local updateExtraMiniToggle
+local loadPlaylist
 
 -- ========== IMAGE CACHE ==========
 local function loadImageCache() local s, r = pcall(function() if readfile and isfile and isfile(IMAGE_CACHE_FILE) then return HttpService:JSONDecode(readfile(IMAGE_CACHE_FILE)) end end); return s and r or {} end
@@ -259,10 +262,17 @@ local function loadSettings()
         if r.dataRefreshInterval~=nil then S.dataRefreshInterval=r.dataRefreshInterval end
     end
     local rk, rv = pcall(function() if readfile and isfile and isfile(KEY_FILE) then return HttpService:JSONDecode(readfile(KEY_FILE)) end end)
-    if rk and rv then if rv.rememberKeyEnabled~=nil then S.rememberKeyEnabled=rv.rememberKeyEnabled end; if rv.isKeyCorrect then S.isKeyCorrect=true; pcall(function() loadPlaylist() end) end end
+    if rk and rv then 
+        if rv.rememberKeyEnabled~=nil then S.rememberKeyEnabled=rv.rememberKeyEnabled end
+        if rv.isKeyCorrect then 
+            S.isKeyCorrect=true
+            if loadPlaylist then pcall(loadPlaylist) end
+        end 
+    end
     local up, upv = pcall(function() if readfile and isfile and isfile(PLAYLIST_DATA_FILE) then return HttpService:JSONDecode(readfile(PLAYLIST_DATA_FILE)) end end)
     if up and upv then S.userPlaylist=upv end
 end
+
 local function saveSettings()
     pcall(function()
         if writefile then
@@ -548,11 +558,9 @@ end
 
 updateDataPanel = function()
     if not S.InfoDataFrame then return end
-
     for _,child in pairs(S.InfoDataFrame:GetChildren()) do
         if child.Name=="DataSongItem" then child:Destroy() end
     end
-
     local top=getTopMusicStats(3)
     if #top==0 then
         if S.DataEmptyLabel then
@@ -570,7 +578,6 @@ updateDataPanel = function()
             item.BorderSizePixel=0
             item.Parent=S.InfoDataFrame
             Instance.new("UICorner",item).CornerRadius=UDim.new(0,7)
-
             local rank=Instance.new("TextLabel")
             rank.Size=UDim2.new(0,32,1,0)
             rank.Position=UDim2.new(0,5,0,0)
@@ -580,7 +587,6 @@ updateDataPanel = function()
             rank.Font=Enum.Font.GothamBold
             rank.TextSize=16
             rank.Parent=item
-
             local img=Instance.new("ImageLabel")
             img.Size=UDim2.new(0,46,0,46)
             img.Position=UDim2.new(0,38,0,6)
@@ -589,21 +595,18 @@ updateDataPanel = function()
             img.ScaleType=Enum.ScaleType.Crop
             img.Parent=item
             Instance.new("UICorner",img).CornerRadius=UDim.new(0,4)
-            
             for _,song in pairs(S.playlistSongs or {}) do
                 if song.url==entry.url and song.imageAsset and song.imageAsset~="" then
                     img.Image=song.imageAsset
                     break
                 end
             end
-
             local nameFrame=Instance.new("Frame")
             nameFrame.Size=UDim2.new(1,-92,0,25)
             nameFrame.Position=UDim2.new(0,92,0,6)
             nameFrame.BackgroundTransparency=1
             nameFrame.ClipsDescendants=true
             nameFrame.Parent=item
-
             local name=Instance.new("TextLabel")
             name.Size=UDim2.new(1,0,1,0)
             name.Position=UDim2.new(0,0,0,0)
@@ -615,7 +618,6 @@ updateDataPanel = function()
             name.TextSize=12
             name.TextTruncate=Enum.TextTruncate.None
             name.Parent=nameFrame
-
             spawn(function()
                 while nameFrame and nameFrame.Parent do
                     local textWidth=name.TextBounds.X
@@ -635,7 +637,6 @@ updateDataPanel = function()
                     if not nameFrame.Parent then break end
                 end
             end)
-
             local plays=Instance.new("TextLabel")
             plays.Size=UDim2.new(0,75,0,22)
             plays.Position=UDim2.new(1,-82,0,18)
@@ -648,7 +649,6 @@ updateDataPanel = function()
             plays.Parent=item
         end
     end
-
     if S.DataLastUpdatedLabel then
         S.DataLastUpdatedLabel.Text="Updated: "..os.date("%H:%M:%S")
     end
@@ -803,7 +803,7 @@ local function applyExtraLoopState()
 end
 
 -- ========== PLAYLIST ==========
-function loadPlaylist()
+loadPlaylist = function()
     S.playlistSongs={}
     local s,data=pcall(function() return game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/PrimeMusic/refs/heads/main/Playlist") end)
     if s and data then
@@ -826,11 +826,31 @@ function loadPlaylist()
     for _,song in ipairs(S.userPlaylist) do table.insert(S.playlistSongs,song) end
 end
 
+updateExtraMiniToggle = function()
+    if not S.ExtraMiniToggle then return end
+    S.isKeyCorrect = S.isKeyCorrect == true
+    if not S.isKeyCorrect then S.ExtraMiniToggle.BackgroundColor3=Color3.fromRGB(180,80,80); S.ExtraMiniToggle.Text="LOCKED"; return end
+    S.ExtraMiniToggle.BackgroundColor3=S.extraMiniPlayMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80)
+    S.ExtraMiniToggle.Text=S.extraMiniPlayMode and "ON" or "OFF"
+end
+
 function checkSecretKey(input)
     local s,fetchedKey=pcall(function() return game:HttpGet("https://raw.githubusercontent.com/Bro-broa3/PrimeMusic/refs/heads/main/Key") end)
     if s and fetchedKey then fetchedKey=string.gsub(fetchedKey,"^%s+",""); fetchedKey=string.gsub(fetchedKey,"%s+$",""); S.secretKey=fetchedKey end
-    if input==S.secretKey then S.isKeyCorrect=true; S.SecretKeyTextBox.Text=""; updateExtraMiniToggle(); if S.rememberKeyEnabled then saveKeyState() end; loadPlaylist(); showNotification("GitHub MP3 Player","✅ Key correct!",3); if S.isSearchOpen and S.currentSearchTab=="Playlist" then updatePlaylistDisplay() end; return true
-    else S.SecretKeyTextBox.Text=""; showNotification("GitHub MP3 Player","❌ Wrong key!",3); return false end
+    if input==S.secretKey then 
+        S.isKeyCorrect=true
+        S.SecretKeyTextBox.Text=""
+        if updateExtraMiniToggle then updateExtraMiniToggle() end
+        if S.rememberKeyEnabled then saveKeyState() end
+        if loadPlaylist then loadPlaylist() end
+        showNotification("GitHub MP3 Player","✅ Key correct!",3)
+        if S.isSearchOpen and S.currentSearchTab=="Playlist" then updatePlaylistDisplay() end
+        return true
+    else 
+        S.SecretKeyTextBox.Text=""
+        showNotification("GitHub MP3 Player","❌ Wrong key!",3)
+        return false 
+    end
 end
 
 function updatePlaylistDisplay()
@@ -864,12 +884,10 @@ function updatePlaylistDisplay()
     addPanel.BackgroundColor3=Color3.fromRGB(45,45,55); addPanel.BorderSizePixel=0; addPanel.Visible=false; addPanel.Parent=S.PlaylistScrollFrame; Instance.new("UICorner",addPanel).CornerRadius=UDim.new(0,6)
     local mp3Label=Instance.new("TextLabel"); mp3Label.Size=UDim2.new(1,-10,0,18); mp3Label.Position=UDim2.new(0,5,0,5); mp3Label.BackgroundTransparency=1; mp3Label.Text="GitHub MP3 URL:"; mp3Label.TextColor3=Color3.fromRGB(255,255,255); mp3Label.TextXAlignment=Enum.TextXAlignment.Left; mp3Label.Font=Enum.Font.Gotham; mp3Label.TextSize=11; mp3Label.Parent=addPanel
     
-    -- Use scrollable textbox for MP3 URL
     local mp3Container, mp3TextBox = createScrollableTextBox(addPanel, UDim2.new(1,-10,0,28), UDim2.new(0,5,0,26), "https://raw.githubusercontent.com/.../audio.mp3")
     
     local imgLabel=Instance.new("TextLabel"); imgLabel.Size=UDim2.new(1,-10,0,18); imgLabel.Position=UDim2.new(0,5,0,60); imgLabel.BackgroundTransparency=1; imgLabel.Text="Raw Image Link (optional):"; imgLabel.TextColor3=Color3.fromRGB(255,255,255); imgLabel.TextXAlignment=Enum.TextXAlignment.Left; imgLabel.Font=Enum.Font.Gotham; imgLabel.TextSize=11; imgLabel.Parent=addPanel
     
-    -- Use scrollable textbox for Image URL
     local imgContainer, imgTextBox = createScrollableTextBox(addPanel, UDim2.new(1,-10,0,28), UDim2.new(0,5,0,81), "https://raw.githubusercontent.com/.../image.png")
     
     local addConfirmBtn=Instance.new("TextButton"); addConfirmBtn.Size=UDim2.new(1,-10,0,25); addConfirmBtn.Position=UDim2.new(0,5,0,115); addConfirmBtn.BackgroundColor3=Color3.fromRGB(70,150,70); addConfirmBtn.BorderSizePixel=0; addConfirmBtn.Text="Add"; addConfirmBtn.TextColor3=Color3.fromRGB(255,255,255); addConfirmBtn.Font=Enum.Font.GothamBold; addConfirmBtn.TextSize=12; addConfirmBtn.Parent=addPanel; Instance.new("UICorner",addConfirmBtn).CornerRadius=UDim.new(0,4)
@@ -890,7 +908,6 @@ end
 local function updateSaveThemeToggle() if not S.SaveThemeToggle then return end; S.SaveThemeToggle.BackgroundColor3=S.saveThemeEnabled and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); S.SaveThemeToggle.Text=S.saveThemeEnabled and "ON" or "OFF" end
 local function updateRememberKeyToggle() if not S.RememberKeyToggle then return end; S.RememberKeyToggle.BackgroundColor3=S.rememberKeyEnabled and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); S.RememberKeyToggle.Text=S.rememberKeyEnabled and "ON" or "OFF" end
 local function updateMiniPlayToggle() if not S.MiniPlayToggle then return end; S.MiniPlayToggle.BackgroundColor3=S.miniPlayMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); S.MiniPlayToggle.Text=S.miniPlayMode and "ON" or "OFF" end
-local function updateExtraMiniToggle() if not S.ExtraMiniToggle then return end; S.isKeyCorrect = S.isKeyCorrect == true; if not S.isKeyCorrect then S.ExtraMiniToggle.BackgroundColor3=Color3.fromRGB(180,80,80); S.ExtraMiniToggle.Text="LOCKED"; return end; S.ExtraMiniToggle.BackgroundColor3=S.extraMiniPlayMode and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); S.ExtraMiniToggle.Text=S.extraMiniPlayMode and "ON" or "OFF" end
 local function updateKeybindToggle() if not S.KeybindToggle then return end; S.KeybindToggle.BackgroundColor3=S.keybindEnabled and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); S.KeybindToggle.Text=S.keybindEnabled and "ON" or "OFF" end
 local function updateAutoTranslateToggle() if not S.AutoTranslateToggle then return end; S.AutoTranslateToggle.BackgroundColor3=S.autoTranslateEnabled and Color3.fromRGB(80,180,80) or Color3.fromRGB(180,80,80); S.AutoTranslateToggle.Text=S.autoTranslateEnabled and "ON" or "OFF" end
 
@@ -944,7 +961,7 @@ local function createHideShowButtons()
     registerForTranslation(S.showButton, "🎵 SHOW")
 end
 
--- ========== EXTRA MINI GUI (WITH COOLDOWN ON PREV/NEXT) ==========
+-- ========== EXTRA MINI GUI ==========
 local function createExtraMiniGUI()
     if S.ExtraMiniScreenGui then S.ExtraMiniScreenGui:Destroy() end
     S.ExtraMiniScreenGui=Instance.new("ScreenGui"); S.ExtraMiniScreenGui.Name="MusicPlayerExtraMini"; S.ExtraMiniScreenGui.ResetOnSpawn=false; S.ExtraMiniScreenGui.ZIndexBehavior=Enum.ZIndexBehavior.Sibling; S.ExtraMiniScreenGui.Parent=CoreGui; S.ExtraMiniScreenGui.Enabled=false
@@ -1110,7 +1127,6 @@ local function createMainGUI()
     S.KeybindToggle=Instance.new("TextButton"); S.KeybindToggle.Size=UDim2.new(0,60,0,28); S.KeybindToggle.Position=UDim2.new(0,220,0,yPos+230); S.KeybindToggle.BorderSizePixel=0; S.KeybindToggle.Font=Enum.Font.GothamBold; S.KeybindToggle.TextSize=12; S.KeybindToggle.TextColor3=Color3.fromRGB(255,255,255); S.KeybindToggle.Parent=S.SettingsScrollFrame; Instance.new("UICorner",S.KeybindToggle).CornerRadius=UDim.new(0,6)
     S.KeybindToggle.MouseButton1Click:Connect(function() S.keybindEnabled=not S.keybindEnabled; updateKeybindToggle(); saveSettings(); setupKeybind() end)
     
-    -- Auto Translate Toggle
     local AutoTranslateLabel=Instance.new("TextLabel"); AutoTranslateLabel.Size=UDim2.new(0,200,0,25); AutoTranslateLabel.Position=UDim2.new(0,15,0,yPos+265); AutoTranslateLabel.BackgroundTransparency=1; AutoTranslateLabel.Text="Auto Translate:"; AutoTranslateLabel.TextColor3=Color3.fromRGB(220,220,230); AutoTranslateLabel.TextXAlignment=Enum.TextXAlignment.Left; AutoTranslateLabel.Font=Enum.Font.GothamBold; AutoTranslateLabel.TextSize=13; AutoTranslateLabel.Parent=S.SettingsScrollFrame
     S.AutoTranslateToggle=Instance.new("TextButton"); S.AutoTranslateToggle.Size=UDim2.new(0,60,0,28); S.AutoTranslateToggle.Position=UDim2.new(0,220,0,yPos+265); S.AutoTranslateToggle.BorderSizePixel=0; S.AutoTranslateToggle.Font=Enum.Font.GothamBold; S.AutoTranslateToggle.TextSize=12; S.AutoTranslateToggle.TextColor3=Color3.fromRGB(255,255,255); S.AutoTranslateToggle.Parent=S.SettingsScrollFrame; Instance.new("UICorner",S.AutoTranslateToggle).CornerRadius=UDim.new(0,6)
     S.AutoTranslateToggle.MouseButton1Click:Connect(function() toggleAutoTranslate() end)
@@ -1124,7 +1140,7 @@ local function createMainGUI()
     settingsTabBtn.MouseButton1Click:Connect(function() S.playingTabOpen=false; S.SettingsScrollFrame.Visible=true; S.playingPanel.Visible=false; settingsTabBtn.BackgroundColor3=Color3.fromRGB(100,150,255); playingTabBtn.BackgroundColor3=Color3.fromRGB(60,60,70) end)
     playingTabBtn.MouseButton1Click:Connect(function() S.playingTabOpen=true; S.SettingsScrollFrame.Visible=false; S.playingPanel.Visible=true; playingTabBtn.BackgroundColor3=Color3.fromRGB(100,150,255); settingsTabBtn.BackgroundColor3=Color3.fromRGB(60,60,70); if S.playingSongLabel then S.playingSongLabel.Text=S.currentSongName~="" and 'Now Playing: <font color="#ff9944">'..S.currentSongName..'</font>' or 'Now Playing: <font color="#888888">Nothing</font>' end; updateSoundEffectList() end)
     
-    -- Info Panel: HOW TO USE + DATA
+    -- Info Panel
     S.InfoPanel=Instance.new("Frame"); S.InfoPanel.Size=UDim2.new(0,280,1,0); S.InfoPanel.Position=UDim2.new(0,-290,0,0); S.InfoPanel.BackgroundColor3=Color3.fromRGB(30,35,40); S.InfoPanel.BorderSizePixel=0; S.InfoPanel.Visible=false; S.InfoPanel.Parent=S.MainFrame; S.InfoPanel.ZIndex=10; Instance.new("UICorner",S.InfoPanel).CornerRadius=UDim.new(0,8)
     S.InfoPanelStroke=Instance.new("UIStroke",S.InfoPanel); S.InfoPanelStroke.Thickness=3.5; S.InfoPanelStroke.Color=Color3.fromRGB(150,150,160); S.InfoPanelStroke.Transparency=0.5
 
@@ -1213,7 +1229,6 @@ Green Show button to restore
     S.ContentFrame=Instance.new("Frame"); S.ContentFrame.Size=UDim2.new(1,-20,1,-55); S.ContentFrame.Position=UDim2.new(0,10,0,45); S.ContentFrame.BackgroundTransparency=1; S.ContentFrame.Parent=S.MainFrame
     local ul=Instance.new("TextLabel"); ul.Size=UDim2.new(1,0,0,18); ul.BackgroundTransparency=1; ul.Text="GitHub MP3 URL:"; ul.TextColor3=Color3.fromRGB(255,255,255); ul.TextXAlignment=Enum.TextXAlignment.Left; ul.Font=Enum.Font.Gotham; ul.TextSize=12; ul.Parent=S.ContentFrame
     
-    -- Use scrollable textbox for main URL input
     S.UrlContainer, S.UrlTextBox = createScrollableTextBox(S.ContentFrame, UDim2.new(1,0,0,32), UDim2.new(0,0,0,22), "https://github.com/.../audio.mp3")
     
     local cb=Instance.new("Frame"); cb.Size=UDim2.new(1,0,0,35); cb.Position=UDim2.new(0,0,0,60); cb.BackgroundTransparency=1; cb.Parent=S.ContentFrame
@@ -1268,7 +1283,6 @@ Green Show button to restore
     S.PlaylistTabBtn=Instance.new("TextButton"); S.PlaylistTabBtn.Size=UDim2.new(0.48,0,1,0); S.PlaylistTabBtn.Position=UDim2.new(0.52,0,0,0); S.PlaylistTabBtn.BackgroundColor3=Color3.fromRGB(60,60,70); S.PlaylistTabBtn.BorderSizePixel=0; S.PlaylistTabBtn.Text="📋 Playlist"; S.PlaylistTabBtn.TextColor3=Color3.fromRGB(255,255,255); S.PlaylistTabBtn.Font=Enum.Font.GothamBold; S.PlaylistTabBtn.TextSize=12; S.PlaylistTabBtn.Parent=tbf; Instance.new("UICorner",S.PlaylistTabBtn).CornerRadius=UDim.new(0,6)
     local scf=Instance.new("Frame"); scf.Size=UDim2.new(1,0,1,-35); scf.Position=UDim2.new(0,0,0,35); scf.BackgroundTransparency=1; scf.Visible=true; scf.Parent=S.SearchPanel
     
-    -- Search textbox with scrolling
     local sif, sifTextBox = createScrollableTextBox(scf, UDim2.new(1,-40,0,40), UDim2.new(0,10,0,0), "")
     S.SearchTextBox = sifTextBox
     S.SearchTextBox.TextSize = 12
