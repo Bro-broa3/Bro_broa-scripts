@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - Fixed initialization order and folder creation
+-- Roblox Exploit MP3 Player GUI - Fixed search textbox size and initialization
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -16,7 +16,6 @@ local MUSIC_FOLDER = "MusicPlayerData"
 local CACHE_FOLDER = MUSIC_FOLDER .. "/Cache"
 local IMAGES_FOLDER = MUSIC_FOLDER .. "/Images"
 
--- Create folders one by one with individual pcall
 pcall(function() if makefolder then makefolder(MUSIC_FOLDER) end end)
 pcall(function() if makefolder then makefolder(CACHE_FOLDER) end end)
 pcall(function() if makefolder then makefolder(IMAGES_FOLDER) end end)
@@ -212,7 +211,7 @@ S = {
     }, themes={}, rainbowColorList={}, musicStats={}, dataRefreshInterval=15
 }
 
--- Forward declarations for functions that may be called before definition
+-- Forward declarations
 local updateDataPanel
 local updateExtraMiniToggle
 local loadPlaylist
@@ -1283,11 +1282,58 @@ Green Show button to restore
     S.PlaylistTabBtn=Instance.new("TextButton"); S.PlaylistTabBtn.Size=UDim2.new(0.48,0,1,0); S.PlaylistTabBtn.Position=UDim2.new(0.52,0,0,0); S.PlaylistTabBtn.BackgroundColor3=Color3.fromRGB(60,60,70); S.PlaylistTabBtn.BorderSizePixel=0; S.PlaylistTabBtn.Text="📋 Playlist"; S.PlaylistTabBtn.TextColor3=Color3.fromRGB(255,255,255); S.PlaylistTabBtn.Font=Enum.Font.GothamBold; S.PlaylistTabBtn.TextSize=12; S.PlaylistTabBtn.Parent=tbf; Instance.new("UICorner",S.PlaylistTabBtn).CornerRadius=UDim.new(0,6)
     local scf=Instance.new("Frame"); scf.Size=UDim2.new(1,0,1,-35); scf.Position=UDim2.new(0,0,0,35); scf.BackgroundTransparency=1; scf.Visible=true; scf.Parent=S.SearchPanel
     
-    local sif, sifTextBox = createScrollableTextBox(scf, UDim2.new(1,-40,0,40), UDim2.new(0,10,0,0), "")
-    S.SearchTextBox = sifTextBox
-    S.SearchTextBox.TextSize = 12
+    -- Search textbox - RESTORED to original size (280,40)
+    local sif = Instance.new("Frame")
+    sif.Size = UDim2.new(1,-20,0,40)
+    sif.Position = UDim2.new(0,10,0,0)
+    sif.BackgroundColor3 = Color3.fromRGB(60,60,70)
+    sif.BorderSizePixel = 0
+    sif.ClipsDescendants = true
+    sif.Parent = scf
+    Instance.new("UICorner", sif).CornerRadius = UDim.new(0,6)
     
-    local spb=Instance.new("TextButton"); spb.Size=UDim2.new(0,30,0,30); spb.Position=UDim2.new(1,-35,0,5); spb.BackgroundColor3=Color3.fromRGB(100,150,255); spb.BorderSizePixel=0; spb.Text="🔍"; spb.TextColor3=Color3.fromRGB(255,255,255); spb.Font=Enum.Font.GothamBold; spb.TextSize=14; spb.Parent=scf; Instance.new("UICorner",spb).CornerRadius=UDim.new(0,4)
+    local ssf2 = Instance.new("ScrollingFrame")
+    ssf2.Size = UDim2.new(1,-40,1,0)
+    ssf2.BackgroundTransparency = 1
+    ssf2.BorderSizePixel = 0
+    ssf2.ScrollBarThickness = 6
+    ssf2.VerticalScrollBarInset = Enum.ScrollBarInset.None
+    ssf2.HorizontalScrollBarInset = Enum.ScrollBarInset.Always
+    ssf2.CanvasSize = UDim2.new(0,0,0,0)
+    ssf2.ElasticBehavior = Enum.ElasticBehavior.Never
+    ssf2.ScrollingDirection = Enum.ScrollingDirection.X
+    ssf2.Parent = sif
+    
+    S.SearchTextBox = Instance.new("TextBox")
+    S.SearchTextBox.Size = UDim2.new(1,0,1,0)
+    S.SearchTextBox.Position = UDim2.new(0,5,0,0)
+    S.SearchTextBox.BackgroundTransparency = 1
+    S.SearchTextBox.Text = ""
+    S.SearchTextBox.PlaceholderText = ""
+    S.SearchTextBox.PlaceholderColor3 = Color3.fromRGB(180,180,180)
+    S.SearchTextBox.TextColor3 = Color3.fromRGB(255,255,255)
+    S.SearchTextBox.Font = Enum.Font.Gotham
+    S.SearchTextBox.TextSize = 12
+    S.SearchTextBox.ClearTextOnFocus = false
+    S.SearchTextBox.TextXAlignment = Enum.TextXAlignment.Left
+    S.SearchTextBox.TextWrapped = false
+    S.SearchTextBox.Parent = ssf2
+    
+    -- Update scrolling for search textbox
+    local function updateSearchScrolling()
+        local textWidth = S.SearchTextBox.TextBounds.X
+        local frameWidth = ssf2.AbsoluteSize.X
+        if textWidth > frameWidth - 10 then
+            ssf2.CanvasSize = UDim2.new(0, textWidth + 20, 0, 0)
+        else
+            ssf2.CanvasSize = UDim2.new(0, 0, 0, 0)
+        end
+    end
+    S.SearchTextBox:GetPropertyChangedSignal("Text"):Connect(updateSearchScrolling)
+    S.SearchTextBox:GetPropertyChangedSignal("TextBounds"):Connect(updateSearchScrolling)
+    ssf2:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateSearchScrolling)
+    
+    local spb=Instance.new("TextButton"); spb.Size=UDim2.new(0,30,0,30); spb.Position=UDim2.new(1,-35,0,5); spb.BackgroundColor3=Color3.fromRGB(100,150,255); spb.BorderSizePixel=0; spb.Text="🔍"; spb.TextColor3=Color3.fromRGB(255,255,255); spb.Font=Enum.Font.GothamBold; spb.TextSize=14; spb.Parent=sif; Instance.new("UICorner",spb).CornerRadius=UDim.new(0,4)
     
     local si=Instance.new("TextLabel"); si.Size=UDim2.new(1,-20,0,25); si.Position=UDim2.new(0,10,0,45); si.BackgroundTransparency=1; si.Text="Enter song name or full GitHub raw URL"; si.TextColor3=Color3.fromRGB(200,200,220); si.TextXAlignment=Enum.TextXAlignment.Left; si.TextWrapped=true; si.Font=Enum.Font.Gotham; si.TextSize=10; si.Parent=scf
     S.SearchScrollFrame=Instance.new("ScrollingFrame"); S.SearchScrollFrame.Size=UDim2.new(1,-20,1,-80); S.SearchScrollFrame.Position=UDim2.new(0,10,0,75); S.SearchScrollFrame.BackgroundColor3=Color3.fromRGB(45,45,55); S.SearchScrollFrame.BorderSizePixel=0; S.SearchScrollFrame.ScrollBarThickness=8; S.SearchScrollFrame.CanvasSize=UDim2.new(0,0,0,0); S.SearchScrollFrame.Parent=scf; Instance.new("UICorner",S.SearchScrollFrame).CornerRadius=UDim.new(0,6)
