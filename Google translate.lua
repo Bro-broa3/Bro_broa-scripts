@@ -5,6 +5,54 @@ local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local LocalizationService = game:GetService("LocalizationService")
 
+-- ============================================================
+-- HTTP REQUEST FUNCTION (with executor fallbacks)
+-- ============================================================
+local httpRequest
+local httpMethodName = "unknown"
+
+if syn and syn.request then
+    httpMethodName = "syn.request"
+    httpRequest = function(url)
+        local res = syn.request({Url = url, Method = "GET"})
+        return res.StatusCode == 200, res.Body
+    end
+elseif request then
+    httpMethodName = "request"
+    httpRequest = function(url)
+        local res = request({Url = url, Method = "GET"})
+        return res.StatusCode == 200, res.Body
+    end
+elseif http and http.request then
+    httpMethodName = "http.request"
+    httpRequest = function(url)
+        local res = http.request({Url = url, Method = "GET"})
+        return res.StatusCode == 200, res.Body
+    end
+elseif fluxus and fluxus.request then
+    httpMethodName = "fluxus.request"
+    httpRequest = function(url)
+        local res = fluxus.request({Url = url, Method = "GET"})
+        return res.StatusCode == 200, res.Body
+    end
+else
+    -- Use RequestAsync instead of GetAsync (less likely to be blocked)
+    httpMethodName = "HttpService:RequestAsync"
+    httpRequest = function(url)
+        local success, response = pcall(function()
+            return HttpService:RequestAsync({
+                Url = url,
+                Method = "GET"
+            })
+        end)
+        if success and response and response.Success then
+            return true, response.Body
+        else
+            return false, tostring(response)
+        end
+    end
+end
+
 -- Create main GUI in CoreGui
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "TranslatorGUI"
@@ -140,7 +188,7 @@ local InputScrollCorner = Instance.new("UICorner")
 InputScrollCorner.CornerRadius = UDim.new(0, 8)
 InputScrollCorner.Parent = InputScrollingFrame
 
--- Input TextBox inside ScrollingFrame
+-- Input TextBox
 local InputBox = Instance.new("TextBox")
 InputBox.Name = "InputBox"
 InputBox.Size = UDim2.new(1, -10, 0, 50)
@@ -167,7 +215,6 @@ InputPadding.PaddingTop = UDim.new(0, 15)
 InputPadding.PaddingBottom = UDim.new(0, 15)
 InputPadding.Parent = InputBox
 
--- Update canvas size when text changes (for slider)
 InputBox:GetPropertyChangedSignal("Text"):Connect(function()
     local textLength = #InputBox.Text
     local estimatedWidth = math.max(470, textLength * 8)
@@ -319,7 +366,7 @@ DropdownLayout.Padding = UDim.new(0, 2)
 DropdownLayout.SortOrder = Enum.SortOrder.LayoutOrder
 DropdownLayout.Parent = DropdownList
 
--- COMPLETE LANGUAGES LIST (100+ languages)
+-- COMPLETE LANGUAGES LIST
 local languages = {
     {name = "Auto (Detected)", code = "auto", autoDetect = true},
     {name = "Afrikaans", code = "af"},
@@ -521,7 +568,7 @@ SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
     filterLanguages(SearchBox.Text)
 end)
 
--- INPUT PLACEHOLDER ANIMATION (Types text, then refreshes _ 3 times)
+-- INPUT PLACEHOLDER ANIMATION
 local inputPlaceholderText = "Enter text to translate..."
 local inputAnimActive = false
 
@@ -531,14 +578,12 @@ local function startInputPlaceholderAnimation()
     
     spawn(function()
         while inputAnimActive and InputBox.Text == "" and not InputBox:IsFocused() do
-            -- Type out text
             for i = 1, #inputPlaceholderText do
                 if not inputAnimActive or InputBox.Text ~= "" or InputBox:IsFocused() then break end
                 InputBox.PlaceholderText = inputPlaceholderText:sub(1, i)
                 wait(0.1)
             end
             
-            -- Refresh: _ (0.5s) → empty (0.3s), 3 times
             for blink = 1, 3 do
                 if not inputAnimActive or InputBox.Text ~= "" or InputBox:IsFocused() then break end
                 InputBox.PlaceholderText = inputPlaceholderText .. "_"
@@ -615,62 +660,88 @@ SearchBox.FocusLost:Connect(function()
     end
 end)
 
--- Start animations
 startInputPlaceholderAnimation()
 startSearchPlaceholderAnimation()
 
--- Translation function
+-- ============================================================
+-- TRANSLATION FUNCTION
+-- ============================================================
 local isTranslating = false
+
+local function parseGoogleResponse(response)
+    local success, decoded = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+    
+    if success and decoded and decoded[1] then
+        local translatedText = ""
+        for _, segment in ipairs(decoded[1]) do
+            if type(segment) == "table" and segment[1] then
+                translatedText = translatedText .. tostring(segment[1])
+            end
+        end
+        if translatedText ~= "" then
+            return translatedText
+        end
+    end
+    
+    local result = response:match('^%[%[%["(.-)","')
+    if result then
+        result = result:gsub('\\n', '\n')
+        result = result:gsub('\\"', '"')
+        result = result:gsub('\\/', '/')
+        result = result:gsub('\\u(%x%x%x%x)', function(hex)
+            return utf8.char(tonumber(hex, 16))
+        end)
+        return result
+    end
+    
+    return nil
+end
+
 local function translateText()
     local text = InputBox.Text
-    if text ~= "" and selectedLanguage and not isTranslating then
-        isTranslating = true
-        ResultLabel.Text = "Translating..."
+    if text == "" then
+        ResultLabel.Text = "Translation will appear here"
+        return
+    end
+    
+    if not selectedLanguage then
+        ResultLabel.Text = "No language selected"
+        return
+    end
+    
+    if isTranslating then return end
+    
+    isTranslating = true
+    ResultLabel.Text = "Translating..."
+    
+    local targetLang = selectedLanguage.code
+    if selectedLanguage.autoDetect then
+        targetLang = userLanguageCode
+    end
+    
+    local encodedText = HttpService:UrlEncode(text)
+    local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=" .. targetLang .. "&dt=t&q=" .. encodedText
+    
+    spawn(function()
+        local success, response = httpRequest(url)
         
-        local targetLang = selectedLanguage.code
-        if selectedLanguage.autoDetect then
-            targetLang = userLanguageCode
-        end
-        
-        local url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=" .. 
-                    targetLang .. "&dt=t&q=" .. HttpService:UrlEncode(text)
-        
-        local success, response = pcall(function()
-            return HttpService:GetAsync(url)
-        end)
-        
-        if success then
-            local success2, decoded = pcall(function()
-                return HttpService:JSONDecode(response)
-            end)
-            
-            if success2 and decoded and decoded[1] then
-                local translatedText = ""
-                for i, segment in ipairs(decoded[1]) do
-                    if segment[1] then
-                        translatedText = translatedText .. segment[1]
-                    end
-                end
-                
-                if translatedText ~= "" then
-                    ResultLabel.Text = translatedText
-                else
-                    ResultLabel.Text = "Translation failed"
-                end
+        if success and response then
+            local translatedText = parseGoogleResponse(response)
+            if translatedText and translatedText ~= "" then
+                ResultLabel.Text = translatedText
             else
-                ResultLabel.Text = "Error parsing response"
+                ResultLabel.Text = "Parse failed"
             end
         else
-            ResultLabel.Text = "Translation failed. Check your internet connection."
+            ResultLabel.Text = "Request failed: " .. tostring(response):sub(1, 50)
         end
         
         isTranslating = false
-    elseif text == "" then
-        ResultLabel.Text = "Translation will appear here"
-    end
+    end)
 end
 
--- Debounced translation
 local debounce = false
 local function debouncedTranslate()
     if not debounce then
@@ -691,12 +762,12 @@ end)
 
 -- Copy button functionality
 CopyButton.MouseButton1Click:Connect(function()
-    if ResultLabel.Text ~= "Translation will appear here" and 
-       ResultLabel.Text ~= "Translating..." and
-       ResultLabel.Text ~= "Translation failed" and
-       ResultLabel.Text ~= "Error parsing response" and
-       ResultLabel.Text ~= "Translation failed. Check your internet connection." then
-        setclipboard(ResultLabel.Text)
+    local resultText = ResultLabel.Text
+    if resultText ~= "Translation will appear here" and 
+       resultText ~= "Translating..." and
+       not resultText:find("failed") and
+       not resultText:find("Parse failed") then
+        setclipboard(resultText)
         CopyButton.Text = "Copied!"
         wait(1)
         CopyButton.Text = "Copy"
@@ -778,6 +849,5 @@ CircleButton.MouseButton2Click:Connect(function()
 end)
 
 print("Translator GUI loaded successfully!")
+print("HTTP method: " .. httpMethodName)
 print("Total languages: " .. #languages)
-print("Placeholder: Types text, then refreshes _ 3 times!")
-print("Input textbox has visible slider for long text!")
