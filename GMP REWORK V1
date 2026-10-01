@@ -1,1 +1,923 @@
+-- Roblox Exploit GUI — whole GUI draggable
+-- Position: exact middle of screen
+-- Size: 60% width × 60% height
 
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = CoreGui
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.ResetOnSpawn = false
+ScreenGui.IgnoreGuiInset = true
+
+-- ★ Size constants
+local SIZE_NORMAL = UDim2.new(0.6, 0, 0.6, 0)
+local SIZE_MAX    = UDim2.new(0.8, 0, 0.8, 0)
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Parent = ScreenGui
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+MainFrame.Size = SIZE_NORMAL
+MainFrame.BackgroundColor3 = Color3.fromRGB(32, 34, 37)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.ClipsDescendants = true
+
+local MainCorner = Instance.new("UICorner")
+MainCorner.CornerRadius = UDim.new(0, 10)
+MainCorner.Parent = MainFrame
+
+-- ============================================
+-- CIRCLE BACKGROUND LAYER
+-- ============================================
+local CircleLayer = Instance.new("Frame")
+CircleLayer.Parent = MainFrame
+CircleLayer.Size = UDim2.new(1, 0, 1, 0)
+CircleLayer.BackgroundTransparency = 1
+CircleLayer.BorderSizePixel = 0
+CircleLayer.ClipsDescendants = true
+CircleLayer.ZIndex = 0
+CircleLayer.Active = false
+
+local CircleLayerCorner = Instance.new("UICorner")
+CircleLayerCorner.CornerRadius = UDim.new(0, 10)
+CircleLayerCorner.Parent = CircleLayer
+
+local CIRCLE_MIN_SIZE    = 40
+local CIRCLE_MAX_SIZE    = 140
+local CIRCLE_MAX_OPACITY = 0.15
+local CIRCLE_MIN_OPACITY = 0.05
+local CIRCLE_LIFETIME    = 6
+local CIRCLE_SPAWN_RATE  = 0.6
+local CIRCLE_DRIFT_PX    = 40
+
+local function spawnCircle()
+    local Circle = Instance.new("Frame")
+    Circle.Parent = CircleLayer
+    Circle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    Circle.BorderSizePixel = 0
+    Circle.BackgroundTransparency = 1
+    Circle.ZIndex = 0
+    Circle.Active = false
+
+    local size = math.random(CIRCLE_MIN_SIZE, CIRCLE_MAX_SIZE)
+    Circle.Size = UDim2.new(0, size, 0, size)
+
+    local posX = math.random(-10, 90) / 100
+    local posY = math.random(-10, 90) / 100
+    Circle.Position = UDim2.new(posX, 0, posY, 0)
+
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = Circle
+
+    local driftX = math.random(-CIRCLE_DRIFT_PX, CIRCLE_DRIFT_PX)
+    local driftY = math.random(-CIRCLE_DRIFT_PX, CIRCLE_DRIFT_PX)
+
+    local peakOpacity = math.random(
+        math.floor(CIRCLE_MIN_OPACITY * 100),
+        math.floor(CIRCLE_MAX_OPACITY * 100)
+    ) / 100
+    local peakTransparency = 1 - peakOpacity
+
+    local fadeIn = TweenInfo.new(CIRCLE_LIFETIME * 0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+    local fadeOut = TweenInfo.new(CIRCLE_LIFETIME * 0.5, Enum.EasingStyle.Sine, Enum.EasingDirection.In)
+
+    TweenService:Create(Circle, fadeIn, {BackgroundTransparency = peakTransparency}):Play()
+
+    local driftTween = TweenInfo.new(CIRCLE_LIFETIME, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+    TweenService:Create(Circle, driftTween, {
+        Position = UDim2.new(posX + driftX / MainFrame.AbsoluteSize.X, 0, posY + driftY / MainFrame.AbsoluteSize.Y, 0)
+    }):Play()
+
+    task.delay(CIRCLE_LIFETIME * 0.5, function()
+        TweenService:Create(Circle, fadeOut, {BackgroundTransparency = 1}):Play()
+    end)
+
+    task.delay(CIRCLE_LIFETIME + 0.5, function()
+        if Circle and Circle.Parent then
+            Circle:Destroy()
+        end
+    end)
+end
+
+task.spawn(function()
+    while MainFrame and MainFrame.Parent do
+        spawnCircle()
+        task.wait(CIRCLE_SPAWN_RATE)
+    end
+end)
+
+-- ============================================
+-- BUTTON BAR CONTAINER
+-- ============================================
+local BarContainer = Instance.new("Frame")
+BarContainer.Parent = MainFrame
+BarContainer.AnchorPoint = Vector2.new(0, 0)
+BarContainer.Position = UDim2.new(0, 0, 0, 0)
+BarContainer.Size = UDim2.new(0, 0, 0, 0)
+BarContainer.BackgroundTransparency = 1
+BarContainer.ClipsDescendants = true
+BarContainer.BorderSizePixel = 0
+BarContainer.ZIndex = 1
+BarContainer.Active = false
+
+local ButtonBar = Instance.new("Frame")
+ButtonBar.Parent = BarContainer
+ButtonBar.AnchorPoint = Vector2.new(0, 0)
+ButtonBar.Position = UDim2.new(0, 8, 0, 8)
+ButtonBar.Size = UDim2.new(0, 132, 0, 50)
+ButtonBar.BackgroundColor3 = Color3.fromRGB(180, 190, 200)
+ButtonBar.BackgroundTransparency = 0.55
+ButtonBar.BorderSizePixel = 1
+ButtonBar.BorderColor3 = Color3.fromRGB(220, 225, 235)
+ButtonBar.ZIndex = 0
+ButtonBar.Active = false
+
+local BarCorner = Instance.new("UICorner")
+BarCorner.CornerRadius = UDim.new(0, 10)
+BarCorner.Parent = ButtonBar
+
+local BarGradient = Instance.new("UIGradient")
+BarGradient.Rotation = 90
+BarGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.4),
+    NumberSequenceKeypoint.new(1, 1)
+})
+BarGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+BarGradient.Parent = ButtonBar
+
+local BarStroke = Instance.new("UIStroke")
+BarStroke.Thickness = 1
+BarStroke.Color = Color3.fromRGB(255, 255, 255)
+BarStroke.Transparency = 0.7
+BarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+BarStroke.Parent = ButtonBar
+
+-- ============================================
+-- 3 BUTTONS
+-- ============================================
+local BTN_SIZE = 34
+local BTN_Y = 16
+local GAP = 6
+
+local TEXT_SIZE_MIN = 1
+local TEXT_SIZE_MAX = 30
+
+local CloseBtn = Instance.new("TextButton")
+CloseBtn.Parent = BarContainer
+CloseBtn.AnchorPoint = Vector2.new(0, 0)
+CloseBtn.Position = UDim2.new(0, 14, 0, BTN_Y)
+CloseBtn.Size = UDim2.new(0, BTN_SIZE, 0, BTN_SIZE)
+CloseBtn.BackgroundColor3 = Color3.fromRGB(232, 65, 65)
+CloseBtn.BorderSizePixel = 0
+CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Text = "×"
+CloseBtn.TextColor3 = Color3.fromRGB(40, 20, 20)
+CloseBtn.TextScaled = false
+CloseBtn.TextSize = TEXT_SIZE_MIN
+CloseBtn.ZIndex = 2
+
+local CloseCorner = Instance.new("UICorner")
+CloseCorner.CornerRadius = UDim.new(1, 0)
+CloseCorner.Parent = CloseBtn
+
+local MinBtn = Instance.new("TextButton")
+MinBtn.Parent = BarContainer
+MinBtn.AnchorPoint = Vector2.new(0, 0)
+MinBtn.Position = UDim2.new(0, 14 + BTN_SIZE + GAP, 0, BTN_Y)
+MinBtn.Size = UDim2.new(0, BTN_SIZE, 0, BTN_SIZE)
+MinBtn.BackgroundColor3 = Color3.fromRGB(240, 200, 60)
+MinBtn.BorderSizePixel = 0
+MinBtn.Font = Enum.Font.GothamBold
+MinBtn.Text = "-"
+MinBtn.TextColor3 = Color3.fromRGB(50, 40, 10)
+MinBtn.TextScaled = false
+MinBtn.TextSize = TEXT_SIZE_MIN
+MinBtn.ZIndex = 2
+
+local MinCorner = Instance.new("UICorner")
+MinCorner.CornerRadius = UDim.new(1, 0)
+MinCorner.Parent = MinBtn
+
+local MaxBtn = Instance.new("TextButton")
+MaxBtn.Parent = BarContainer
+MaxBtn.AnchorPoint = Vector2.new(0, 0)
+MaxBtn.Position = UDim2.new(0, 14 + (BTN_SIZE + GAP) * 2, 0, BTN_Y)
+MaxBtn.Size = UDim2.new(0, BTN_SIZE, 0, BTN_SIZE)
+MaxBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
+MaxBtn.BorderSizePixel = 0
+MaxBtn.Font = Enum.Font.GothamBold
+MaxBtn.Text = "⛶"
+MaxBtn.TextColor3 = Color3.fromRGB(15, 50, 30)
+MaxBtn.TextScaled = false
+MaxBtn.TextSize = TEXT_SIZE_MIN
+MaxBtn.ZIndex = 2
+
+local MaxCorner = Instance.new("UICorner")
+MaxCorner.CornerRadius = UDim.new(1, 0)
+MaxCorner.Parent = MaxBtn
+
+-- ============================================
+-- SMALL BAR
+-- ============================================
+local SmallBar = Instance.new("TextButton")
+SmallBar.Parent = MainFrame
+SmallBar.AnchorPoint = Vector2.new(0, 0)
+SmallBar.Position = UDim2.new(0, 8, 0, 8)
+SmallBar.Size = UDim2.new(0, 32, 0, 12)
+SmallBar.BackgroundColor3 = Color3.fromRGB(180, 190, 200)
+SmallBar.BackgroundTransparency = 0.55
+SmallBar.BorderSizePixel = 1
+SmallBar.BorderColor3 = Color3.fromRGB(220, 225, 235)
+SmallBar.Text = ""
+SmallBar.AutoButtonColor = false
+SmallBar.ZIndex = 3
+
+local SmallCorner = Instance.new("UICorner")
+SmallCorner.CornerRadius = UDim.new(0, 4)
+SmallCorner.Parent = SmallBar
+
+local SmallGradient = Instance.new("UIGradient")
+SmallGradient.Rotation = 90
+SmallGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.4),
+    NumberSequenceKeypoint.new(1, 1)
+})
+SmallGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+SmallGradient.Parent = SmallBar
+
+local SmallStroke = Instance.new("UIStroke")
+SmallStroke.Thickness = 1
+SmallStroke.Color = Color3.fromRGB(255, 255, 255)
+SmallStroke.Transparency = 0.7
+SmallStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+SmallStroke.Parent = SmallBar
+
+-- ============================================
+-- 3 DECORATIVE CIRCLES
+-- ============================================
+local CIRCLE_SIZE = 6
+local CIRCLE_Y = 3
+local CIRCLE_GAP = 3
+local CIRCLE_START_X = 4
+
+local function makeCircle(color, xPos)
+    local Circle = Instance.new("Frame")
+    Circle.Parent = SmallBar
+    Circle.AnchorPoint = Vector2.new(0, 0)
+    Circle.Position = UDim2.new(0, xPos, 0, CIRCLE_Y)
+    Circle.Size = UDim2.new(0, CIRCLE_SIZE, 0, CIRCLE_SIZE)
+    Circle.BackgroundColor3 = color
+    Circle.BorderSizePixel = 0
+    Circle.ZIndex = 4
+    Circle.Active = false
+
+    local CircleCorner = Instance.new("UICorner")
+    CircleCorner.CornerRadius = UDim.new(1, 0)
+    CircleCorner.Parent = Circle
+
+    return Circle
+end
+
+local RedCircle = makeCircle(Color3.fromRGB(232, 65, 65), CIRCLE_START_X)
+local YellowCircle = makeCircle(Color3.fromRGB(240, 200, 60), CIRCLE_START_X + CIRCLE_SIZE + CIRCLE_GAP)
+local GreenCircle = makeCircle(Color3.fromRGB(80, 200, 120), CIRCLE_START_X + (CIRCLE_SIZE + CIRCLE_GAP) * 2)
+
+-- ============================================
+-- EXPAND / COLLAPSE
+-- ============================================
+local expanded = false
+local animating = false
+
+local EXPAND_SIZE = UDim2.new(0, 150, 0, 70)
+
+local EXPAND_DURATION   = 0.35
+local COLLAPSE_DURATION = 0.8
+local TEXT_DURATION     = 0.7
+
+local function expand()
+    if animating or expanded then return end
+    animating = true
+    expanded = true
+
+    local info     = TweenInfo.new(EXPAND_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local textInfo = TweenInfo.new(TEXT_DURATION,     Enum.EasingStyle.Quad,  Enum.EasingDirection.Out)
+
+    CloseBtn.Visible = true
+    MinBtn.Visible = true
+    MaxBtn.Visible = true
+
+    CloseBtn.TextSize = TEXT_SIZE_MIN
+    MinBtn.TextSize = TEXT_SIZE_MIN
+    MaxBtn.TextSize = TEXT_SIZE_MIN
+
+    TweenService:Create(BarContainer, info, {Size = EXPAND_SIZE}):Play()
+    TweenService:Create(SmallBar, info, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(SmallStroke, info, {Transparency = 1}):Play()
+    TweenService:Create(RedCircle, info, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(YellowCircle, info, {BackgroundTransparency = 1}):Play()
+    TweenService:Create(GreenCircle, info, {BackgroundTransparency = 1}):Play()
+
+    TweenService:Create(CloseBtn, textInfo, {TextSize = TEXT_SIZE_MAX}):Play()
+    TweenService:Create(MinBtn, textInfo, {TextSize = TEXT_SIZE_MAX}):Play()
+    TweenService:Create(MaxBtn, textInfo, {TextSize = TEXT_SIZE_MAX}):Play()
+
+    task.wait(math.max(EXPAND_DURATION, TEXT_DURATION))
+    animating = false
+    SmallBar.Visible = false
+end
+
+local function collapse()
+    if animating or not expanded then return end
+    animating = true
+    expanded = false
+
+    SmallBar.Visible = true
+
+    local slowInfo = TweenInfo.new(COLLAPSE_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local fastInfo = TweenInfo.new(EXPAND_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+
+    TweenService:Create(BarContainer, fastInfo, {Size = UDim2.new(0, 0, 0, 0)}):Play()
+    TweenService:Create(SmallBar,     slowInfo, {BackgroundTransparency = 0.55}):Play()
+    TweenService:Create(SmallStroke,  slowInfo, {Transparency = 0.7}):Play()
+    TweenService:Create(RedCircle,    slowInfo, {BackgroundTransparency = 0}):Play()
+    TweenService:Create(YellowCircle, slowInfo, {BackgroundTransparency = 0}):Play()
+    TweenService:Create(GreenCircle,  slowInfo, {BackgroundTransparency = 0}):Play()
+
+    TweenService:Create(CloseBtn, fastInfo, {TextSize = TEXT_SIZE_MIN}):Play()
+    TweenService:Create(MinBtn,   fastInfo, {TextSize = TEXT_SIZE_MIN}):Play()
+    TweenService:Create(MaxBtn,   fastInfo, {TextSize = TEXT_SIZE_MIN}):Play()
+
+    task.wait(COLLAPSE_DURATION)
+    animating = false
+    CloseBtn.Visible = false
+    MinBtn.Visible = false
+    MaxBtn.Visible = false
+end
+
+SmallBar.MouseButton1Click:Connect(function()
+    if expanded then
+        collapse()
+    else
+        expand()
+    end
+end)
+
+-- ============================================
+-- CLICK OUTSIDE → COLLAPSE
+-- ============================================
+local function isInside(guiObject, position)
+    local absPos = guiObject.AbsolutePosition
+    local absSize = guiObject.AbsoluteSize
+    return position.X >= absPos.X and position.X <= absPos.X + absSize.X
+       and position.Y >= absPos.Y and position.Y <= absPos.Y + absSize.Y
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if not expanded then return end
+    if animating then return end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        local pos = input.Position
+
+        local insideButtonBar = isInside(ButtonBar, pos)
+        local insideCloseBtn = isInside(CloseBtn, pos)
+        local insideMinBtn = isInside(MinBtn, pos)
+        local insideMaxBtn = isInside(MaxBtn, pos)
+        local insideSmallBar = SmallBar.Visible and isInside(SmallBar, pos)
+
+        if not (insideButtonBar or insideCloseBtn or insideMinBtn or insideMaxBtn or insideSmallBar) then
+            collapse()
+        end
+    end
+end)
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1
+    and input.UserInputType ~= Enum.UserInputType.Touch then return end
+    if not expanded then return end
+    if animating then return end
+
+    task.wait()
+    task.wait()
+
+    if expanded and not animating then
+        collapse()
+    end
+end)
+
+-- ============================================
+-- TAB SYSTEM (scale unchanged)
+-- ============================================
+local TabHolder = Instance.new("Frame")
+TabHolder.Parent = MainFrame
+TabHolder.AnchorPoint = Vector2.new(0, 0)
+TabHolder.Position = UDim2.new(0, 8, 0, 66)
+TabHolder.Size = UDim2.new(0.14, 0, 0.85, -74)
+TabHolder.BackgroundColor3 = Color3.fromRGB(24, 26, 30)
+TabHolder.BackgroundTransparency = 0.35
+TabHolder.BorderSizePixel = 0
+TabHolder.ZIndex = 1
+TabHolder.Active = false
+
+local TabHolderCorner = Instance.new("UICorner")
+TabHolderCorner.CornerRadius = UDim.new(0, 8)
+TabHolderCorner.Parent = TabHolder
+
+local TabHolderStroke = Instance.new("UIStroke")
+TabHolderStroke.Thickness = 1
+TabHolderStroke.Color = Color3.fromRGB(200, 210, 220)
+TabHolderStroke.Transparency = 0.75
+TabHolderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+TabHolderStroke.Parent = TabHolder
+
+local TabScroll = Instance.new("ScrollingFrame")
+TabScroll.Parent = TabHolder
+TabScroll.Size = UDim2.new(1, 0, 1, 0)
+TabScroll.BackgroundTransparency = 1
+TabScroll.BorderSizePixel = 0
+TabScroll.ScrollBarThickness = 3
+TabScroll.ScrollBarImageColor3 = Color3.fromRGB(180, 190, 200)
+TabScroll.ScrollBarImageTransparency = 0.5
+TabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabScroll.ZIndex = 2
+
+local TabLayout = Instance.new("UIListLayout")
+TabLayout.Parent = TabScroll
+TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+TabLayout.Padding = UDim.new(0, 4)
+TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+
+local TabPadding = Instance.new("UIPadding")
+TabPadding.Parent = TabScroll
+TabPadding.PaddingTop = UDim.new(0, 6)
+TabPadding.PaddingBottom = UDim.new(0, 6)
+
+TabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    TabScroll.CanvasSize = UDim2.new(0, 0, 0, TabLayout.AbsoluteContentSize.Y + 12)
+end)
+
+local ContentHolder = Instance.new("Frame")
+ContentHolder.Parent = MainFrame
+ContentHolder.AnchorPoint = Vector2.new(0, 0)
+ContentHolder.Position = UDim2.new(0.15, 4, 0, 66)
+ContentHolder.Size = UDim2.new(0.85, -12, 0.85, -74)
+ContentHolder.BackgroundColor3 = Color3.fromRGB(24, 26, 30)
+ContentHolder.BackgroundTransparency = 0.35
+ContentHolder.BorderSizePixel = 0
+ContentHolder.ZIndex = 1
+ContentHolder.Active = false
+
+local ContentHolderCorner = Instance.new("UICorner")
+ContentHolderCorner.CornerRadius = UDim.new(0, 8)
+ContentHolderCorner.Parent = ContentHolder
+
+local ContentHolderStroke = Instance.new("UIStroke")
+ContentHolderStroke.Thickness = 1
+ContentHolderStroke.Color = Color3.fromRGB(200, 210, 220)
+ContentHolderStroke.Transparency = 0.75
+ContentHolderStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ContentHolderStroke.Parent = ContentHolder
+
+local allTabs = {}
+local currentTab = nil
+
+local function createTab(name)
+    local Tab = Instance.new("TextButton")
+    Tab.Parent = TabScroll
+    Tab.Size = UDim2.new(0.9, 0, 0, 30)
+    Tab.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+    Tab.BackgroundTransparency = 0.4
+    Tab.BorderSizePixel = 0
+    Tab.Font = Enum.Font.GothamSemibold
+    Tab.Text = name
+    Tab.TextColor3 = Color3.fromRGB(220, 225, 230)
+    Tab.TextScaled = true
+    Tab.AutoButtonColor = false
+    Tab.ZIndex = 2
+
+    local TabCorner = Instance.new("UICorner")
+    TabCorner.CornerRadius = UDim.new(0, 6)
+    TabCorner.Parent = Tab
+
+    local TabStroke = Instance.new("UIStroke")
+    TabStroke.Thickness = 1
+    TabStroke.Color = Color3.fromRGB(200, 210, 220)
+    TabStroke.Transparency = 0.75
+    TabStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    TabStroke.Parent = Tab
+
+    local Content = Instance.new("ScrollingFrame")
+    Content.Parent = ContentHolder
+    Content.Size = UDim2.new(1, 0, 1, 0)
+    Content.BackgroundTransparency = 1
+    Content.BorderSizePixel = 0
+    Content.ScrollBarThickness = 4
+    Content.ScrollBarImageColor3 = Color3.fromRGB(180, 190, 200)
+    Content.ScrollBarImageTransparency = 0.5
+    Content.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Content.Visible = false
+    Content.ZIndex = 2
+
+    local ContentLayout = Instance.new("UIListLayout")
+    ContentLayout.Parent = Content
+    ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    ContentLayout.Padding = UDim.new(0, 6)
+
+    local ContentPadding = Instance.new("UIPadding")
+    ContentPadding.Parent = Content
+    ContentPadding.PaddingTop = UDim.new(0, 8)
+    ContentPadding.PaddingLeft = UDim.new(0, 8)
+    ContentPadding.PaddingRight = UDim.new(0, 8)
+    ContentPadding.PaddingBottom = UDim.new(0, 8)
+
+    ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        Content.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 16)
+    end)
+
+    local tab = {
+        Tab = Tab,
+        Content = Content,
+        Layout = ContentLayout,
+        Name = name
+    }
+
+    local function selectTab()
+        for _, other in ipairs(allTabs) do
+            TweenService:Create(other.Tab, TweenInfo.new(0.2), {
+                BackgroundColor3 = Color3.fromRGB(45, 48, 52),
+                BackgroundTransparency = 0.4
+            }):Play()
+            other.Content.Visible = false
+        end
+
+        TweenService:Create(Tab, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(80, 200, 120),
+            BackgroundTransparency = 0.2
+        }):Play()
+        Content.Visible = true
+        currentTab = tab
+    end
+
+    tab.Select = selectTab
+    Tab.MouseButton1Click:Connect(selectTab)
+
+    table.insert(allTabs, tab)
+    return tab
+end
+
+-- ★ Create all 10 tabs
+local MainTab            = createTab("Main")
+local SettingsTab        = createTab("Settings")
+local PlaylistTab        = createTab("Playlist")
+local PlaylistSettingsTab= createTab("Playlist Settings")
+local HistoryTab         = createTab("History")
+local DataTab            = createTab("Data")
+local UpgLogTab          = createTab("UPG-LOG")
+local InfoTab            = createTab("Info")
+local PlayEffectTab      = createTab("Play Effect")
+local SearchTab          = createTab("Search")
+
+MainTab.Select()
+
+-- ============================================
+-- MINIMIZE PILL
+-- ============================================
+local MinimizePill = Instance.new("TextButton")
+MinimizePill.Parent = ScreenGui
+MinimizePill.AnchorPoint = Vector2.new(0.5, 0)
+MinimizePill.Position = UDim2.new(0.5, 0, 0, 10)
+MinimizePill.Size = UDim2.new(0, 160, 0, 34)
+MinimizePill.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+MinimizePill.BackgroundTransparency = 0.3
+MinimizePill.BorderSizePixel = 1
+MinimizePill.BorderColor3 = Color3.fromRGB(140, 145, 152)
+MinimizePill.Text = ""
+MinimizePill.AutoButtonColor = false
+MinimizePill.Visible = false
+MinimizePill.ZIndex = 10
+MinimizePill.Active = true
+
+local PillCorner = Instance.new("UICorner")
+PillCorner.CornerRadius = UDim.new(0, 10)
+PillCorner.Parent = MinimizePill
+
+local PillGradient = Instance.new("UIGradient")
+PillGradient.Rotation = 90
+PillGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.5),
+    NumberSequenceKeypoint.new(1, 0.9)
+})
+PillGradient.Color = ColorSequence.new(Color3.fromRGB(200, 210, 220))
+PillGradient.Parent = MinimizePill
+
+local PillStroke = Instance.new("UIStroke")
+PillStroke.Thickness = 1
+PillStroke.Color = Color3.fromRGB(200, 210, 220)
+PillStroke.Transparency = 0.55
+PillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+PillStroke.Parent = MinimizePill
+
+local PillLabel = Instance.new("TextLabel")
+PillLabel.Parent = MinimizePill
+PillLabel.BackgroundTransparency = 1
+PillLabel.Size = UDim2.new(1, 0, 1, 0)
+PillLabel.Font = Enum.Font.GothamSemibold
+PillLabel.Text = "Click to open"
+PillLabel.TextColor3 = Color3.fromRGB(220, 225, 230)
+PillLabel.TextSize = 13
+PillLabel.ZIndex = 11
+
+-- ============================================
+-- MINIMIZE / RESTORE
+-- ============================================
+local minimized = false
+local maximized = false
+
+local function minimizeGUI()
+    if minimized then return end
+    minimized = true
+
+    MinimizePill.Visible = false
+
+    local info = TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
+    local targetSize = UDim2.new(MainFrame.Size.X.Scale, MainFrame.Size.X.Offset, 0, 0)
+
+    TweenService:Create(MainFrame, info, {Size = targetSize}):Play()
+    TweenService:Create(MainFrame, info, {BackgroundTransparency = 1}):Play()
+
+    task.wait(0.45)
+
+    MainFrame.Visible = false
+    MainFrame.BackgroundTransparency = 0
+    MinimizePill.Visible = true
+end
+
+local function restoreGUI()
+    if not minimized then return end
+    minimized = false
+
+    MinimizePill.Visible = false
+
+    MainFrame.Visible = true
+    MainFrame.Size = UDim2.new(SIZE_NORMAL.X.Scale, 0, 0, 0)
+    MainFrame.BackgroundTransparency = 1
+
+    local finalSize = maximized and SIZE_MAX or SIZE_NORMAL
+
+    local info = TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    TweenService:Create(MainFrame, info, {Size = finalSize}):Play()
+    TweenService:Create(MainFrame, info, {BackgroundTransparency = 0}):Play()
+end
+
+MinBtn.MouseButton1Click:Connect(function()
+    minimizeGUI()
+end)
+
+MinimizePill.MouseButton1Click:Connect(function()
+    restoreGUI()
+end)
+
+-- ============================================
+-- MAXIMIZE TOGGLE
+-- ============================================
+MaxBtn.MouseButton1Click:Connect(function()
+    maximized = not maximized
+
+    local targetSize = maximized and SIZE_MAX or SIZE_NORMAL
+    local info = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+
+    if not minimized then
+        TweenService:Create(MainFrame, info, {Size = targetSize}):Play()
+    end
+end)
+
+-- ============================================
+-- PILL DRAG
+-- ============================================
+local pillDragging = false
+local pillDragStart, pillStartPos
+local pillDragInput
+
+local function pillUpdate(input)
+    local delta = input.Position - pillDragStart
+    MinimizePill.Position = UDim2.new(
+        pillStartPos.X.Scale, pillStartPos.X.Offset + delta.X,
+        pillStartPos.Y.Scale, pillStartPos.Y.Offset + delta.Y
+    )
+end
+
+MinimizePill.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        pillDragging = true
+        pillDragStart = input.Position
+        pillStartPos = MinimizePill.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                pillDragging = false
+            end
+        end)
+    end
+end)
+
+MinimizePill.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        pillDragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if pillDragging and input == pillDragInput then
+        pillUpdate(input)
+    end
+end)
+
+-- ============================================
+-- CONFIRMATION DIALOG — GLASS
+-- ============================================
+local ConfirmOverlay = Instance.new("Frame")
+ConfirmOverlay.Parent = MainFrame
+ConfirmOverlay.Size = UDim2.new(1, 0, 1, 0)
+ConfirmOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+ConfirmOverlay.BackgroundTransparency = 0.5
+ConfirmOverlay.BorderSizePixel = 0
+ConfirmOverlay.Visible = false
+ConfirmOverlay.ZIndex = 5
+ConfirmOverlay.Active = true
+
+local OverlayCorner = Instance.new("UICorner")
+OverlayCorner.CornerRadius = UDim.new(0, 10)
+OverlayCorner.Parent = ConfirmOverlay
+
+local Dialog = Instance.new("Frame")
+Dialog.Parent = ConfirmOverlay
+Dialog.AnchorPoint = Vector2.new(0.5, 0.5)
+Dialog.Position = UDim2.new(0.5, 0, 0.5, 0)
+Dialog.Size = UDim2.new(0.6, 0, 0.35, 0)
+Dialog.BackgroundColor3 = Color3.fromRGB(44, 47, 51)
+Dialog.BackgroundTransparency = 0.25
+Dialog.BorderSizePixel = 0
+Dialog.ZIndex = 6
+
+local DialogCorner = Instance.new("UICorner")
+DialogCorner.CornerRadius = UDim.new(0, 8)
+DialogCorner.Parent = Dialog
+
+local DialogGradient = Instance.new("UIGradient")
+DialogGradient.Rotation = 90
+DialogGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.3),
+    NumberSequenceKeypoint.new(1, 0.85)
+})
+DialogGradient.Color = ColorSequence.new(Color3.fromRGB(200, 210, 220))
+DialogGradient.Parent = Dialog
+
+local DialogStroke = Instance.new("UIStroke")
+DialogStroke.Thickness = 1
+DialogStroke.Color = Color3.fromRGB(200, 210, 220)
+DialogStroke.Transparency = 0.6
+DialogStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+DialogStroke.Parent = Dialog
+
+local DialogText = Instance.new("TextLabel")
+DialogText.Parent = Dialog
+DialogText.BackgroundTransparency = 1
+DialogText.Position = UDim2.new(0, 0, 0, 0)
+DialogText.Size = UDim2.new(1, 0, 0.6, 0)
+DialogText.Font = Enum.Font.GothamSemibold
+DialogText.Text = "Are you sure you want to close?"
+DialogText.TextColor3 = Color3.fromRGB(255, 255, 255)
+DialogText.TextScaled = true
+DialogText.ZIndex = 7
+
+local YesBtn = Instance.new("TextButton")
+YesBtn.Parent = Dialog
+YesBtn.Position = UDim2.new(0.06, 0, 0.65, 0)
+YesBtn.Size = UDim2.new(0.4, 0, 0.25, 0)
+YesBtn.BackgroundColor3 = Color3.fromRGB(232, 65, 65)
+YesBtn.BackgroundTransparency = 0.15
+YesBtn.BorderSizePixel = 0
+YesBtn.Font = Enum.Font.GothamSemibold
+YesBtn.Text = "Yes"
+YesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+YesBtn.TextScaled = true
+YesBtn.ZIndex = 7
+
+local YesCorner = Instance.new("UICorner")
+YesCorner.CornerRadius = UDim.new(0, 6)
+YesCorner.Parent = YesBtn
+
+local YesGradient = Instance.new("UIGradient")
+YesGradient.Rotation = 90
+YesGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.4),
+    NumberSequenceKeypoint.new(1, 0.9)
+})
+YesGradient.Color = ColorSequence.new(Color3.fromRGB(255, 180, 180))
+YesGradient.Parent = YesBtn
+
+local YesStroke = Instance.new("UIStroke")
+YesStroke.Thickness = 1
+YesStroke.Color = Color3.fromRGB(255, 200, 200)
+YesStroke.Transparency = 0.55
+YesStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+YesStroke.Parent = YesBtn
+
+local NoBtn = Instance.new("TextButton")
+NoBtn.Parent = Dialog
+NoBtn.Position = UDim2.new(0.54, 0, 0.65, 0)
+NoBtn.Size = UDim2.new(0.4, 0, 0.25, 0)
+NoBtn.BackgroundColor3 = Color3.fromRGB(90, 94, 100)
+NoBtn.BackgroundTransparency = 0.15
+NoBtn.BorderSizePixel = 0
+NoBtn.Font = Enum.Font.GothamSemibold
+NoBtn.Text = "No"
+NoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoBtn.TextScaled = true
+NoBtn.ZIndex = 7
+
+local NoCorner = Instance.new("UICorner")
+NoCorner.CornerRadius = UDim.new(0, 6)
+NoCorner.Parent = NoBtn
+
+local NoGradient = Instance.new("UIGradient")
+NoGradient.Rotation = 90
+NoGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.4),
+    NumberSequenceKeypoint.new(1, 0.9)
+})
+NoGradient.Color = ColorSequence.new(Color3.fromRGB(200, 205, 215))
+NoGradient.Parent = NoBtn
+
+local NoStroke = Instance.new("UIStroke")
+NoStroke.Thickness = 1
+NoStroke.Color = Color3.fromRGB(200, 210, 220)
+NoStroke.Transparency = 0.55
+NoStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+NoStroke.Parent = NoBtn
+
+CloseBtn.MouseButton1Click:Connect(function()
+    ConfirmOverlay.Visible = true
+end)
+
+YesBtn.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+end)
+
+NoBtn.MouseButton1Click:Connect(function()
+    ConfirmOverlay.Visible = false
+end)
+
+-- ============================================
+-- DRAG LOGIC (MainFrame)
+-- ============================================
+local dragging = false
+local dragStart, startPos
+local dragInput
+
+local function update(input)
+    local delta = input.Position - dragStart
+    MainFrame.Position = UDim2.new(
+        startPos.X.Scale, startPos.X.Offset + delta.X,
+        startPos.Y.Scale, startPos.Y.Offset + delta.Y
+    )
+end
+
+MainFrame.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = MainFrame.Position
+
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+MainFrame.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement
+    or input.UserInputType == Enum.UserInputType.Touch then
+        dragInput = input
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and input == dragInput then
+        update(input)
+    end
+end)
