@@ -1,23 +1,34 @@
 -- Roblox Exploit GUI — whole GUI draggable
 -- Position: exact middle of screen
 -- Size: 60% width × 60% height
+-- ★ Scaling strategy:
+--    • UIScale on MainFrame auto-adjusts to viewport (mobile 300px ↔ PC 4000px)
+--    • Stacked children inside tab content use PIXEL HEIGHTS so ScrollingFrame works
+--    • Children use SCALE WIDTHS (1, 0) so they always fill the frame horizontally
+--    • AutomaticCanvasSize = Y on every tab content so canvas grows with content
+
+-- ★ Prevent duplicate GUI — using ATTRIBUTE instead of Name
+local CoreGui = game:GetService("CoreGui")
+for _, gui in ipairs(CoreGui:GetChildren()) do
+    if gui:IsA("ScreenGui") and gui:GetAttribute("GMP_GUI") then
+        gui:Destroy()
+    end
+end
 
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
-local CoreGui = game:GetService("CoreGui")
 
 local ScreenGui = Instance.new("ScreenGui")
+ScreenGui:SetAttribute("GMP_GUI", true)
 ScreenGui.Parent = CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
--- ★ Size constants
 local SIZE_NORMAL = UDim2.new(0.6, 0, 0.6, 0)
 local SIZE_MAX    = UDim2.new(0.8, 0, 0.8, 0)
 
--- Main Frame
 local MainFrame = Instance.new("Frame")
 MainFrame.Parent = ScreenGui
 MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -31,6 +42,76 @@ MainFrame.ClipsDescendants = true
 local MainCorner = Instance.new("UICorner")
 MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
+
+-- ============================================
+-- ★ UISCALE — auto-adjusts whole GUI to viewport
+-- ============================================
+local UIScale = Instance.new("UIScale")
+UIScale.Parent = MainFrame
+UIScale.Scale = 1
+
+local BASE_VIEWPORT_HEIGHT = 800
+local MIN_SCALE = 0.55
+local MAX_SCALE = 1.35
+
+local function updateUIScale()
+    local camera = workspace.CurrentCamera
+    if not camera then return end
+    local viewport = camera.ViewportSize
+    local scale = math.clamp(viewport.Y / BASE_VIEWPORT_HEIGHT, MIN_SCALE, MAX_SCALE)
+    UIScale.Scale = scale
+end
+
+updateUIScale()
+if workspace.CurrentCamera then
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateUIScale)
+end
+
+-- ============================================
+-- TITLE BAR
+-- ============================================
+local TitleBar = Instance.new("Frame")
+TitleBar.Parent = MainFrame
+TitleBar.AnchorPoint = Vector2.new(0.5, 0)
+TitleBar.Position = UDim2.new(0.5, 0, 0, 6)
+TitleBar.Size = UDim2.new(0.98, 0, 0.22, 0)
+TitleBar.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+TitleBar.BackgroundTransparency = 0.3
+TitleBar.BorderSizePixel = 1
+TitleBar.BorderColor3 = Color3.fromRGB(140, 145, 152)
+TitleBar.ZIndex = 2
+TitleBar.Active = false
+
+local TitleBarCorner = Instance.new("UICorner")
+TitleBarCorner.CornerRadius = UDim.new(0, 8)
+TitleBarCorner.Parent = TitleBar
+
+local TitleBarGradient = Instance.new("UIGradient")
+TitleBarGradient.Rotation = 90
+TitleBarGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.5),
+    NumberSequenceKeypoint.new(1, 0.9)
+})
+TitleBarGradient.Color = ColorSequence.new(Color3.fromRGB(200, 210, 220))
+TitleBarGradient.Parent = TitleBar
+
+local TitleBarStroke = Instance.new("UIStroke")
+TitleBarStroke.Thickness = 1
+TitleBarStroke.Color = Color3.fromRGB(200, 210, 220)
+TitleBarStroke.Transparency = 0.55
+TitleBarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+TitleBarStroke.Parent = TitleBar
+
+local TitleLabel = Instance.new("TextLabel")
+TitleLabel.Parent = TitleBar
+TitleLabel.BackgroundTransparency = 1
+TitleLabel.Size = UDim2.new(1, 0, 1, 0)
+TitleLabel.Font = Enum.Font.GothamBold
+TitleLabel.Text = "GitHub MP3 Player — R1.0"
+TitleLabel.TextColor3 = Color3.fromRGB(240, 245, 250)
+TitleLabel.TextScaled = true
+TitleLabel.ZIndex = 3
+TitleLabel.Active = false
 
 -- ============================================
 -- CIRCLE BACKGROUND LAYER
@@ -124,7 +205,7 @@ BarContainer.Size = UDim2.new(0, 0, 0, 0)
 BarContainer.BackgroundTransparency = 1
 BarContainer.ClipsDescendants = true
 BarContainer.BorderSizePixel = 0
-BarContainer.ZIndex = 1
+BarContainer.ZIndex = 3
 BarContainer.Active = false
 
 local ButtonBar = Instance.new("Frame")
@@ -166,9 +247,6 @@ local BTN_SIZE = 34
 local BTN_Y = 16
 local GAP = 6
 
-local TEXT_SIZE_MIN = 1
-local TEXT_SIZE_MAX = 30
-
 local CloseBtn = Instance.new("TextButton")
 CloseBtn.Parent = BarContainer
 CloseBtn.AnchorPoint = Vector2.new(0, 0)
@@ -179,8 +257,7 @@ CloseBtn.BorderSizePixel = 0
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.Text = "×"
 CloseBtn.TextColor3 = Color3.fromRGB(40, 20, 20)
-CloseBtn.TextScaled = false
-CloseBtn.TextSize = TEXT_SIZE_MIN
+CloseBtn.TextScaled = true
 CloseBtn.ZIndex = 2
 
 local CloseCorner = Instance.new("UICorner")
@@ -197,8 +274,7 @@ MinBtn.BorderSizePixel = 0
 MinBtn.Font = Enum.Font.GothamBold
 MinBtn.Text = "-"
 MinBtn.TextColor3 = Color3.fromRGB(50, 40, 10)
-MinBtn.TextScaled = false
-MinBtn.TextSize = TEXT_SIZE_MIN
+MinBtn.TextScaled = true
 MinBtn.ZIndex = 2
 
 local MinCorner = Instance.new("UICorner")
@@ -215,8 +291,7 @@ MaxBtn.BorderSizePixel = 0
 MaxBtn.Font = Enum.Font.GothamBold
 MaxBtn.Text = "⛶"
 MaxBtn.TextColor3 = Color3.fromRGB(15, 50, 30)
-MaxBtn.TextScaled = false
-MaxBtn.TextSize = TEXT_SIZE_MIN
+MaxBtn.TextScaled = true
 MaxBtn.ZIndex = 2
 
 local MaxCorner = Instance.new("UICorner")
@@ -237,7 +312,7 @@ SmallBar.BorderSizePixel = 1
 SmallBar.BorderColor3 = Color3.fromRGB(220, 225, 235)
 SmallBar.Text = ""
 SmallBar.AutoButtonColor = false
-SmallBar.ZIndex = 3
+SmallBar.ZIndex = 4
 
 local SmallCorner = Instance.new("UICorner")
 SmallCorner.CornerRadius = UDim.new(0, 4)
@@ -275,7 +350,7 @@ local function makeCircle(color, xPos)
     Circle.Size = UDim2.new(0, CIRCLE_SIZE, 0, CIRCLE_SIZE)
     Circle.BackgroundColor3 = color
     Circle.BorderSizePixel = 0
-    Circle.ZIndex = 4
+    Circle.ZIndex = 5
     Circle.Active = false
 
     local CircleCorner = Instance.new("UICorner")
@@ -299,23 +374,17 @@ local EXPAND_SIZE = UDim2.new(0, 150, 0, 70)
 
 local EXPAND_DURATION   = 0.35
 local COLLAPSE_DURATION = 0.8
-local TEXT_DURATION     = 0.7
 
 local function expand()
     if animating or expanded then return end
     animating = true
     expanded = true
 
-    local info     = TweenInfo.new(EXPAND_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    local textInfo = TweenInfo.new(TEXT_DURATION,     Enum.EasingStyle.Quad,  Enum.EasingDirection.Out)
+    local info = TweenInfo.new(EXPAND_DURATION, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
     CloseBtn.Visible = true
     MinBtn.Visible = true
     MaxBtn.Visible = true
-
-    CloseBtn.TextSize = TEXT_SIZE_MIN
-    MinBtn.TextSize = TEXT_SIZE_MIN
-    MaxBtn.TextSize = TEXT_SIZE_MIN
 
     TweenService:Create(BarContainer, info, {Size = EXPAND_SIZE}):Play()
     TweenService:Create(SmallBar, info, {BackgroundTransparency = 1}):Play()
@@ -324,11 +393,7 @@ local function expand()
     TweenService:Create(YellowCircle, info, {BackgroundTransparency = 1}):Play()
     TweenService:Create(GreenCircle, info, {BackgroundTransparency = 1}):Play()
 
-    TweenService:Create(CloseBtn, textInfo, {TextSize = TEXT_SIZE_MAX}):Play()
-    TweenService:Create(MinBtn, textInfo, {TextSize = TEXT_SIZE_MAX}):Play()
-    TweenService:Create(MaxBtn, textInfo, {TextSize = TEXT_SIZE_MAX}):Play()
-
-    task.wait(math.max(EXPAND_DURATION, TEXT_DURATION))
+    task.wait(EXPAND_DURATION)
     animating = false
     SmallBar.Visible = false
 end
@@ -349,10 +414,6 @@ local function collapse()
     TweenService:Create(RedCircle,    slowInfo, {BackgroundTransparency = 0}):Play()
     TweenService:Create(YellowCircle, slowInfo, {BackgroundTransparency = 0}):Play()
     TweenService:Create(GreenCircle,  slowInfo, {BackgroundTransparency = 0}):Play()
-
-    TweenService:Create(CloseBtn, fastInfo, {TextSize = TEXT_SIZE_MIN}):Play()
-    TweenService:Create(MinBtn,   fastInfo, {TextSize = TEXT_SIZE_MIN}):Play()
-    TweenService:Create(MaxBtn,   fastInfo, {TextSize = TEXT_SIZE_MIN}):Play()
 
     task.wait(COLLAPSE_DURATION)
     animating = false
@@ -415,13 +476,21 @@ MainFrame.InputBegan:Connect(function(input)
 end)
 
 -- ============================================
--- TAB SYSTEM (scale unchanged)
+-- TAB SYSTEM
 -- ============================================
+local TITLE_SIZE_NORMAL = UDim2.new(0.98, 0, 0.22, 0)
+local TITLE_SIZE_MAX    = UDim2.new(0.98, 0, 0.16, 0)
+
+local TAB_START_NORMAL  = 122
+local TAB_START_MAX     = 118
+local TAB_END_NORMAL    = -128
+local TAB_END_MAX       = -125
+
 local TabHolder = Instance.new("Frame")
 TabHolder.Parent = MainFrame
 TabHolder.AnchorPoint = Vector2.new(0, 0)
-TabHolder.Position = UDim2.new(0, 8, 0, 66)
-TabHolder.Size = UDim2.new(0.14, 0, 0.85, -74)
+TabHolder.Position = UDim2.new(0, 8, 0, TAB_START_NORMAL)
+TabHolder.Size = UDim2.new(0.14, 0, 1, TAB_END_NORMAL)
 TabHolder.BackgroundColor3 = Color3.fromRGB(24, 26, 30)
 TabHolder.BackgroundTransparency = 0.35
 TabHolder.BorderSizePixel = 0
@@ -448,12 +517,13 @@ TabScroll.ScrollBarThickness = 3
 TabScroll.ScrollBarImageColor3 = Color3.fromRGB(180, 190, 200)
 TabScroll.ScrollBarImageTransparency = 0.5
 TabScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+TabScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 TabScroll.ZIndex = 2
 
 local TabLayout = Instance.new("UIListLayout")
 TabLayout.Parent = TabScroll
 TabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-TabLayout.Padding = UDim.new(0, 4)
+TabLayout.Padding = UDim.new(0, 6)
 TabLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
 local TabPadding = Instance.new("UIPadding")
@@ -461,15 +531,11 @@ TabPadding.Parent = TabScroll
 TabPadding.PaddingTop = UDim.new(0, 6)
 TabPadding.PaddingBottom = UDim.new(0, 6)
 
-TabLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    TabScroll.CanvasSize = UDim2.new(0, 0, 0, TabLayout.AbsoluteContentSize.Y + 12)
-end)
-
 local ContentHolder = Instance.new("Frame")
 ContentHolder.Parent = MainFrame
 ContentHolder.AnchorPoint = Vector2.new(0, 0)
-ContentHolder.Position = UDim2.new(0.15, 4, 0, 66)
-ContentHolder.Size = UDim2.new(0.85, -12, 0.85, -74)
+ContentHolder.Position = UDim2.new(0.15, 4, 0, TAB_START_NORMAL)
+ContentHolder.Size = UDim2.new(0.85, -12, 1, TAB_END_NORMAL)
 ContentHolder.BackgroundColor3 = Color3.fromRGB(24, 26, 30)
 ContentHolder.BackgroundTransparency = 0.35
 ContentHolder.BorderSizePixel = 0
@@ -493,7 +559,7 @@ local currentTab = nil
 local function createTab(name)
     local Tab = Instance.new("TextButton")
     Tab.Parent = TabScroll
-    Tab.Size = UDim2.new(0.9, 0, 0, 30)
+    Tab.Size = UDim2.new(0.9, 0, 0, 40)
     Tab.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
     Tab.BackgroundTransparency = 0.4
     Tab.BorderSizePixel = 0
@@ -524,24 +590,22 @@ local function createTab(name)
     Content.ScrollBarImageColor3 = Color3.fromRGB(180, 190, 200)
     Content.ScrollBarImageTransparency = 0.5
     Content.CanvasSize = UDim2.new(0, 0, 0, 0)
+    Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
     Content.Visible = false
     Content.ZIndex = 2
 
     local ContentLayout = Instance.new("UIListLayout")
     ContentLayout.Parent = Content
     ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    ContentLayout.Padding = UDim.new(0, 6)
+    ContentLayout.Padding = UDim.new(0, 10)
+    ContentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 
     local ContentPadding = Instance.new("UIPadding")
     ContentPadding.Parent = Content
-    ContentPadding.PaddingTop = UDim.new(0, 8)
-    ContentPadding.PaddingLeft = UDim.new(0, 8)
-    ContentPadding.PaddingRight = UDim.new(0, 8)
-    ContentPadding.PaddingBottom = UDim.new(0, 8)
-
-    ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        Content.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 16)
-    end)
+    ContentPadding.PaddingTop = UDim.new(0, 10)
+    ContentPadding.PaddingLeft = UDim.new(0, 10)
+    ContentPadding.PaddingRight = UDim.new(0, 10)
+    ContentPadding.PaddingBottom = UDim.new(0, 10)
 
     local tab = {
         Tab = Tab,
@@ -574,7 +638,6 @@ local function createTab(name)
     return tab
 end
 
--- ★ Create all 10 tabs
 local MainTab            = createTab("Main")
 local SettingsTab        = createTab("Settings")
 local PlaylistTab        = createTab("Playlist")
@@ -589,6 +652,536 @@ local SearchTab          = createTab("Search")
 MainTab.Select()
 
 -- ============================================
+-- ★ MAIN TAB — pixel heights + scale widths
+-- ============================================
+
+local MainTabImage = Instance.new("ImageLabel")
+MainTabImage.Parent = MainTab.Content
+MainTabImage.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+MainTabImage.BackgroundTransparency = 0.5
+MainTabImage.BorderSizePixel = 0
+MainTabImage.Size = UDim2.new(1, 0, 0, 200)
+MainTabImage.ZIndex = 3
+MainTabImage.Active = false
+MainTabImage.ImageTransparency = 1
+
+local MainTabImageCorner = Instance.new("UICorner")
+MainTabImageCorner.CornerRadius = UDim.new(0, 8)
+MainTabImageCorner.Parent = MainTabImage
+
+local MainTabImageStroke = Instance.new("UIStroke")
+MainTabImageStroke.Thickness = 2
+MainTabImageStroke.Color = Color3.fromRGB(120, 200, 255)
+MainTabImageStroke.Transparency = 0.25
+MainTabImageStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MainTabImageStroke.LineJoinMode = Enum.LineJoinMode.Round
+MainTabImageStroke.Parent = MainTabImage
+
+local MainTabImagePlaceholder = Instance.new("TextLabel")
+MainTabImagePlaceholder.Parent = MainTabImage
+MainTabImagePlaceholder.BackgroundTransparency = 1
+MainTabImagePlaceholder.Size = UDim2.new(1, 0, 1, 0)
+MainTabImagePlaceholder.Font = Enum.Font.Gotham
+MainTabImagePlaceholder.Text = "[ Empty ImageLabel ]"
+MainTabImagePlaceholder.TextColor3 = Color3.fromRGB(140, 200, 255)
+MainTabImagePlaceholder.TextTransparency = 0.4
+MainTabImagePlaceholder.TextScaled = true
+MainTabImagePlaceholder.ZIndex = 4
+MainTabImagePlaceholder.Active = false
+
+local URLLabel = Instance.new("TextLabel")
+URLLabel.Parent = MainTab.Content
+URLLabel.BackgroundTransparency = 1
+URLLabel.Size = UDim2.new(1, 0, 0, 24)
+URLLabel.Font = Enum.Font.GothamSemibold
+URLLabel.Text = "GitHub MP3 URL:"
+URLLabel.TextColor3 = Color3.fromRGB(220, 225, 230)
+URLLabel.TextScaled = true
+URLLabel.TextXAlignment = Enum.TextXAlignment.Left
+URLLabel.ZIndex = 3
+URLLabel.Active = false
+
+local URLTextBox = Instance.new("TextBox")
+URLTextBox.Parent = MainTab.Content
+URLTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+URLTextBox.BackgroundTransparency = 0.3
+URLTextBox.BorderSizePixel = 0
+URLTextBox.Size = UDim2.new(1, 0, 0, 36)
+URLTextBox.Font = Enum.Font.Gotham
+URLTextBox.Text = ""
+URLTextBox.PlaceholderText = "https://github.com/…/audio.mp3"
+URLTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
+URLTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
+URLTextBox.TextScaled = true
+URLTextBox.TextXAlignment = Enum.TextXAlignment.Left
+URLTextBox.ClearTextOnFocus = false
+URLTextBox.ZIndex = 3
+URLTextBox.Active = true
+
+local URLTextBoxCorner = Instance.new("UICorner")
+URLTextBoxCorner.CornerRadius = UDim.new(0, 6)
+URLTextBoxCorner.Parent = URLTextBox
+
+local URLTextBoxPadding = Instance.new("UIPadding")
+URLTextBoxPadding.Parent = URLTextBox
+URLTextBoxPadding.PaddingLeft = UDim.new(0, 10)
+URLTextBoxPadding.PaddingRight = UDim.new(0, 10)
+
+local URLTextBoxStroke = Instance.new("UIStroke")
+URLTextBoxStroke.Thickness = 1
+URLTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
+URLTextBoxStroke.Transparency = 0.5
+URLTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+URLTextBoxStroke.Parent = URLTextBox
+
+local ControlsRow = Instance.new("Frame")
+ControlsRow.Parent = MainTab.Content
+ControlsRow.BackgroundTransparency = 1
+ControlsRow.BorderSizePixel = 0
+ControlsRow.Size = UDim2.new(1, 0, 0, 40)
+ControlsRow.ZIndex = 3
+ControlsRow.Active = false
+
+local ControlsLayout = Instance.new("UIListLayout")
+ControlsLayout.Parent = ControlsRow
+ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
+ControlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ControlsLayout.Padding = UDim.new(0, 10)
+ControlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ControlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local BUTTON_TEXT_COLOR = Color3.fromRGB(240, 245, 250)
+
+local PlayBtn = Instance.new("TextButton")
+PlayBtn.Parent = ControlsRow
+PlayBtn.LayoutOrder = 1
+PlayBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
+PlayBtn.BackgroundTransparency = 0
+PlayBtn.BorderSizePixel = 0
+PlayBtn.Size = UDim2.new(0.32, 0, 1, 0)
+PlayBtn.Font = Enum.Font.GothamBold
+PlayBtn.Text = "▶ PLAY"
+PlayBtn.TextColor3 = BUTTON_TEXT_COLOR
+PlayBtn.TextScaled = true
+PlayBtn.ZIndex = 3
+PlayBtn.AutoButtonColor = true
+
+local PlayCorner = Instance.new("UICorner")
+PlayCorner.CornerRadius = UDim.new(0, 6)
+PlayCorner.Parent = PlayBtn
+
+local PauseResumeBtn = Instance.new("TextButton")
+PauseResumeBtn.Parent = ControlsRow
+PauseResumeBtn.LayoutOrder = 2
+PauseResumeBtn.BackgroundColor3 = Color3.fromRGB(240, 200, 60)
+PauseResumeBtn.BackgroundTransparency = 0
+PauseResumeBtn.BorderSizePixel = 0
+PauseResumeBtn.Size = UDim2.new(0.32, 0, 1, 0)
+PauseResumeBtn.Font = Enum.Font.GothamBold
+PauseResumeBtn.Text = "⏸ PAUSE"
+PauseResumeBtn.TextColor3 = BUTTON_TEXT_COLOR
+PauseResumeBtn.TextScaled = true
+PauseResumeBtn.ZIndex = 3
+PauseResumeBtn.AutoButtonColor = true
+
+local PauseResumeCorner = Instance.new("UICorner")
+PauseResumeCorner.CornerRadius = UDim.new(0, 6)
+PauseResumeCorner.Parent = PauseResumeBtn
+
+local pauseResumeState = "PAUSE"
+PauseResumeBtn.MouseButton1Click:Connect(function()
+    if pauseResumeState == "PAUSE" then
+        pauseResumeState = "RESUME"
+        PauseResumeBtn.Text = "▶ RESUME"
+    else
+        pauseResumeState = "PAUSE"
+        PauseResumeBtn.Text = "⏸ PAUSE"
+    end
+end)
+
+local StopBtn = Instance.new("TextButton")
+StopBtn.Parent = ControlsRow
+StopBtn.LayoutOrder = 3
+StopBtn.BackgroundColor3 = Color3.fromRGB(232, 65, 65)
+StopBtn.BackgroundTransparency = 0
+StopBtn.BorderSizePixel = 0
+StopBtn.Size = UDim2.new(0.32, 0, 1, 0)
+StopBtn.Font = Enum.Font.GothamBold
+StopBtn.Text = "⏹ STOP"
+StopBtn.TextColor3 = BUTTON_TEXT_COLOR
+StopBtn.TextScaled = true
+StopBtn.ZIndex = 3
+StopBtn.AutoButtonColor = true
+
+local StopCorner = Instance.new("UICorner")
+StopCorner.CornerRadius = UDim.new(0, 6)
+StopCorner.Parent = StopBtn
+
+local TimeLabel = Instance.new("TextLabel")
+TimeLabel.Parent = MainTab.Content
+TimeLabel.BackgroundTransparency = 1
+TimeLabel.Size = UDim2.new(1, 0, 0, 20)
+TimeLabel.Font = Enum.Font.GothamSemibold
+TimeLabel.Text = "0:00 / 0:00"
+TimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+TimeLabel.TextScaled = true
+TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
+TimeLabel.ZIndex = 3
+TimeLabel.Active = false
+
+local ProgressBar = Instance.new("Frame")
+ProgressBar.Parent = MainTab.Content
+ProgressBar.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+ProgressBar.BackgroundTransparency = 0.3
+ProgressBar.BorderSizePixel = 0
+ProgressBar.Size = UDim2.new(1, 0, 0, 14)
+ProgressBar.ZIndex = 3
+ProgressBar.Active = false
+
+local ProgressBarCorner = Instance.new("UICorner")
+ProgressBarCorner.CornerRadius = UDim.new(1, 0)
+ProgressBarCorner.Parent = ProgressBar
+
+local ProgressBarStroke = Instance.new("UIStroke")
+ProgressBarStroke.Thickness = 1
+ProgressBarStroke.Color = Color3.fromRGB(120, 200, 255)
+ProgressBarStroke.Transparency = 0.5
+ProgressBarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ProgressBarStroke.Parent = ProgressBar
+
+local ProgressFill = Instance.new("Frame")
+ProgressFill.Parent = ProgressBar
+ProgressFill.BackgroundColor3 = Color3.fromRGB(120, 200, 255)
+ProgressFill.BackgroundTransparency = 0
+ProgressFill.BorderSizePixel = 0
+ProgressFill.Size = UDim2.new(0, 0, 1, 0)
+ProgressFill.ZIndex = 4
+ProgressFill.Active = false
+
+local ProgressFillCorner = Instance.new("UICorner")
+ProgressFillCorner.CornerRadius = UDim.new(1, 0)
+ProgressFillCorner.Parent = ProgressFill
+
+-- ============================================
+-- ★ MUTE / TEXTBOX / LOOP ROW
+-- ============================================
+local ExtraRow = Instance.new("Frame")
+ExtraRow.Parent = MainTab.Content
+ExtraRow.BackgroundTransparency = 1
+ExtraRow.BorderSizePixel = 0
+ExtraRow.Size = UDim2.new(1, 0, 0, 36)
+ExtraRow.ZIndex = 3
+ExtraRow.Active = false
+
+local ExtraLayout = Instance.new("UIListLayout")
+ExtraLayout.Parent = ExtraRow
+ExtraLayout.FillDirection = Enum.FillDirection.Horizontal
+ExtraLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ExtraLayout.Padding = UDim.new(0, 10)
+ExtraLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ExtraLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+local MuteBtn = Instance.new("TextButton")
+MuteBtn.Parent = ExtraRow
+MuteBtn.LayoutOrder = 1
+MuteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+MuteBtn.BackgroundTransparency = 0
+MuteBtn.BorderSizePixel = 0
+MuteBtn.Size = UDim2.new(1/3, -7, 1, 0)
+MuteBtn.Font = Enum.Font.GothamBold
+MuteBtn.Text = "🔇 MUTE GAME"
+MuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+MuteBtn.TextScaled = true
+MuteBtn.ZIndex = 3
+MuteBtn.AutoButtonColor = true
+
+local MuteCorner = Instance.new("UICorner")
+MuteCorner.CornerRadius = UDim.new(0, 6)
+MuteCorner.Parent = MuteBtn
+
+local muteState = "MUTED"
+MuteBtn.MouseButton1Click:Connect(function()
+    if muteState == "MUTED" then
+        muteState = "UNMUTED"
+        MuteBtn.Text = "🔊 UNMUTE"
+        MuteBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
+    else
+        muteState = "MUTED"
+        MuteBtn.Text = "🔇 MUTE GAME"
+        MuteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+    end
+end)
+
+local MiddleTextBox = Instance.new("TextBox")
+MiddleTextBox.Parent = ExtraRow
+MiddleTextBox.LayoutOrder = 2
+MiddleTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+MiddleTextBox.BackgroundTransparency = 0.3
+MiddleTextBox.BorderSizePixel = 0
+MiddleTextBox.Size = UDim2.new(1/3, -7, 1, 0)
+MiddleTextBox.Font = Enum.Font.Gotham
+MiddleTextBox.Text = ""
+MiddleTextBox.PlaceholderText = "text here…"
+MiddleTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
+MiddleTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
+MiddleTextBox.TextScaled = true
+MiddleTextBox.TextXAlignment = Enum.TextXAlignment.Left
+MiddleTextBox.ClearTextOnFocus = false
+MiddleTextBox.ZIndex = 3
+MiddleTextBox.Active = true
+
+local MiddleTextBoxCorner = Instance.new("UICorner")
+MiddleTextBoxCorner.CornerRadius = UDim.new(0, 6)
+MiddleTextBoxCorner.Parent = MiddleTextBox
+
+local MiddleTextBoxPadding = Instance.new("UIPadding")
+MiddleTextBoxPadding.Parent = MiddleTextBox
+MiddleTextBoxPadding.PaddingLeft = UDim.new(0, 10)
+MiddleTextBoxPadding.PaddingRight = UDim.new(0, 10)
+
+local MiddleTextBoxStroke = Instance.new("UIStroke")
+MiddleTextBoxStroke.Thickness = 1
+MiddleTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
+MiddleTextBoxStroke.Transparency = 0.5
+MiddleTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+MiddleTextBoxStroke.Parent = MiddleTextBox
+
+local LoopBtn = Instance.new("TextButton")
+LoopBtn.Parent = ExtraRow
+LoopBtn.LayoutOrder = 3
+LoopBtn.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
+LoopBtn.BackgroundTransparency = 0
+LoopBtn.BorderSizePixel = 0
+LoopBtn.Size = UDim2.new(1/3, -7, 1, 0)
+LoopBtn.Font = Enum.Font.GothamBold
+LoopBtn.Text = "🔁 LOOP: ON"
+LoopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+LoopBtn.TextScaled = true
+LoopBtn.ZIndex = 3
+LoopBtn.AutoButtonColor = true
+
+local LoopCorner = Instance.new("UICorner")
+LoopCorner.CornerRadius = UDim.new(0, 6)
+LoopCorner.Parent = LoopBtn
+
+local loopState = "ON"
+LoopBtn.MouseButton1Click:Connect(function()
+    if loopState == "ON" then
+        loopState = "OFF"
+        LoopBtn.Text = "🔁 LOOP: OFF"
+        LoopBtn.BackgroundColor3 = Color3.fromRGB(130, 130, 130)
+    else
+        loopState = "ON"
+        LoopBtn.Text = "🔁 LOOP: ON"
+        LoopBtn.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
+    end
+end)
+
+-- ============================================
+-- ★ VOLUME ROW  — [Volume: 1.00]  [__1.00__]  [<][>]
+-- ============================================
+local VolumeRow = Instance.new("Frame")
+VolumeRow.Parent = MainTab.Content
+VolumeRow.BackgroundTransparency = 1
+VolumeRow.BorderSizePixel = 0
+VolumeRow.Size = UDim2.new(1, 0, 0, 32)
+VolumeRow.ZIndex = 3
+VolumeRow.Active = false
+
+local VolumeLayout = Instance.new("UIListLayout")
+VolumeLayout.Parent = VolumeRow
+VolumeLayout.FillDirection = Enum.FillDirection.Horizontal
+VolumeLayout.SortOrder = Enum.SortOrder.LayoutOrder
+VolumeLayout.Padding = UDim.new(0, 8)
+VolumeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+VolumeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+-- ★ LEFT: "Volume: 1.00"
+local VolumeLabel = Instance.new("TextLabel")
+VolumeLabel.Parent = VolumeRow
+VolumeLabel.LayoutOrder = 1
+VolumeLabel.BackgroundTransparency = 1
+VolumeLabel.Size = UDim2.new(0.20, 0, 1, 0)
+VolumeLabel.Font = Enum.Font.GothamSemibold
+VolumeLabel.Text = "Volume: 1.00"
+VolumeLabel.TextColor3 = Color3.fromRGB(240, 245, 250)
+VolumeLabel.TextScaled = true
+VolumeLabel.TextXAlignment = Enum.TextXAlignment.Left
+VolumeLabel.ZIndex = 3
+VolumeLabel.Active = false
+
+-- ★ MIDDLE: long textbox — ★ text centered horizontally
+local VolumeTextBox = Instance.new("TextBox")
+VolumeTextBox.Parent = VolumeRow
+VolumeTextBox.LayoutOrder = 2
+VolumeTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+VolumeTextBox.BackgroundTransparency = 0.3
+VolumeTextBox.BorderSizePixel = 0
+VolumeTextBox.Size = UDim2.new(0.62, 0, 1, 0)
+VolumeTextBox.Font = Enum.Font.Gotham
+VolumeTextBox.Text = "1.00"
+VolumeTextBox.PlaceholderText = "0-100"
+VolumeTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
+VolumeTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
+VolumeTextBox.TextScaled = true
+VolumeTextBox.TextXAlignment = Enum.TextXAlignment.Center            -- ★ centered
+VolumeTextBox.ClearTextOnFocus = false
+VolumeTextBox.ZIndex = 3
+VolumeTextBox.Active = true
+
+local VolumeTextBoxCorner = Instance.new("UICorner")
+VolumeTextBoxCorner.CornerRadius = UDim.new(0, 6)
+VolumeTextBoxCorner.Parent = VolumeTextBox
+
+local VolumeTextBoxStroke = Instance.new("UIStroke")
+VolumeTextBoxStroke.Thickness = 1
+VolumeTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
+VolumeTextBoxStroke.Transparency = 0.5
+VolumeTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+VolumeTextBoxStroke.Parent = VolumeTextBox
+
+-- ★ RIGHT: "<" button
+local VolLessBtn = Instance.new("TextButton")
+VolLessBtn.Parent = VolumeRow
+VolLessBtn.LayoutOrder = 3
+VolLessBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
+VolLessBtn.BackgroundTransparency = 0
+VolLessBtn.BorderSizePixel = 0
+VolLessBtn.Size = UDim2.new(0.085, 0, 1, 0)
+VolLessBtn.Font = Enum.Font.GothamBold
+VolLessBtn.Text = "<"
+VolLessBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VolLessBtn.TextScaled = true
+VolLessBtn.ZIndex = 3
+VolLessBtn.AutoButtonColor = true
+
+local VolLessCorner = Instance.new("UICorner")
+VolLessCorner.CornerRadius = UDim.new(0, 6)
+VolLessCorner.Parent = VolLessBtn
+
+-- ★ RIGHT: ">" button
+local VolMoreBtn = Instance.new("TextButton")
+VolMoreBtn.Parent = VolumeRow
+VolMoreBtn.LayoutOrder = 4
+VolMoreBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
+VolMoreBtn.BackgroundTransparency = 0
+VolMoreBtn.BorderSizePixel = 0
+VolMoreBtn.Size = UDim2.new(0.085, 0, 1, 0)
+VolMoreBtn.Font = Enum.Font.GothamBold
+VolMoreBtn.Text = ">"
+VolMoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+VolMoreBtn.TextScaled = true
+VolMoreBtn.ZIndex = 3
+VolMoreBtn.AutoButtonColor = true
+
+local VolMoreCorner = Instance.new("UICorner")
+VolMoreCorner.CornerRadius = UDim.new(0, 6)
+VolMoreCorner.Parent = VolMoreBtn
+
+-- ============================================
+-- ★ SPEED ROW — [Speed: 1.00x]  [__1.00x__]  [<][>]
+-- ============================================
+local SpeedRow = Instance.new("Frame")
+SpeedRow.Parent = MainTab.Content
+SpeedRow.BackgroundTransparency = 1
+SpeedRow.BorderSizePixel = 0
+SpeedRow.Size = UDim2.new(1, 0, 0, 32)
+SpeedRow.ZIndex = 3
+SpeedRow.Active = false
+
+local SpeedLayout = Instance.new("UIListLayout")
+SpeedLayout.Parent = SpeedRow
+SpeedLayout.FillDirection = Enum.FillDirection.Horizontal
+SpeedLayout.SortOrder = Enum.SortOrder.LayoutOrder
+SpeedLayout.Padding = UDim.new(0, 8)
+SpeedLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SpeedLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+
+-- ★ LEFT: "Speed: 1.00x"
+local SpeedLabel = Instance.new("TextLabel")
+SpeedLabel.Parent = SpeedRow
+SpeedLabel.LayoutOrder = 1
+SpeedLabel.BackgroundTransparency = 1
+SpeedLabel.Size = UDim2.new(0.20, 0, 1, 0)
+SpeedLabel.Font = Enum.Font.GothamSemibold
+SpeedLabel.Text = "Speed: 1.00x"
+SpeedLabel.TextColor3 = Color3.fromRGB(240, 245, 250)
+SpeedLabel.TextScaled = true
+SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+SpeedLabel.ZIndex = 3
+SpeedLabel.Active = false
+
+-- ★ MIDDLE: long textbox (text "1.00x", placeholder "0-100")
+local SpeedTextBox = Instance.new("TextBox")
+SpeedTextBox.Parent = SpeedRow
+SpeedTextBox.LayoutOrder = 2
+SpeedTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
+SpeedTextBox.BackgroundTransparency = 0.3
+SpeedTextBox.BorderSizePixel = 0
+SpeedTextBox.Size = UDim2.new(0.62, 0, 1, 0)
+SpeedTextBox.Font = Enum.Font.Gotham
+SpeedTextBox.Text = "1.00x"
+SpeedTextBox.PlaceholderText = "0-100"
+SpeedTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
+SpeedTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
+SpeedTextBox.TextScaled = true
+SpeedTextBox.TextXAlignment = Enum.TextXAlignment.Center            -- ★ centered
+SpeedTextBox.ClearTextOnFocus = false
+SpeedTextBox.ZIndex = 3
+SpeedTextBox.Active = true
+
+local SpeedTextBoxCorner = Instance.new("UICorner")
+SpeedTextBoxCorner.CornerRadius = UDim.new(0, 6)
+SpeedTextBoxCorner.Parent = SpeedTextBox
+
+local SpeedTextBoxStroke = Instance.new("UIStroke")
+SpeedTextBoxStroke.Thickness = 1
+SpeedTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
+SpeedTextBoxStroke.Transparency = 0.5
+SpeedTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+SpeedTextBoxStroke.Parent = SpeedTextBox
+
+-- ★ RIGHT: "<" button
+local SpeedLessBtn = Instance.new("TextButton")
+SpeedLessBtn.Parent = SpeedRow
+SpeedLessBtn.LayoutOrder = 3
+SpeedLessBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
+SpeedLessBtn.BackgroundTransparency = 0
+SpeedLessBtn.BorderSizePixel = 0
+SpeedLessBtn.Size = UDim2.new(0.085, 0, 1, 0)
+SpeedLessBtn.Font = Enum.Font.GothamBold
+SpeedLessBtn.Text = "<"
+SpeedLessBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedLessBtn.TextScaled = true
+SpeedLessBtn.ZIndex = 3
+SpeedLessBtn.AutoButtonColor = true
+
+local SpeedLessCorner = Instance.new("UICorner")
+SpeedLessCorner.CornerRadius = UDim.new(0, 6)
+SpeedLessCorner.Parent = SpeedLessBtn
+
+-- ★ RIGHT: ">" button
+local SpeedMoreBtn = Instance.new("TextButton")
+SpeedMoreBtn.Parent = SpeedRow
+SpeedMoreBtn.LayoutOrder = 4
+SpeedMoreBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
+SpeedMoreBtn.BackgroundTransparency = 0
+SpeedMoreBtn.BorderSizePixel = 0
+SpeedMoreBtn.Size = UDim2.new(0.085, 0, 1, 0)
+SpeedMoreBtn.Font = Enum.Font.GothamBold
+SpeedMoreBtn.Text = ">"
+SpeedMoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedMoreBtn.TextScaled = true
+SpeedMoreBtn.ZIndex = 3
+SpeedMoreBtn.AutoButtonColor = true
+
+local SpeedMoreCorner = Instance.new("UICorner")
+SpeedMoreCorner.CornerRadius = UDim.new(0, 6)
+SpeedMoreCorner.Parent = SpeedMoreBtn
+
+-- (No function — placeholders per request)
+
+-- ============================================
 -- MINIMIZE PILL
 -- ============================================
 local MinimizePill = Instance.new("TextButton")
@@ -598,8 +1191,7 @@ MinimizePill.Position = UDim2.new(0.5, 0, 0, 10)
 MinimizePill.Size = UDim2.new(0, 160, 0, 34)
 MinimizePill.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
 MinimizePill.BackgroundTransparency = 0.3
-MinimizePill.BorderSizePixel = 1
-MinimizePill.BorderColor3 = Color3.fromRGB(140, 145, 152)
+MinimizePill.BorderSizePixel = 0
 MinimizePill.Text = ""
 MinimizePill.AutoButtonColor = false
 MinimizePill.Visible = false
@@ -620,20 +1212,60 @@ PillGradient.Color = ColorSequence.new(Color3.fromRGB(200, 210, 220))
 PillGradient.Parent = MinimizePill
 
 local PillStroke = Instance.new("UIStroke")
-PillStroke.Thickness = 1
-PillStroke.Color = Color3.fromRGB(200, 210, 220)
-PillStroke.Transparency = 0.55
+PillStroke.Thickness = 2
+PillStroke.Color = Color3.fromRGB(80, 200, 255)
+PillStroke.Transparency = 0.1
 PillStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+PillStroke.LineJoinMode = Enum.LineJoinMode.Round
 PillStroke.Parent = MinimizePill
+
+local PillStrokeGradient = Instance.new("UIGradient")
+PillStrokeGradient.Rotation = 0
+PillStrokeGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.0),
+    NumberSequenceKeypoint.new(0.5, 0.4),
+    NumberSequenceKeypoint.new(1, 0.0)
+})
+PillStrokeGradient.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255))
+PillStrokeGradient.Parent = PillStroke
+
+local PillGlow = Instance.new("Frame")
+PillGlow.Parent = MinimizePill
+PillGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+PillGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+PillGlow.Size = UDim2.new(1, 8, 1, 8)
+PillGlow.BackgroundColor3 = Color3.fromRGB(80, 200, 255)
+PillGlow.BackgroundTransparency = 0.75
+PillGlow.BorderSizePixel = 0
+PillGlow.ZIndex = -1
+PillGlow.Active = false
+
+local PillGlowCorner = Instance.new("UICorner")
+PillGlowCorner.CornerRadius = UDim.new(0, 12)
+PillGlowCorner.Parent = PillGlow
+
+local CYCLE_SECONDS = 60
+local cycleStart = os.clock()
+
+task.spawn(function()
+    while MinimizePill and MinimizePill.Parent do
+        local elapsed = os.clock() - cycleStart
+        local hue = (elapsed / CYCLE_SECONDS) % 1
+        local neonColor = Color3.fromHSV(hue, 0.8, 1)
+        PillStroke.Color = neonColor
+        PillGlow.BackgroundColor3 = neonColor
+        RunService.Heartbeat:Wait()
+    end
+end)
 
 local PillLabel = Instance.new("TextLabel")
 PillLabel.Parent = MinimizePill
 PillLabel.BackgroundTransparency = 1
 PillLabel.Size = UDim2.new(1, 0, 1, 0)
 PillLabel.Font = Enum.Font.GothamSemibold
-PillLabel.Text = "Click to open"
-PillLabel.TextColor3 = Color3.fromRGB(220, 225, 230)
-PillLabel.TextSize = 13
+PillLabel.Text = "GMP"
+PillLabel.TextColor3 = Color3.fromRGB(20, 22, 26)
+PillLabel.TextScaled = true
 PillLabel.ZIndex = 11
 
 -- ============================================
@@ -641,6 +1273,22 @@ PillLabel.ZIndex = 11
 -- ============================================
 local minimized = false
 local maximized = false
+
+local function applyLayoutForState(isMax)
+    if isMax then
+        TitleBar.Size = TITLE_SIZE_MAX
+        TabHolder.Position = UDim2.new(0, 8, 0, TAB_START_MAX)
+        TabHolder.Size = UDim2.new(0.14, 0, 1, TAB_END_MAX)
+        ContentHolder.Position = UDim2.new(0.15, 4, 0, TAB_START_MAX)
+        ContentHolder.Size = UDim2.new(0.85, -12, 1, TAB_END_MAX)
+    else
+        TitleBar.Size = TITLE_SIZE_NORMAL
+        TabHolder.Position = UDim2.new(0, 8, 0, TAB_START_NORMAL)
+        TabHolder.Size = UDim2.new(0.14, 0, 1, TAB_END_NORMAL)
+        ContentHolder.Position = UDim2.new(0.15, 4, 0, TAB_START_NORMAL)
+        ContentHolder.Size = UDim2.new(0.85, -12, 1, TAB_END_NORMAL)
+    end
+end
 
 local function minimizeGUI()
     if minimized then return end
@@ -671,6 +1319,8 @@ local function restoreGUI()
     MainFrame.Size = UDim2.new(SIZE_NORMAL.X.Scale, 0, 0, 0)
     MainFrame.BackgroundTransparency = 1
 
+    applyLayoutForState(maximized)
+
     local finalSize = maximized and SIZE_MAX or SIZE_NORMAL
 
     local info = TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -692,11 +1342,26 @@ end)
 MaxBtn.MouseButton1Click:Connect(function()
     maximized = not maximized
 
-    local targetSize = maximized and SIZE_MAX or SIZE_NORMAL
+    local targetSize      = maximized and SIZE_MAX or SIZE_NORMAL
+    local targetTitle     = maximized and TITLE_SIZE_MAX or TITLE_SIZE_NORMAL
+    local targetTabStart  = maximized and TAB_START_MAX or TAB_START_NORMAL
+    local targetTabEnd    = maximized and TAB_END_MAX or TAB_END_NORMAL
+
     local info = TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
     if not minimized then
         TweenService:Create(MainFrame, info, {Size = targetSize}):Play()
+        TweenService:Create(TitleBar, info, {Size = targetTitle}):Play()
+        TweenService:Create(TabHolder, info, {
+            Position = UDim2.new(0, 8, 0, targetTabStart),
+            Size = UDim2.new(0.14, 0, 1, targetTabEnd)
+        }):Play()
+        TweenService:Create(ContentHolder, info, {
+            Position = UDim2.new(0.15, 4, 0, targetTabStart),
+            Size = UDim2.new(0.85, -12, 1, targetTabEnd)
+        }):Play()
+    else
+        applyLayoutForState(maximized)
     end
 end)
 
@@ -744,7 +1409,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ============================================
--- CONFIRMATION DIALOG — GLASS
+-- ★ CONFIRMATION DIALOG
 -- ============================================
 local ConfirmOverlay = Instance.new("Frame")
 ConfirmOverlay.Parent = MainFrame
@@ -753,7 +1418,7 @@ ConfirmOverlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 ConfirmOverlay.BackgroundTransparency = 0.5
 ConfirmOverlay.BorderSizePixel = 0
 ConfirmOverlay.Visible = false
-ConfirmOverlay.ZIndex = 5
+ConfirmOverlay.ZIndex = 6
 ConfirmOverlay.Active = true
 
 local OverlayCorner = Instance.new("UICorner")
@@ -766,22 +1431,13 @@ Dialog.AnchorPoint = Vector2.new(0.5, 0.5)
 Dialog.Position = UDim2.new(0.5, 0, 0.5, 0)
 Dialog.Size = UDim2.new(0.6, 0, 0.35, 0)
 Dialog.BackgroundColor3 = Color3.fromRGB(44, 47, 51)
-Dialog.BackgroundTransparency = 0.25
+Dialog.BackgroundTransparency = 0
 Dialog.BorderSizePixel = 0
-Dialog.ZIndex = 6
+Dialog.ZIndex = 7
 
 local DialogCorner = Instance.new("UICorner")
 DialogCorner.CornerRadius = UDim.new(0, 8)
 DialogCorner.Parent = Dialog
-
-local DialogGradient = Instance.new("UIGradient")
-DialogGradient.Rotation = 90
-DialogGradient.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.3),
-    NumberSequenceKeypoint.new(1, 0.85)
-})
-DialogGradient.Color = ColorSequence.new(Color3.fromRGB(200, 210, 220))
-DialogGradient.Parent = Dialog
 
 local DialogStroke = Instance.new("UIStroke")
 DialogStroke.Thickness = 1
@@ -799,7 +1455,7 @@ DialogText.Font = Enum.Font.GothamSemibold
 DialogText.Text = "Are you sure you want to close?"
 DialogText.TextColor3 = Color3.fromRGB(255, 255, 255)
 DialogText.TextScaled = true
-DialogText.ZIndex = 7
+DialogText.ZIndex = 8
 
 local YesBtn = Instance.new("TextButton")
 YesBtn.Parent = Dialog
@@ -812,7 +1468,7 @@ YesBtn.Font = Enum.Font.GothamSemibold
 YesBtn.Text = "Yes"
 YesBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 YesBtn.TextScaled = true
-YesBtn.ZIndex = 7
+YesBtn.ZIndex = 8
 
 local YesCorner = Instance.new("UICorner")
 YesCorner.CornerRadius = UDim.new(0, 6)
@@ -845,7 +1501,7 @@ NoBtn.Font = Enum.Font.GothamSemibold
 NoBtn.Text = "No"
 NoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 NoBtn.TextScaled = true
-NoBtn.ZIndex = 7
+NoBtn.ZIndex = 8
 
 local NoCorner = Instance.new("UICorner")
 NoCorner.CornerRadius = UDim.new(0, 6)
