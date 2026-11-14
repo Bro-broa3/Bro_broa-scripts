@@ -1,11 +1,6 @@
 -- Roblox Exploit GUI — whole GUI draggable
 -- Position: exact middle of screen
 -- Size: 60% width × 60% height
--- ★ Scaling strategy:
---    • UIScale on MainFrame auto-adjusts to viewport (mobile 300px ↔ PC 4000px)
---    • Stacked children inside tab content use PIXEL HEIGHTS so ScrollingFrame works
---    • Children use SCALE WIDTHS (1, 0) so they always fill the frame horizontally
---    • AutomaticCanvasSize = Y on every tab content so canvas grows with content
 
 -- ★ Prevent duplicate GUI — using ATTRIBUTE instead of Name
 local CoreGui = game:GetService("CoreGui")
@@ -18,6 +13,7 @@ end
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui:SetAttribute("GMP_GUI", true)
@@ -44,7 +40,7 @@ MainCorner.CornerRadius = UDim.new(0, 10)
 MainCorner.Parent = MainFrame
 
 -- ============================================
--- ★ UISCALE — auto-adjusts whole GUI to viewport
+-- ★ RESPONSIVE UISCALE (auto-fit on any screen)
 -- ============================================
 local UIScale = Instance.new("UIScale")
 UIScale.Parent = MainFrame
@@ -66,6 +62,12 @@ updateUIScale()
 if workspace.CurrentCamera then
     workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateUIScale)
 end
+workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+    updateUIScale()
+    if workspace.CurrentCamera then
+        workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateUIScale)
+    end
+end)
 
 -- ============================================
 -- TITLE BAR
@@ -476,7 +478,7 @@ MainFrame.InputBegan:Connect(function(input)
 end)
 
 -- ============================================
--- TAB SYSTEM
+-- TAB SYSTEM (only Main tab kept)
 -- ============================================
 local TITLE_SIZE_NORMAL = UDim2.new(0.98, 0, 0.22, 0)
 local TITLE_SIZE_MAX    = UDim2.new(0.98, 0, 0.16, 0)
@@ -590,22 +592,24 @@ local function createTab(name)
     Content.ScrollBarImageColor3 = Color3.fromRGB(180, 190, 200)
     Content.ScrollBarImageTransparency = 0.5
     Content.CanvasSize = UDim2.new(0, 0, 0, 0)
-    Content.AutomaticCanvasSize = Enum.AutomaticSize.Y
     Content.Visible = false
     Content.ZIndex = 2
 
     local ContentLayout = Instance.new("UIListLayout")
     ContentLayout.Parent = Content
     ContentLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    ContentLayout.Padding = UDim.new(0, 10)
-    ContentLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    ContentLayout.Padding = UDim.new(0, 6)
 
     local ContentPadding = Instance.new("UIPadding")
     ContentPadding.Parent = Content
-    ContentPadding.PaddingTop = UDim.new(0, 10)
-    ContentPadding.PaddingLeft = UDim.new(0, 10)
-    ContentPadding.PaddingRight = UDim.new(0, 10)
-    ContentPadding.PaddingBottom = UDim.new(0, 10)
+    ContentPadding.PaddingTop = UDim.new(0, 8)
+    ContentPadding.PaddingLeft = UDim.new(0, 8)
+    ContentPadding.PaddingRight = UDim.new(0, 8)
+    ContentPadding.PaddingBottom = UDim.new(0, 8)
+
+    ContentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        Content.CanvasSize = UDim2.new(0, 0, 0, ContentLayout.AbsoluteContentSize.Y + 16)
+    end)
 
     local tab = {
         Tab = Tab,
@@ -638,551 +642,530 @@ local function createTab(name)
     return tab
 end
 
-local MainTab            = createTab("Main")
-local SettingsTab        = createTab("Settings")
-local PlaylistTab        = createTab("Playlist")
-local PlaylistSettingsTab= createTab("Playlist Settings")
-local HistoryTab         = createTab("History")
-local DataTab            = createTab("Data")
-local UpgLogTab          = createTab("UPG-LOG")
-local InfoTab            = createTab("Info")
-local PlayEffectTab      = createTab("Play Effect")
-local SearchTab          = createTab("Search")
+-- ★ ONLY the Main tab is created
+local MainTab = createTab("Main")
 
 MainTab.Select()
 
 -- ============================================
--- ★ MAIN TAB — pixel heights + scale widths
+-- PLAYER TAB (bottom-left corner — INSIDE the GUI)
 -- ============================================
+local PlayerTab = Instance.new("TextButton")
+PlayerTab.Parent = MainFrame
+PlayerTab.AnchorPoint = Vector2.new(0, 1)
+PlayerTab.Position = UDim2.new(0, 8, 1, -8)
+PlayerTab.Size = UDim2.new(0, 190, 0, 44)
+PlayerTab.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
+PlayerTab.BackgroundTransparency = 0
+PlayerTab.BorderSizePixel = 0
+PlayerTab.AutoButtonColor = false
+PlayerTab.Text = ""
+PlayerTab.ZIndex = 4
+PlayerTab.Active = true
 
-local MainTabImage = Instance.new("ImageLabel")
-MainTabImage.Parent = MainTab.Content
-MainTabImage.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
-MainTabImage.BackgroundTransparency = 0.5
-MainTabImage.BorderSizePixel = 0
-MainTabImage.Size = UDim2.new(1, 0, 0, 200)
-MainTabImage.ZIndex = 3
-MainTabImage.Active = false
-MainTabImage.ImageTransparency = 1
+local PlayerTabCorner = Instance.new("UICorner")
+PlayerTabCorner.CornerRadius = UDim.new(0, 8)
+PlayerTabCorner.Parent = PlayerTab
 
-local MainTabImageCorner = Instance.new("UICorner")
-MainTabImageCorner.CornerRadius = UDim.new(0, 8)
-MainTabImageCorner.Parent = MainTabImage
+-- ★ Neon purple → blue gradient
+local PlayerTabGradient = Instance.new("UIGradient")
+PlayerTabGradient.Rotation = 0
+PlayerTabGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(190, 70, 255)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(140, 90, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(50, 150, 255))
+})
+PlayerTabGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0.0, 0),
+    NumberSequenceKeypoint.new(1.0, 0)
+})
+PlayerTabGradient.Parent = PlayerTab
 
-local MainTabImageStroke = Instance.new("UIStroke")
-MainTabImageStroke.Thickness = 2
-MainTabImageStroke.Color = Color3.fromRGB(120, 200, 255)
-MainTabImageStroke.Transparency = 0.25
-MainTabImageStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-MainTabImageStroke.LineJoinMode = Enum.LineJoinMode.Round
-MainTabImageStroke.Parent = MainTabImage
+-- ★ Neon outer glow
+local PlayerTabGlow = Instance.new("Frame")
+PlayerTabGlow.Parent = PlayerTab
+PlayerTabGlow.AnchorPoint = Vector2.new(0.5, 0.5)
+PlayerTabGlow.Position = UDim2.new(0.5, 0, 0.5, 0)
+PlayerTabGlow.Size = UDim2.new(1, 10, 1, 10)
+PlayerTabGlow.BackgroundColor3 = Color3.fromRGB(160, 100, 255)
+PlayerTabGlow.BackgroundTransparency = 0.65
+PlayerTabGlow.BorderSizePixel = 0
+PlayerTabGlow.ZIndex = -1
+PlayerTabGlow.Active = false
 
-local MainTabImagePlaceholder = Instance.new("TextLabel")
-MainTabImagePlaceholder.Parent = MainTabImage
-MainTabImagePlaceholder.BackgroundTransparency = 1
-MainTabImagePlaceholder.Size = UDim2.new(1, 0, 1, 0)
-MainTabImagePlaceholder.Font = Enum.Font.Gotham
-MainTabImagePlaceholder.Text = "[ Empty ImageLabel ]"
-MainTabImagePlaceholder.TextColor3 = Color3.fromRGB(140, 200, 255)
-MainTabImagePlaceholder.TextTransparency = 0.4
-MainTabImagePlaceholder.TextScaled = true
-MainTabImagePlaceholder.ZIndex = 4
-MainTabImagePlaceholder.Active = false
+local PlayerTabGlowCorner = Instance.new("UICorner")
+PlayerTabGlowCorner.CornerRadius = UDim.new(0, 12)
+PlayerTabGlowCorner.Parent = PlayerTabGlow
 
-local URLLabel = Instance.new("TextLabel")
-URLLabel.Parent = MainTab.Content
-URLLabel.BackgroundTransparency = 1
-URLLabel.Size = UDim2.new(1, 0, 0, 24)
-URLLabel.Font = Enum.Font.GothamSemibold
-URLLabel.Text = "GitHub MP3 URL:"
-URLLabel.TextColor3 = Color3.fromRGB(220, 225, 230)
-URLLabel.TextScaled = true
-URLLabel.TextXAlignment = Enum.TextXAlignment.Left
-URLLabel.ZIndex = 3
-URLLabel.Active = false
+-- ★ Neon border stroke with gradient
+local PlayerTabStroke = Instance.new("UIStroke")
+PlayerTabStroke.Thickness = 2
+PlayerTabStroke.Color = Color3.fromRGB(200, 120, 255)
+PlayerTabStroke.Transparency = 0
+PlayerTabStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+PlayerTabStroke.LineJoinMode = Enum.LineJoinMode.Round
+PlayerTabStroke.Parent = PlayerTab
 
-local URLTextBox = Instance.new("TextBox")
-URLTextBox.Parent = MainTab.Content
-URLTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
-URLTextBox.BackgroundTransparency = 0.3
-URLTextBox.BorderSizePixel = 0
-URLTextBox.Size = UDim2.new(1, 0, 0, 36)
-URLTextBox.Font = Enum.Font.Gotham
-URLTextBox.Text = ""
-URLTextBox.PlaceholderText = "https://github.com/…/audio.mp3"
-URLTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
-URLTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
-URLTextBox.TextScaled = true
-URLTextBox.TextXAlignment = Enum.TextXAlignment.Left
-URLTextBox.ClearTextOnFocus = false
-URLTextBox.ZIndex = 3
-URLTextBox.Active = true
+local PlayerTabStrokeGradient = Instance.new("UIGradient")
+PlayerTabStrokeGradient.Rotation = 0
+PlayerTabStrokeGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 120, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(120, 200, 255))
+})
+PlayerTabStrokeGradient.Parent = PlayerTabStroke
 
-local URLTextBoxCorner = Instance.new("UICorner")
-URLTextBoxCorner.CornerRadius = UDim.new(0, 6)
-URLTextBoxCorner.Parent = URLTextBox
+-- ★ Animated neon pulse
+task.spawn(function()
+    while PlayerTab and PlayerTab.Parent do
+        TweenService:Create(PlayerTabStroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            Transparency = 0.45,
+            Thickness = 3
+        }):Play()
+        TweenService:Create(PlayerTabGlow, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            BackgroundTransparency = 0.8,
+            Size = UDim2.new(1, 16, 1, 16)
+        }):Play()
 
-local URLTextBoxPadding = Instance.new("UIPadding")
-URLTextBoxPadding.Parent = URLTextBox
-URLTextBoxPadding.PaddingLeft = UDim.new(0, 10)
-URLTextBoxPadding.PaddingRight = UDim.new(0, 10)
+        task.wait(1.2)
 
-local URLTextBoxStroke = Instance.new("UIStroke")
-URLTextBoxStroke.Thickness = 1
-URLTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
-URLTextBoxStroke.Transparency = 0.5
-URLTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-URLTextBoxStroke.Parent = URLTextBox
+        TweenService:Create(PlayerTabStroke, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            Transparency = 0,
+            Thickness = 2
+        }):Play()
+        TweenService:Create(PlayerTabGlow, TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), {
+            BackgroundTransparency = 0.65,
+            Size = UDim2.new(1, 10, 1, 10)
+        }):Play()
 
-local ControlsRow = Instance.new("Frame")
-ControlsRow.Parent = MainTab.Content
-ControlsRow.BackgroundTransparency = 1
-ControlsRow.BorderSizePixel = 0
-ControlsRow.Size = UDim2.new(1, 0, 0, 40)
-ControlsRow.ZIndex = 3
-ControlsRow.Active = false
-
-local ControlsLayout = Instance.new("UIListLayout")
-ControlsLayout.Parent = ControlsRow
-ControlsLayout.FillDirection = Enum.FillDirection.Horizontal
-ControlsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ControlsLayout.Padding = UDim.new(0, 10)
-ControlsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ControlsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-local BUTTON_TEXT_COLOR = Color3.fromRGB(240, 245, 250)
-
-local PlayBtn = Instance.new("TextButton")
-PlayBtn.Parent = ControlsRow
-PlayBtn.LayoutOrder = 1
-PlayBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 120)
-PlayBtn.BackgroundTransparency = 0
-PlayBtn.BorderSizePixel = 0
-PlayBtn.Size = UDim2.new(0.32, 0, 1, 0)
-PlayBtn.Font = Enum.Font.GothamBold
-PlayBtn.Text = "▶ PLAY"
-PlayBtn.TextColor3 = BUTTON_TEXT_COLOR
-PlayBtn.TextScaled = true
-PlayBtn.ZIndex = 3
-PlayBtn.AutoButtonColor = true
-
-local PlayCorner = Instance.new("UICorner")
-PlayCorner.CornerRadius = UDim.new(0, 6)
-PlayCorner.Parent = PlayBtn
-
-local PauseResumeBtn = Instance.new("TextButton")
-PauseResumeBtn.Parent = ControlsRow
-PauseResumeBtn.LayoutOrder = 2
-PauseResumeBtn.BackgroundColor3 = Color3.fromRGB(240, 200, 60)
-PauseResumeBtn.BackgroundTransparency = 0
-PauseResumeBtn.BorderSizePixel = 0
-PauseResumeBtn.Size = UDim2.new(0.32, 0, 1, 0)
-PauseResumeBtn.Font = Enum.Font.GothamBold
-PauseResumeBtn.Text = "⏸ PAUSE"
-PauseResumeBtn.TextColor3 = BUTTON_TEXT_COLOR
-PauseResumeBtn.TextScaled = true
-PauseResumeBtn.ZIndex = 3
-PauseResumeBtn.AutoButtonColor = true
-
-local PauseResumeCorner = Instance.new("UICorner")
-PauseResumeCorner.CornerRadius = UDim.new(0, 6)
-PauseResumeCorner.Parent = PauseResumeBtn
-
-local pauseResumeState = "PAUSE"
-PauseResumeBtn.MouseButton1Click:Connect(function()
-    if pauseResumeState == "PAUSE" then
-        pauseResumeState = "RESUME"
-        PauseResumeBtn.Text = "▶ RESUME"
-    else
-        pauseResumeState = "PAUSE"
-        PauseResumeBtn.Text = "⏸ PAUSE"
+        task.wait(1.2)
     end
 end)
 
-local StopBtn = Instance.new("TextButton")
-StopBtn.Parent = ControlsRow
-StopBtn.LayoutOrder = 3
-StopBtn.BackgroundColor3 = Color3.fromRGB(232, 65, 65)
-StopBtn.BackgroundTransparency = 0
-StopBtn.BorderSizePixel = 0
-StopBtn.Size = UDim2.new(0.32, 0, 1, 0)
-StopBtn.Font = Enum.Font.GothamBold
-StopBtn.Text = "⏹ STOP"
-StopBtn.TextColor3 = BUTTON_TEXT_COLOR
-StopBtn.TextScaled = true
-StopBtn.ZIndex = 3
-StopBtn.AutoButtonColor = true
-
-local StopCorner = Instance.new("UICorner")
-StopCorner.CornerRadius = UDim.new(0, 6)
-StopCorner.Parent = StopBtn
-
-local TimeLabel = Instance.new("TextLabel")
-TimeLabel.Parent = MainTab.Content
-TimeLabel.BackgroundTransparency = 1
-TimeLabel.Size = UDim2.new(1, 0, 0, 20)
-TimeLabel.Font = Enum.Font.GothamSemibold
-TimeLabel.Text = "0:00 / 0:00"
-TimeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TimeLabel.TextScaled = true
-TimeLabel.TextXAlignment = Enum.TextXAlignment.Left
-TimeLabel.ZIndex = 3
-TimeLabel.Active = false
-
-local ProgressBar = Instance.new("Frame")
-ProgressBar.Parent = MainTab.Content
-ProgressBar.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
-ProgressBar.BackgroundTransparency = 0.3
-ProgressBar.BorderSizePixel = 0
-ProgressBar.Size = UDim2.new(1, 0, 0, 14)
-ProgressBar.ZIndex = 3
-ProgressBar.Active = false
-
-local ProgressBarCorner = Instance.new("UICorner")
-ProgressBarCorner.CornerRadius = UDim.new(1, 0)
-ProgressBarCorner.Parent = ProgressBar
-
-local ProgressBarStroke = Instance.new("UIStroke")
-ProgressBarStroke.Thickness = 1
-ProgressBarStroke.Color = Color3.fromRGB(120, 200, 255)
-ProgressBarStroke.Transparency = 0.5
-ProgressBarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-ProgressBarStroke.Parent = ProgressBar
-
-local ProgressFill = Instance.new("Frame")
-ProgressFill.Parent = ProgressBar
-ProgressFill.BackgroundColor3 = Color3.fromRGB(120, 200, 255)
-ProgressFill.BackgroundTransparency = 0
-ProgressFill.BorderSizePixel = 0
-ProgressFill.Size = UDim2.new(0, 0, 1, 0)
-ProgressFill.ZIndex = 4
-ProgressFill.Active = false
-
-local ProgressFillCorner = Instance.new("UICorner")
-ProgressFillCorner.CornerRadius = UDim.new(1, 0)
-ProgressFillCorner.Parent = ProgressFill
-
--- ============================================
--- ★ MUTE / TEXTBOX / LOOP ROW
--- ============================================
-local ExtraRow = Instance.new("Frame")
-ExtraRow.Parent = MainTab.Content
-ExtraRow.BackgroundTransparency = 1
-ExtraRow.BorderSizePixel = 0
-ExtraRow.Size = UDim2.new(1, 0, 0, 36)
-ExtraRow.ZIndex = 3
-ExtraRow.Active = false
-
-local ExtraLayout = Instance.new("UIListLayout")
-ExtraLayout.Parent = ExtraRow
-ExtraLayout.FillDirection = Enum.FillDirection.Horizontal
-ExtraLayout.SortOrder = Enum.SortOrder.LayoutOrder
-ExtraLayout.Padding = UDim.new(0, 10)
-ExtraLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-ExtraLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
-local MuteBtn = Instance.new("TextButton")
-MuteBtn.Parent = ExtraRow
-MuteBtn.LayoutOrder = 1
-MuteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
-MuteBtn.BackgroundTransparency = 0
-MuteBtn.BorderSizePixel = 0
-MuteBtn.Size = UDim2.new(1/3, -7, 1, 0)
-MuteBtn.Font = Enum.Font.GothamBold
-MuteBtn.Text = "🔇 MUTE GAME"
-MuteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-MuteBtn.TextScaled = true
-MuteBtn.ZIndex = 3
-MuteBtn.AutoButtonColor = true
-
-local MuteCorner = Instance.new("UICorner")
-MuteCorner.CornerRadius = UDim.new(0, 6)
-MuteCorner.Parent = MuteBtn
-
-local muteState = "MUTED"
-MuteBtn.MouseButton1Click:Connect(function()
-    if muteState == "MUTED" then
-        muteState = "UNMUTED"
-        MuteBtn.Text = "🔊 UNMUTE"
-        MuteBtn.BackgroundColor3 = Color3.fromRGB(80, 180, 80)
-    else
-        muteState = "MUTED"
-        MuteBtn.Text = "🔇 MUTE GAME"
-        MuteBtn.BackgroundColor3 = Color3.fromRGB(180, 80, 80)
+-- ★ Hue-shifting neon color cycle
+local playerTabCycleStart = os.clock()
+local PLAYER_CYCLE_SECONDS = 8
+task.spawn(function()
+    while PlayerTab and PlayerTab.Parent and PlayerTabGlow and PlayerTabGlow.Parent do
+        local elapsed = os.clock() - playerTabCycleStart
+        local t = (elapsed % PLAYER_CYCLE_SECONDS) / PLAYER_CYCLE_SECONDS
+        local hue = 0.75 - (0.15 * (0.5 + 0.5 * math.sin(t * math.pi * 2)))
+        local neon = Color3.fromHSV(hue, 0.85, 1)
+        PlayerTabGlow.BackgroundColor3 = neon
+        RunService.Heartbeat:Wait()
     end
 end)
 
-local MiddleTextBox = Instance.new("TextBox")
-MiddleTextBox.Parent = ExtraRow
-MiddleTextBox.LayoutOrder = 2
-MiddleTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
-MiddleTextBox.BackgroundTransparency = 0.3
-MiddleTextBox.BorderSizePixel = 0
-MiddleTextBox.Size = UDim2.new(1/3, -7, 1, 0)
-MiddleTextBox.Font = Enum.Font.Gotham
-MiddleTextBox.Text = ""
-MiddleTextBox.PlaceholderText = "text here…"
-MiddleTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
-MiddleTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
-MiddleTextBox.TextScaled = true
-MiddleTextBox.TextXAlignment = Enum.TextXAlignment.Left
-MiddleTextBox.ClearTextOnFocus = false
-MiddleTextBox.ZIndex = 3
-MiddleTextBox.Active = true
+local PlayerAvatar = Instance.new("ImageLabel")
+PlayerAvatar.Parent = PlayerTab
+PlayerAvatar.AnchorPoint = Vector2.new(0, 0.5)
+PlayerAvatar.Position = UDim2.new(0, 8, 0.5, 0)
+PlayerAvatar.Size = UDim2.new(0, 30, 0, 30)
+PlayerAvatar.BackgroundColor3 = Color3.fromRGB(70, 74, 80)
+PlayerAvatar.BorderSizePixel = 0
+PlayerAvatar.Image = ""
+PlayerAvatar.ZIndex = 5
+PlayerAvatar.Active = false
 
-local MiddleTextBoxCorner = Instance.new("UICorner")
-MiddleTextBoxCorner.CornerRadius = UDim.new(0, 6)
-MiddleTextBoxCorner.Parent = MiddleTextBox
+local PlayerAvatarCorner = Instance.new("UICorner")
+PlayerAvatarCorner.CornerRadius = UDim.new(1, 0)
+PlayerAvatarCorner.Parent = PlayerAvatar
 
-local MiddleTextBoxPadding = Instance.new("UIPadding")
-MiddleTextBoxPadding.Parent = MiddleTextBox
-MiddleTextBoxPadding.PaddingLeft = UDim.new(0, 10)
-MiddleTextBoxPadding.PaddingRight = UDim.new(0, 10)
+local PlayerAvatarStroke = Instance.new("UIStroke")
+PlayerAvatarStroke.Thickness = 2
+PlayerAvatarStroke.Color = Color3.fromRGB(220, 160, 255)
+PlayerAvatarStroke.Transparency = 0.15
+PlayerAvatarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+PlayerAvatarStroke.Parent = PlayerAvatar
 
-local MiddleTextBoxStroke = Instance.new("UIStroke")
-MiddleTextBoxStroke.Thickness = 1
-MiddleTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
-MiddleTextBoxStroke.Transparency = 0.5
-MiddleTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-MiddleTextBoxStroke.Parent = MiddleTextBox
+local PlayerAvatarStrokeGradient = Instance.new("UIGradient")
+PlayerAvatarStrokeGradient.Rotation = 45
+PlayerAvatarStrokeGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 150, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(150, 200, 255))
+})
+PlayerAvatarStrokeGradient.Parent = PlayerAvatarStroke
 
-local LoopBtn = Instance.new("TextButton")
-LoopBtn.Parent = ExtraRow
-LoopBtn.LayoutOrder = 3
-LoopBtn.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
-LoopBtn.BackgroundTransparency = 0
-LoopBtn.BorderSizePixel = 0
-LoopBtn.Size = UDim2.new(1/3, -7, 1, 0)
-LoopBtn.Font = Enum.Font.GothamBold
-LoopBtn.Text = "🔁 LOOP: ON"
-LoopBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-LoopBtn.TextScaled = true
-LoopBtn.ZIndex = 3
-LoopBtn.AutoButtonColor = true
+local PlayerNameLabel = Instance.new("TextLabel")
+PlayerNameLabel.Parent = PlayerTab
+PlayerNameLabel.AnchorPoint = Vector2.new(0, 0)
+PlayerNameLabel.Position = UDim2.new(0, 46, 0, 3)
+PlayerNameLabel.Size = UDim2.new(1, -54, 0, 21)
+PlayerNameLabel.BackgroundTransparency = 1
+PlayerNameLabel.Font = Enum.Font.GothamBold
+PlayerNameLabel.Text = "Player"
+PlayerNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+PlayerNameLabel.TextScaled = true
+PlayerNameLabel.TextXAlignment = Enum.TextXAlignment.Left
+PlayerNameLabel.ZIndex = 5
+PlayerNameLabel.Active = false
 
-local LoopCorner = Instance.new("UICorner")
-LoopCorner.CornerRadius = UDim.new(0, 6)
-LoopCorner.Parent = LoopBtn
+local PlayerNameGlow = Instance.new("UIStroke")
+PlayerNameGlow.Thickness = 2
+PlayerNameGlow.Color = Color3.fromRGB(255, 160, 255)
+PlayerNameGlow.Transparency = 0.55
+PlayerNameGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+PlayerNameGlow.Parent = PlayerNameLabel
 
-local loopState = "ON"
-LoopBtn.MouseButton1Click:Connect(function()
-    if loopState == "ON" then
-        loopState = "OFF"
-        LoopBtn.Text = "🔁 LOOP: OFF"
-        LoopBtn.BackgroundColor3 = Color3.fromRGB(130, 130, 130)
-    else
-        loopState = "ON"
-        LoopBtn.Text = "🔁 LOOP: ON"
-        LoopBtn.BackgroundColor3 = Color3.fromRGB(70, 180, 70)
+local PlayerNickLabel = Instance.new("TextLabel")
+PlayerNickLabel.Parent = PlayerTab
+PlayerNickLabel.AnchorPoint = Vector2.new(0, 0)
+PlayerNickLabel.Position = UDim2.new(0, 46, 0, 22)
+PlayerNickLabel.Size = UDim2.new(1, -54, 0, 17)
+PlayerNickLabel.BackgroundTransparency = 1
+PlayerNickLabel.Font = Enum.Font.Gotham
+PlayerNickLabel.Text = "@user"
+PlayerNickLabel.TextColor3 = Color3.fromRGB(210, 230, 255)
+PlayerNickLabel.TextScaled = true
+PlayerNickLabel.TextXAlignment = Enum.TextXAlignment.Left
+PlayerNickLabel.ZIndex = 5
+PlayerNickLabel.Active = false
+
+local PlayerNickGlow = Instance.new("UIStroke")
+PlayerNickGlow.Thickness = 2
+PlayerNickGlow.Color = Color3.fromRGB(150, 200, 255)
+PlayerNickGlow.Transparency = 0.6
+PlayerNickGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+PlayerNickGlow.Parent = PlayerNickLabel
+
+-- ★ Hover feedback
+PlayerTab.MouseEnter:Connect(function()
+    TweenService:Create(PlayerTab, TweenInfo.new(0.15), {Size = UDim2.new(0, 196, 0, 46)}):Play()
+end)
+PlayerTab.MouseLeave:Connect(function()
+    TweenService:Create(PlayerTab, TweenInfo.new(0.15), {Size = UDim2.new(0, 190, 0, 44)}):Play()
+end)
+
+-- Populate player info
+local LocalPlayer = Players.LocalPlayer
+
+local function updatePlayerInfo()
+    if not LocalPlayer then return end
+
+    PlayerNameLabel.Text = LocalPlayer.DisplayName or LocalPlayer.Name
+    PlayerNickLabel.Text = "@" .. LocalPlayer.Name
+
+    task.spawn(function()
+        local success, image = pcall(function()
+            return Players:GetUserThumbnailAsync(
+                LocalPlayer.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size100x100
+            )
+        end)
+        if success and image and PlayerAvatar and PlayerAvatar.Parent then
+            PlayerAvatar.Image = image
+        end
+    end)
+end
+
+updatePlayerInfo()
+
+LocalPlayer.Changed:Connect(function(prop)
+    if prop == "DisplayName" or prop == "Name" then
+        updatePlayerInfo()
     end
 end)
 
 -- ============================================
--- ★ VOLUME ROW  — [Volume: 1.00]  [__1.00__]  [<][>]
+-- PROFILE POPUP (opens on PlayerTab click)
 -- ============================================
-local VolumeRow = Instance.new("Frame")
-VolumeRow.Parent = MainTab.Content
-VolumeRow.BackgroundTransparency = 1
-VolumeRow.BorderSizePixel = 0
-VolumeRow.Size = UDim2.new(1, 0, 0, 32)
-VolumeRow.ZIndex = 3
-VolumeRow.Active = false
+local ProfilePopup = Instance.new("Frame")
+ProfilePopup.Parent = MainFrame
+ProfilePopup.AnchorPoint = Vector2.new(0, 1)
+ProfilePopup.Position = UDim2.new(0, 8, 1, -58)
+ProfilePopup.Size = UDim2.new(0, 250, 0, 0)
+ProfilePopup.BackgroundColor3 = Color3.fromRGB(22, 24, 30)
+ProfilePopup.BackgroundTransparency = 0.02
+ProfilePopup.BorderSizePixel = 0
+ProfilePopup.ClipsDescendants = true
+ProfilePopup.Visible = false
+ProfilePopup.ZIndex = 6
+ProfilePopup.Active = true
 
-local VolumeLayout = Instance.new("UIListLayout")
-VolumeLayout.Parent = VolumeRow
-VolumeLayout.FillDirection = Enum.FillDirection.Horizontal
-VolumeLayout.SortOrder = Enum.SortOrder.LayoutOrder
-VolumeLayout.Padding = UDim.new(0, 8)
-VolumeLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-VolumeLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+local ProfilePopupCorner = Instance.new("UICorner")
+ProfilePopupCorner.CornerRadius = UDim.new(0, 10)
+ProfilePopupCorner.Parent = ProfilePopup
 
--- ★ LEFT: "Volume: 1.00"
-local VolumeLabel = Instance.new("TextLabel")
-VolumeLabel.Parent = VolumeRow
-VolumeLabel.LayoutOrder = 1
-VolumeLabel.BackgroundTransparency = 1
-VolumeLabel.Size = UDim2.new(0.20, 0, 1, 0)
-VolumeLabel.Font = Enum.Font.GothamSemibold
-VolumeLabel.Text = "Volume: 1.00"
-VolumeLabel.TextColor3 = Color3.fromRGB(240, 245, 250)
-VolumeLabel.TextScaled = true
-VolumeLabel.TextXAlignment = Enum.TextXAlignment.Left
-VolumeLabel.ZIndex = 3
-VolumeLabel.Active = false
+local ProfilePopupGradient = Instance.new("UIGradient")
+ProfilePopupGradient.Rotation = 90
+ProfilePopupGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(45, 30, 70)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(25, 40, 75))
+})
+ProfilePopupGradient.Parent = ProfilePopup
 
--- ★ MIDDLE: long textbox — ★ text centered horizontally
-local VolumeTextBox = Instance.new("TextBox")
-VolumeTextBox.Parent = VolumeRow
-VolumeTextBox.LayoutOrder = 2
-VolumeTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
-VolumeTextBox.BackgroundTransparency = 0.3
-VolumeTextBox.BorderSizePixel = 0
-VolumeTextBox.Size = UDim2.new(0.62, 0, 1, 0)
-VolumeTextBox.Font = Enum.Font.Gotham
-VolumeTextBox.Text = "1.00"
-VolumeTextBox.PlaceholderText = "0-100"
-VolumeTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
-VolumeTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
-VolumeTextBox.TextScaled = true
-VolumeTextBox.TextXAlignment = Enum.TextXAlignment.Center            -- ★ centered
-VolumeTextBox.ClearTextOnFocus = false
-VolumeTextBox.ZIndex = 3
-VolumeTextBox.Active = true
+local ProfilePopupStroke = Instance.new("UIStroke")
+ProfilePopupStroke.Thickness = 2
+ProfilePopupStroke.Color = Color3.fromRGB(180, 120, 255)
+ProfilePopupStroke.Transparency = 0.1
+ProfilePopupStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ProfilePopupStroke.LineJoinMode = Enum.LineJoinMode.Round
+ProfilePopupStroke.Parent = ProfilePopup
 
-local VolumeTextBoxCorner = Instance.new("UICorner")
-VolumeTextBoxCorner.CornerRadius = UDim.new(0, 6)
-VolumeTextBoxCorner.Parent = VolumeTextBox
+local ProfilePopupStrokeGradient = Instance.new("UIGradient")
+ProfilePopupStrokeGradient.Rotation = 0
+ProfilePopupStrokeGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 120, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(120, 200, 255))
+})
+ProfilePopupStrokeGradient.Parent = ProfilePopupStroke
 
-local VolumeTextBoxStroke = Instance.new("UIStroke")
-VolumeTextBoxStroke.Thickness = 1
-VolumeTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
-VolumeTextBoxStroke.Transparency = 0.5
-VolumeTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-VolumeTextBoxStroke.Parent = VolumeTextBox
+local ProfileAvatar = Instance.new("ImageLabel")
+ProfileAvatar.Parent = ProfilePopup
+ProfileAvatar.AnchorPoint = Vector2.new(0.5, 0)
+ProfileAvatar.Position = UDim2.new(0.5, 0, 0, 10)
+ProfileAvatar.Size = UDim2.new(0, 70, 0, 70)
+ProfileAvatar.BackgroundColor3 = Color3.fromRGB(60, 64, 72)
+ProfileAvatar.BorderSizePixel = 0
+ProfileAvatar.Image = ""
+ProfileAvatar.ZIndex = 7
+ProfileAvatar.Active = false
 
--- ★ RIGHT: "<" button
-local VolLessBtn = Instance.new("TextButton")
-VolLessBtn.Parent = VolumeRow
-VolLessBtn.LayoutOrder = 3
-VolLessBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
-VolLessBtn.BackgroundTransparency = 0
-VolLessBtn.BorderSizePixel = 0
-VolLessBtn.Size = UDim2.new(0.085, 0, 1, 0)
-VolLessBtn.Font = Enum.Font.GothamBold
-VolLessBtn.Text = "<"
-VolLessBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-VolLessBtn.TextScaled = true
-VolLessBtn.ZIndex = 3
-VolLessBtn.AutoButtonColor = true
+local ProfileAvatarCorner = Instance.new("UICorner")
+ProfileAvatarCorner.CornerRadius = UDim.new(1, 0)
+ProfileAvatarCorner.Parent = ProfileAvatar
 
-local VolLessCorner = Instance.new("UICorner")
-VolLessCorner.CornerRadius = UDim.new(0, 6)
-VolLessCorner.Parent = VolLessBtn
+local ProfileAvatarStroke = Instance.new("UIStroke")
+ProfileAvatarStroke.Thickness = 3
+ProfileAvatarStroke.Color = Color3.fromRGB(220, 160, 255)
+ProfileAvatarStroke.Transparency = 0.05
+ProfileAvatarStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ProfileAvatarStroke.Parent = ProfileAvatar
 
--- ★ RIGHT: ">" button
-local VolMoreBtn = Instance.new("TextButton")
-VolMoreBtn.Parent = VolumeRow
-VolMoreBtn.LayoutOrder = 4
-VolMoreBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
-VolMoreBtn.BackgroundTransparency = 0
-VolMoreBtn.BorderSizePixel = 0
-VolMoreBtn.Size = UDim2.new(0.085, 0, 1, 0)
-VolMoreBtn.Font = Enum.Font.GothamBold
-VolMoreBtn.Text = ">"
-VolMoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-VolMoreBtn.TextScaled = true
-VolMoreBtn.ZIndex = 3
-VolMoreBtn.AutoButtonColor = true
+local ProfileAvatarStrokeGradient = Instance.new("UIGradient")
+ProfileAvatarStrokeGradient.Rotation = 45
+ProfileAvatarStrokeGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(255, 150, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(150, 200, 255))
+})
+ProfileAvatarStrokeGradient.Parent = ProfileAvatarStroke
 
-local VolMoreCorner = Instance.new("UICorner")
-VolMoreCorner.CornerRadius = UDim.new(0, 6)
-VolMoreCorner.Parent = VolMoreBtn
+local ProfileNameLabel = Instance.new("TextLabel")
+ProfileNameLabel.Parent = ProfilePopup
+ProfileNameLabel.AnchorPoint = Vector2.new(0.5, 0)
+ProfileNameLabel.Position = UDim2.new(0.5, 0, 0, 86)
+ProfileNameLabel.Size = UDim2.new(1, -16, 0, 22)
+ProfileNameLabel.BackgroundTransparency = 1
+ProfileNameLabel.Font = Enum.Font.GothamBold
+ProfileNameLabel.Text = "Player"
+ProfileNameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+ProfileNameLabel.TextScaled = true
+ProfileNameLabel.TextXAlignment = Enum.TextXAlignment.Center
+ProfileNameLabel.ZIndex = 7
+ProfileNameLabel.Active = false
+
+local ProfileNameGlow = Instance.new("UIStroke")
+ProfileNameGlow.Thickness = 2
+ProfileNameGlow.Color = Color3.fromRGB(255, 160, 255)
+ProfileNameGlow.Transparency = 0.5
+ProfileNameGlow.ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual
+ProfileNameGlow.Parent = ProfileNameLabel
+
+local ProfileUsernameLabel = Instance.new("TextLabel")
+ProfileUsernameLabel.Parent = ProfilePopup
+ProfileUsernameLabel.AnchorPoint = Vector2.new(0.5, 0)
+ProfileUsernameLabel.Position = UDim2.new(0.5, 0, 0, 108)
+ProfileUsernameLabel.Size = UDim2.new(1, -16, 0, 18)
+ProfileUsernameLabel.BackgroundTransparency = 1
+ProfileUsernameLabel.Font = Enum.Font.Gotham
+ProfileUsernameLabel.Text = "@user"
+ProfileUsernameLabel.TextColor3 = Color3.fromRGB(190, 220, 255)
+ProfileUsernameLabel.TextScaled = true
+ProfileUsernameLabel.TextXAlignment = Enum.TextXAlignment.Center
+ProfileUsernameLabel.ZIndex = 7
+ProfileUsernameLabel.Active = false
+
+local ProfileIdLabel = Instance.new("TextLabel")
+ProfileIdLabel.Parent = ProfilePopup
+ProfileIdLabel.AnchorPoint = Vector2.new(0.5, 0)
+ProfileIdLabel.Position = UDim2.new(0.5, 0, 0, 130)
+ProfileIdLabel.Size = UDim2.new(1, -16, 0, 16)
+ProfileIdLabel.BackgroundTransparency = 1
+ProfileIdLabel.Font = Enum.Font.Code
+ProfileIdLabel.Text = "User ID: ---"
+ProfileIdLabel.TextColor3 = Color3.fromRGB(160, 175, 200)
+ProfileIdLabel.TextScaled = true
+ProfileIdLabel.TextXAlignment = Enum.TextXAlignment.Center
+ProfileIdLabel.ZIndex = 7
+ProfileIdLabel.Active = false
+
+local ProfileJoinLabel = Instance.new("TextLabel")
+ProfileJoinLabel.Parent = ProfilePopup
+ProfileJoinLabel.AnchorPoint = Vector2.new(0.5, 0)
+ProfileJoinLabel.Position = UDim2.new(0.5, 0, 0, 148)
+ProfileJoinLabel.Size = UDim2.new(1, -16, 0, 16)
+ProfileJoinLabel.BackgroundTransparency = 1
+ProfileJoinLabel.Font = Enum.Font.Code
+ProfileJoinLabel.Text = "Joined: ---"
+ProfileJoinLabel.TextColor3 = Color3.fromRGB(160, 175, 200)
+ProfileJoinLabel.TextScaled = true
+ProfileJoinLabel.TextXAlignment = Enum.TextXAlignment.Center
+ProfileJoinLabel.ZIndex = 7
+ProfileJoinLabel.Active = false
+
+local ViewProfileBtn = Instance.new("TextButton")
+ViewProfileBtn.Parent = ProfilePopup
+ViewProfileBtn.AnchorPoint = Vector2.new(0.5, 0)
+ViewProfileBtn.Position = UDim2.new(0.5, 0, 0, 172)
+ViewProfileBtn.Size = UDim2.new(1, -24, 0, 30)
+ViewProfileBtn.BackgroundColor3 = Color3.fromRGB(120, 70, 220)
+ViewProfileBtn.BackgroundTransparency = 0
+ViewProfileBtn.BorderSizePixel = 0
+ViewProfileBtn.Font = Enum.Font.GothamBold
+ViewProfileBtn.Text = "View Roblox Profile"
+ViewProfileBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ViewProfileBtn.TextScaled = true
+ViewProfileBtn.AutoButtonColor = false
+ViewProfileBtn.ZIndex = 7
+
+local ViewProfileCorner = Instance.new("UICorner")
+ViewProfileCorner.CornerRadius = UDim.new(0, 6)
+ViewProfileCorner.Parent = ViewProfileBtn
+
+local ViewProfileGradient = Instance.new("UIGradient")
+ViewProfileGradient.Rotation = 0
+ViewProfileGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0.0, Color3.fromRGB(190, 70, 255)),
+    ColorSequenceKeypoint.new(1.0, Color3.fromRGB(50, 150, 255))
+})
+ViewProfileGradient.Parent = ViewProfileBtn
+
+local ViewProfileStroke = Instance.new("UIStroke")
+ViewProfileStroke.Thickness = 1.5
+ViewProfileStroke.Color = Color3.fromRGB(220, 180, 255)
+ViewProfileStroke.Transparency = 0.2
+ViewProfileStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+ViewProfileStroke.Parent = ViewProfileBtn
+
+ViewProfileBtn.MouseEnter:Connect(function()
+    TweenService:Create(ViewProfileStroke, TweenInfo.new(0.15), {Transparency = 0}):Play()
+end)
+ViewProfileBtn.MouseLeave:Connect(function()
+    TweenService:Create(ViewProfileStroke, TweenInfo.new(0.15), {Transparency = 0.2}):Play()
+end)
+
+ViewProfileBtn.MouseButton1Click:Connect(function()
+    if not LocalPlayer then return end
+    local url = "https://www.roblox.com/users/" .. tostring(LocalPlayer.UserId) .. "/profile"
+    if setclipboard then
+        setclipboard(url)
+    end
+    pcall(function()
+        if syn and syn.request then
+            syn.request({Url = "rbxasset://ui/button.mp3", Method = "GET"})
+        end
+    end)
+    pcall(function()
+        if request then
+            request({Url = url, Method = "GET"})
+        end
+    end)
+    pcall(function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "Profile URL copied",
+            Text = url,
+            Duration = 4
+        })
+    end)
+end)
+
+local function refreshProfilePopup()
+    if not LocalPlayer then return end
+
+    ProfileNameLabel.Text = LocalPlayer.DisplayName or LocalPlayer.Name
+    ProfileUsernameLabel.Text = "@" .. LocalPlayer.Name
+    ProfileIdLabel.Text = "User ID: " .. tostring(LocalPlayer.UserId)
+
+    local joinText = "Joined: ---"
+    pcall(function()
+        local joinDate = LocalPlayer.AccountAge
+        if joinDate then
+            local date = os.date("!*t", os.time() - joinDate * 86400)
+            joinText = string.format("Joined: %04d-%02d-%02d", date.year, date.month, date.day)
+        end
+    end)
+    ProfileJoinLabel.Text = joinText
+
+    task.spawn(function()
+        local success, image = pcall(function()
+            return Players:GetUserThumbnailAsync(
+                LocalPlayer.UserId,
+                Enum.ThumbnailType.HeadShot,
+                Enum.ThumbnailSize.Size150x150
+            )
+        end)
+        if success and image and ProfileAvatar and ProfileAvatar.Parent then
+            ProfileAvatar.Image = image
+        end
+    end)
+end
+
+refreshProfilePopup()
+
+LocalPlayer.Changed:Connect(function(prop)
+    if prop == "DisplayName" or prop == "Name" or prop == "AccountAge" then
+        refreshProfilePopup()
+    end
+end)
+
+local profileOpen = false
+local profileTweening = false
+
+local function openProfile()
+    if profileTweening then return end
+    profileTweening = true
+    profileOpen = true
+
+    refreshProfilePopup()
+    ProfilePopup.Visible = true
+    ProfilePopup.Size = UDim2.new(0, 250, 0, 0)
+
+    TweenService:Create(ProfilePopup, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Size = UDim2.new(0, 250, 0, 215)
+    }):Play()
+
+    task.wait(0.28)
+    profileTweening = false
+end
+
+local function closeProfile()
+    if profileTweening then return end
+    if not profileOpen then return end
+    profileTweening = true
+    profileOpen = false
+
+    TweenService:Create(ProfilePopup, TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
+        Size = UDim2.new(0, 250, 0, 0)
+    }):Play()
+
+    task.wait(0.22)
+    ProfilePopup.Visible = false
+    profileTweening = false
+end
+
+PlayerTab.MouseButton1Click:Connect(function()
+    if profileOpen then
+        closeProfile()
+    else
+        openProfile()
+    end
+end)
+
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if not profileOpen then return end
+    if profileTweening then return end
+    if input.UserInputType == Enum.UserInputType.MouseButton1
+    or input.UserInputType == Enum.UserInputType.Touch then
+        local pos = input.Position
+        if not isInside(ProfilePopup, pos) and not isInside(PlayerTab, pos) then
+            closeProfile()
+        end
+    end
+end)
 
 -- ============================================
--- ★ SPEED ROW — [Speed: 1.00x]  [__1.00x__]  [<][>]
--- ============================================
-local SpeedRow = Instance.new("Frame")
-SpeedRow.Parent = MainTab.Content
-SpeedRow.BackgroundTransparency = 1
-SpeedRow.BorderSizePixel = 0
-SpeedRow.Size = UDim2.new(1, 0, 0, 32)
-SpeedRow.ZIndex = 3
-SpeedRow.Active = false
-
-local SpeedLayout = Instance.new("UIListLayout")
-SpeedLayout.Parent = SpeedRow
-SpeedLayout.FillDirection = Enum.FillDirection.Horizontal
-SpeedLayout.SortOrder = Enum.SortOrder.LayoutOrder
-SpeedLayout.Padding = UDim.new(0, 8)
-SpeedLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-SpeedLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-
--- ★ LEFT: "Speed: 1.00x"
-local SpeedLabel = Instance.new("TextLabel")
-SpeedLabel.Parent = SpeedRow
-SpeedLabel.LayoutOrder = 1
-SpeedLabel.BackgroundTransparency = 1
-SpeedLabel.Size = UDim2.new(0.20, 0, 1, 0)
-SpeedLabel.Font = Enum.Font.GothamSemibold
-SpeedLabel.Text = "Speed: 1.00x"
-SpeedLabel.TextColor3 = Color3.fromRGB(240, 245, 250)
-SpeedLabel.TextScaled = true
-SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
-SpeedLabel.ZIndex = 3
-SpeedLabel.Active = false
-
--- ★ MIDDLE: long textbox (text "1.00x", placeholder "0-100")
-local SpeedTextBox = Instance.new("TextBox")
-SpeedTextBox.Parent = SpeedRow
-SpeedTextBox.LayoutOrder = 2
-SpeedTextBox.BackgroundColor3 = Color3.fromRGB(45, 48, 52)
-SpeedTextBox.BackgroundTransparency = 0.3
-SpeedTextBox.BorderSizePixel = 0
-SpeedTextBox.Size = UDim2.new(0.62, 0, 1, 0)
-SpeedTextBox.Font = Enum.Font.Gotham
-SpeedTextBox.Text = "1.00x"
-SpeedTextBox.PlaceholderText = "0-100"
-SpeedTextBox.PlaceholderColor3 = Color3.fromRGB(140, 145, 152)
-SpeedTextBox.TextColor3 = Color3.fromRGB(240, 245, 250)
-SpeedTextBox.TextScaled = true
-SpeedTextBox.TextXAlignment = Enum.TextXAlignment.Center            -- ★ centered
-SpeedTextBox.ClearTextOnFocus = false
-SpeedTextBox.ZIndex = 3
-SpeedTextBox.Active = true
-
-local SpeedTextBoxCorner = Instance.new("UICorner")
-SpeedTextBoxCorner.CornerRadius = UDim.new(0, 6)
-SpeedTextBoxCorner.Parent = SpeedTextBox
-
-local SpeedTextBoxStroke = Instance.new("UIStroke")
-SpeedTextBoxStroke.Thickness = 1
-SpeedTextBoxStroke.Color = Color3.fromRGB(120, 200, 255)
-SpeedTextBoxStroke.Transparency = 0.5
-SpeedTextBoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-SpeedTextBoxStroke.Parent = SpeedTextBox
-
--- ★ RIGHT: "<" button
-local SpeedLessBtn = Instance.new("TextButton")
-SpeedLessBtn.Parent = SpeedRow
-SpeedLessBtn.LayoutOrder = 3
-SpeedLessBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
-SpeedLessBtn.BackgroundTransparency = 0
-SpeedLessBtn.BorderSizePixel = 0
-SpeedLessBtn.Size = UDim2.new(0.085, 0, 1, 0)
-SpeedLessBtn.Font = Enum.Font.GothamBold
-SpeedLessBtn.Text = "<"
-SpeedLessBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedLessBtn.TextScaled = true
-SpeedLessBtn.ZIndex = 3
-SpeedLessBtn.AutoButtonColor = true
-
-local SpeedLessCorner = Instance.new("UICorner")
-SpeedLessCorner.CornerRadius = UDim.new(0, 6)
-SpeedLessCorner.Parent = SpeedLessBtn
-
--- ★ RIGHT: ">" button
-local SpeedMoreBtn = Instance.new("TextButton")
-SpeedMoreBtn.Parent = SpeedRow
-SpeedMoreBtn.LayoutOrder = 4
-SpeedMoreBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 180)
-SpeedMoreBtn.BackgroundTransparency = 0
-SpeedMoreBtn.BorderSizePixel = 0
-SpeedMoreBtn.Size = UDim2.new(0.085, 0, 1, 0)
-SpeedMoreBtn.Font = Enum.Font.GothamBold
-SpeedMoreBtn.Text = ">"
-SpeedMoreBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedMoreBtn.TextScaled = true
-SpeedMoreBtn.ZIndex = 3
-SpeedMoreBtn.AutoButtonColor = true
-
-local SpeedMoreCorner = Instance.new("UICorner")
-SpeedMoreCorner.CornerRadius = UDim.new(0, 6)
-SpeedMoreCorner.Parent = SpeedMoreBtn
-
--- (No function — placeholders per request)
-
--- ============================================
--- MINIMIZE PILL
+-- MINIMIZE PILL — text "GMP" in dark colour
 -- ============================================
 local MinimizePill = Instance.new("TextButton")
 MinimizePill.Parent = ScreenGui
@@ -1295,6 +1278,11 @@ local function minimizeGUI()
     minimized = true
 
     MinimizePill.Visible = false
+
+    if profileOpen then
+        ProfilePopup.Visible = false
+        profileOpen = false
+    end
 
     local info = TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.InOut)
     local targetSize = UDim2.new(MainFrame.Size.X.Scale, MainFrame.Size.X.Offset, 0, 0)
@@ -1409,7 +1397,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ============================================
--- ★ CONFIRMATION DIALOG
+-- CONFIRMATION DIALOG
 -- ============================================
 local ConfirmOverlay = Instance.new("Frame")
 ConfirmOverlay.Parent = MainFrame
@@ -1431,13 +1419,22 @@ Dialog.AnchorPoint = Vector2.new(0.5, 0.5)
 Dialog.Position = UDim2.new(0.5, 0, 0.5, 0)
 Dialog.Size = UDim2.new(0.6, 0, 0.35, 0)
 Dialog.BackgroundColor3 = Color3.fromRGB(44, 47, 51)
-Dialog.BackgroundTransparency = 0
+Dialog.BackgroundTransparency = 0.25
 Dialog.BorderSizePixel = 0
 Dialog.ZIndex = 7
 
 local DialogCorner = Instance.new("UICorner")
 DialogCorner.CornerRadius = UDim.new(0, 8)
 DialogCorner.Parent = Dialog
+
+local DialogGradient = Instance.new("UIGradient")
+DialogGradient.Rotation = 90
+DialogGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.3),
+    NumberSequenceKeypoint.new(1, 0.85)
+})
+DialogGradient.Color = ColorSequence.new(Color3.fromRGB(200, 210, 220))
+DialogGradient.Parent = Dialog
 
 local DialogStroke = Instance.new("UIStroke")
 DialogStroke.Thickness = 1
