@@ -1,4 +1,4 @@
--- Roblox Exploit MP3 Player GUI - v12 playback resume and UI state restoration
+-- Roblox MP3 Player GUI - v15 duplicate Auto Execute launch guard
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -228,6 +228,19 @@ local function showNotification(title, message, duration)
 end
 
 -- ========== STOP OLD MUSIC & CLEANUP ==========
+-- A queued Auto Execute launch can race another queued launch. The executor-level
+-- guard above prevents the common case; this short wait also lets a just-created
+-- GUI become visible before this run starts replacing it.
+pcall(function()
+    local startedAt = os.clock()
+    while os.clock() - startedAt < 0.35 do
+        local existing = CoreGui:FindFirstChild("MusicPlayerGUI")
+            or CoreGui:FindFirstChild("MusicPlayerMiniGUI")
+            or CoreGui:FindFirstChild("MusicPlayerExtraMini")
+        if existing then break end
+        task.wait(0.05)
+    end
+end)
 -- Capture the currently running instance before replacing its GUI/Sound. This closes
 -- the gap where a fast re-execute happened between periodic JSON writes.
 pcall(function()
@@ -2196,6 +2209,25 @@ local function queueAutoExecute()
     -- after queueing still prevents the next game from running the script.
     local queuedSource = string.format([[
         task.wait(2)
+
+        -- Multiple old queue_on_teleport callbacks can survive when the player
+        -- closes the GUI, re-executes the script, and enables Auto Execute again.
+        -- Use one shared executor-environment guard so only the first queued
+        -- callback can launch the player during this destination session.
+        local sharedEnv = _G
+        pcall(function()
+            if type(getgenv) == "function" then
+                local env = getgenv()
+                if type(env) == "table" then sharedEnv = env end
+            end
+        end)
+        local guardKey = "__BRO_MP3_PLAYER_AUTOEXEC_LAUNCH_GUARD"
+        local now = os.clock()
+        local previousLaunch = tonumber(sharedEnv[guardKey])
+        if previousLaunch and (now - previousLaunch) < 20 then
+            return
+        end
+
         local enabled = true
         pcall(function()
             if readfile and isfile and isfile(%q) then
@@ -2205,7 +2237,11 @@ local function queueAutoExecute()
                 end
             end
         end)
+
         if enabled then
+            -- Set the guard before fetching/executing; otherwise two queued
+            -- callbacks can both pass the check while the first is still loading.
+            sharedEnv[guardKey] = now
             local source = game:HttpGet(%q)
             assert(type(source) == "string" and #source > 0, "MP3 Player script URL is empty")
             loadstring(source)()
