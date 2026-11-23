@@ -1,4 +1,4 @@
--- Roblox MP3 Player GUI - v15 duplicate Auto Execute launch guard
+-- Roblox MP3 Player GUI - v18 corrected panel outlines + cyan/purple Neon Light redesign
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -6,6 +6,22 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("CoreGui")
 local SoundService = game:GetService("SoundService")
+
+-- Each execution supersedes older copies. Older asynchronous downloads/restores
+-- must not create another Sound or rebuild a second GUI after a newer run starts.
+local sharedExecutionEnv = _G
+pcall(function()
+    if type(getgenv) == "function" then
+        local env = getgenv()
+        if type(env) == "table" then sharedExecutionEnv = env end
+    end
+end)
+local EXECUTION_TOKEN_KEY = "__BRO_MP3_PLAYER_EXECUTION_TOKEN"
+local executionToken = (tonumber(sharedExecutionEnv[EXECUTION_TOKEN_KEY]) or 0) + 1
+sharedExecutionEnv[EXECUTION_TOKEN_KEY] = executionToken
+local function isCurrentExecution()
+    return tonumber(sharedExecutionEnv[EXECUTION_TOKEN_KEY]) == executionToken
+end
 
 local player = Players.LocalPlayer
 local mouse = player:GetMouse()
@@ -228,6 +244,12 @@ local function showNotification(title, message, duration)
 end
 
 -- ========== STOP OLD MUSIC & CLEANUP ==========
+-- If a newer copy was executed while this one was still starting, this stale
+-- copy must exit before it can capture/destroy the newer copy's active Sound/GUI.
+if not isCurrentExecution() then
+    pcall(function() if loadingGui then loadingGui:Destroy() end end)
+    return
+end
 -- A queued Auto Execute launch can race another queued launch. The executor-level
 -- guard above prevents the common case; this short wait also lets a just-created
 -- GUI become visible before this run starts replacing it.
@@ -244,12 +266,16 @@ end)
 -- Capture the currently running instance before replacing its GUI/Sound. This closes
 -- the gap where a fast re-execute happened between periodic JSON writes.
 pcall(function()
+    if not isCurrentExecution() then return end
     local liveSound = nil
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Sound") and obj.Name == "MusicPlayerSound" then
-            liveSound = obj
-            break
+    for _,container in ipairs({workspace, SoundService}) do
+        for _,obj in ipairs(container:GetDescendants()) do
+            if obj:IsA("Sound") and obj.Name=="MusicPlayerSound" then
+                liveSound=obj
+                break
+            end
         end
+        if liveSound then break end
     end
     local liveMode = previousGuiMode or (previousPlaybackState and previousPlaybackState.guiMode) or "main"
     local oldExtra = CoreGui:FindFirstChild("MusicPlayerExtraMini")
@@ -319,13 +345,23 @@ pcall(function()
     end
 end)
 
+if not isCurrentExecution() then
+    pcall(function() if loadingGui then loadingGui:Destroy() end end)
+    return
+end
 pcall(function() local oldGui = CoreGui:FindFirstChild("MusicPlayerGUI"); if oldGui then oldGui:Destroy() end end)
 pcall(function() local oldMini = CoreGui:FindFirstChild("MusicPlayerMiniGUI"); if oldMini then oldMini:Destroy() end end)
 pcall(function() local oldExtra = CoreGui:FindFirstChild("MusicPlayerExtraMini"); if oldExtra then oldExtra:Destroy() end end)
 pcall(function() local oldHide = CoreGui:FindFirstChild("MusicPlayerHideBtn"); if oldHide then oldHide:Destroy() end end)
 pcall(function() local oldShow = CoreGui:FindFirstChild("MusicPlayerShowGui"); if oldShow then oldShow:Destroy() end end)
 pcall(function() local oldNotifications = CoreGui:FindFirstChild("MusicPlayerNotifications"); if oldNotifications then oldNotifications:Destroy() end end)
-pcall(function() for _, obj in pairs(workspace:GetDescendants()) do if obj:IsA("Sound") and obj.Name == "MusicPlayerSound" then obj:Stop(); obj:Destroy() end end end)
+pcall(function()
+    for _,container in ipairs({workspace, SoundService}) do
+        for _,obj in ipairs(container:GetDescendants()) do
+            if obj:IsA("Sound") and obj.Name=="MusicPlayerSound" then obj:Stop(); obj:Destroy() end
+        end
+    end
+end)
 
 -- ========== TEXTBOX SCROLLING HELPER ==========
 local function createScrollableTextBox(parent, size, position, placeholder)
@@ -613,7 +649,7 @@ S.themes = {
     Default = {mainBg=Color3.fromRGB(40,40,40),titleBg=Color3.fromRGB(30,30,30),outlineColor=Color3.fromRGB(80,80,80),inputBg=Color3.fromRGB(60,60,60),playColor=Color3.fromRGB(70,180,70),pauseColor=Color3.fromRGB(255,180,50),stopColor=Color3.fromRGB(200,70,70),historyColor=Color3.fromRGB(100,100,200),muteColor=Color3.fromRGB(180,80,80),muteOnColor=Color3.fromRGB(80,180,80),searchColor=Color3.fromRGB(100,150,255),infoColor=Color3.fromRGB(100,180,255),settingColor=Color3.fromRGB(150,150,150),timeSlider=Color3.fromRGB(100,180,255),speedBtnColor=Color3.fromRGB(100,100,180),textColor=Color3.fromRGB(255,255,255),labelColor=Color3.fromRGB(255,255,255),miniBtnColor=Color3.fromRGB(80,80,80),tabActive=Color3.fromRGB(100,150,255),tabInactive=Color3.fromRGB(60,60,70),scrollBarColor=Color3.fromRGB(130,130,140),loopRed=Color3.fromRGB(200,70,70),loopGreen=Color3.fromRGB(70,180,70),loopOrange=Color3.fromRGB(255,150,50),loopOff=Color3.fromRGB(130,130,130),loopOn=Color3.fromRGB(70,180,70)},
     ["Dark Blue"] = {mainBg=Color3.fromRGB(15,25,45),titleBg=Color3.fromRGB(10,18,35),outlineColor=Color3.fromRGB(40,80,140),inputBg=Color3.fromRGB(25,40,65),playColor=Color3.fromRGB(50,140,200),pauseColor=Color3.fromRGB(200,150,40),stopColor=Color3.fromRGB(180,60,60),historyColor=Color3.fromRGB(60,80,160),muteColor=Color3.fromRGB(160,70,70),muteOnColor=Color3.fromRGB(60,160,80),searchColor=Color3.fromRGB(70,120,220),infoColor=Color3.fromRGB(70,140,220),settingColor=Color3.fromRGB(80,100,150),timeSlider=Color3.fromRGB(70,150,230),speedBtnColor=Color3.fromRGB(60,80,150),textColor=Color3.fromRGB(220,230,255),labelColor=Color3.fromRGB(200,215,245),miniBtnColor=Color3.fromRGB(50,50,70),tabActive=Color3.fromRGB(70,120,220),tabInactive=Color3.fromRGB(30,40,60),scrollBarColor=Color3.fromRGB(80,80,100),loopRed=Color3.fromRGB(180,60,60),loopGreen=Color3.fromRGB(60,160,80),loopOrange=Color3.fromRGB(200,150,40),loopOff=Color3.fromRGB(130,130,130),loopOn=Color3.fromRGB(60,160,80)},
     Light = {mainBg=Color3.fromRGB(235,235,240),titleBg=Color3.fromRGB(220,220,225),outlineColor=Color3.fromRGB(180,180,190),inputBg=Color3.fromRGB(210,210,215),playColor=Color3.fromRGB(80,200,80),pauseColor=Color3.fromRGB(255,170,40),stopColor=Color3.fromRGB(220,80,80),historyColor=Color3.fromRGB(130,130,220),muteColor=Color3.fromRGB(200,100,100),muteOnColor=Color3.fromRGB(100,200,100),searchColor=Color3.fromRGB(120,170,255),infoColor=Color3.fromRGB(120,190,255),settingColor=Color3.fromRGB(170,170,180),timeSlider=Color3.fromRGB(120,190,255),speedBtnColor=Color3.fromRGB(130,130,200),textColor=Color3.fromRGB(30,30,35),labelColor=Color3.fromRGB(40,40,45),miniBtnColor=Color3.fromRGB(200,200,210),tabActive=Color3.fromRGB(120,170,255),tabInactive=Color3.fromRGB(190,190,200),scrollBarColor=Color3.fromRGB(160,160,170),loopRed=Color3.fromRGB(220,80,80),loopGreen=Color3.fromRGB(80,200,80),loopOrange=Color3.fromRGB(255,170,40),loopOff=Color3.fromRGB(180,180,180),loopOn=Color3.fromRGB(80,200,80)},
-    ["Neon Light"] = {mainBg=Color3.fromRGB(12,16,30),titleBg=Color3.fromRGB(18,24,44),outlineColor=Color3.fromRGB(0,225,255),inputBg=Color3.fromRGB(25,32,56),playColor=Color3.fromRGB(0,235,190),pauseColor=Color3.fromRGB(255,190,75),stopColor=Color3.fromRGB(255,75,125),historyColor=Color3.fromRGB(165,115,255),muteColor=Color3.fromRGB(255,80,130),muteOnColor=Color3.fromRGB(0,235,190),searchColor=Color3.fromRGB(0,220,255),infoColor=Color3.fromRGB(205,115,255),settingColor=Color3.fromRGB(100,135,190),timeSlider=Color3.fromRGB(0,220,255),speedBtnColor=Color3.fromRGB(175,105,255),textColor=Color3.fromRGB(242,248,255),labelColor=Color3.fromRGB(175,205,235),miniBtnColor=Color3.fromRGB(32,42,70),tabActive=Color3.fromRGB(0,170,205),tabInactive=Color3.fromRGB(25,32,54),scrollBarColor=Color3.fromRGB(0,155,190),loopRed=Color3.fromRGB(255,75,125),loopGreen=Color3.fromRGB(0,235,190),loopOrange=Color3.fromRGB(255,190,75),loopOff=Color3.fromRGB(105,120,150),loopOn=Color3.fromRGB(0,235,190)},
+    ["Neon Light"] = {mainBg=Color3.fromRGB(8,10,24),titleBg=Color3.fromRGB(14,18,38),outlineColor=Color3.fromRGB(0,220,255),inputBg=Color3.fromRGB(20,26,50),playColor=Color3.fromRGB(0,220,255),pauseColor=Color3.fromRGB(165,105,255),stopColor=Color3.fromRGB(125,80,220),historyColor=Color3.fromRGB(155,105,255),muteColor=Color3.fromRGB(125,80,220),muteOnColor=Color3.fromRGB(0,220,255),searchColor=Color3.fromRGB(0,220,255),infoColor=Color3.fromRGB(175,115,255),settingColor=Color3.fromRGB(125,95,215),timeSlider=Color3.fromRGB(0,220,255),speedBtnColor=Color3.fromRGB(140,95,235),textColor=Color3.fromRGB(242,248,255),labelColor=Color3.fromRGB(185,195,235),miniBtnColor=Color3.fromRGB(30,35,65),tabActive=Color3.fromRGB(0,175,220),tabInactive=Color3.fromRGB(30,26,58),scrollBarColor=Color3.fromRGB(115,80,205),loopRed=Color3.fromRGB(145,90,235),loopGreen=Color3.fromRGB(0,220,255),loopOrange=Color3.fromRGB(165,105,255),loopOff=Color3.fromRGB(90,85,135),loopOn=Color3.fromRGB(0,220,255)},
     ["Dark Light"] = {mainBg=Color3.fromRGB(50,50,55),titleBg=Color3.fromRGB(40,40,45),outlineColor=Color3.fromRGB(100,100,110),inputBg=Color3.fromRGB(70,70,75),playColor=Color3.fromRGB(90,190,90),pauseColor=Color3.fromRGB(240,170,50),stopColor=Color3.fromRGB(210,80,80),historyColor=Color3.fromRGB(120,120,210),muteColor=Color3.fromRGB(190,90,90),muteOnColor=Color3.fromRGB(90,190,90),searchColor=Color3.fromRGB(110,160,255),infoColor=Color3.fromRGB(110,190,255),settingColor=Color3.fromRGB(160,160,170),timeSlider=Color3.fromRGB(110,190,255),speedBtnColor=Color3.fromRGB(120,120,190),textColor=Color3.fromRGB(240,240,245),labelColor=Color3.fromRGB(220,220,230),miniBtnColor=Color3.fromRGB(70,70,80),tabActive=Color3.fromRGB(110,160,255),tabInactive=Color3.fromRGB(60,60,70),scrollBarColor=Color3.fromRGB(100,100,110),loopRed=Color3.fromRGB(210,80,80),loopGreen=Color3.fromRGB(90,190,90),loopOrange=Color3.fromRGB(240,170,50),loopOff=Color3.fromRGB(150,150,150),loopOn=Color3.fromRGB(90,190,90)},
     Bright = {mainBg=Color3.fromRGB(255,255,255),titleBg=Color3.fromRGB(240,240,245),outlineColor=Color3.fromRGB(200,200,210),inputBg=Color3.fromRGB(230,230,235),playColor=Color3.fromRGB(60,200,60),pauseColor=Color3.fromRGB(255,160,30),stopColor=Color3.fromRGB(255,60,60),historyColor=Color3.fromRGB(100,100,255),muteColor=Color3.fromRGB(255,80,80),muteOnColor=Color3.fromRGB(80,255,80),searchColor=Color3.fromRGB(100,150,255),infoColor=Color3.fromRGB(100,200,255),settingColor=Color3.fromRGB(180,180,190),timeSlider=Color3.fromRGB(100,180,255),speedBtnColor=Color3.fromRGB(120,120,220),textColor=Color3.fromRGB(20,20,25),labelColor=Color3.fromRGB(30,30,35),miniBtnColor=Color3.fromRGB(220,220,230),tabActive=Color3.fromRGB(100,150,255),tabInactive=Color3.fromRGB(220,220,230),scrollBarColor=Color3.fromRGB(180,180,190),loopRed=Color3.fromRGB(255,60,60),loopGreen=Color3.fromRGB(60,200,60),loopOrange=Color3.fromRGB(255,160,30),loopOff=Color3.fromRGB(200,200,200),loopOn=Color3.fromRGB(60,200,60)},
     Blue = {mainBg=Color3.fromRGB(20,40,80),titleBg=Color3.fromRGB(15,30,60),outlineColor=Color3.fromRGB(50,100,180),inputBg=Color3.fromRGB(30,55,100),playColor=Color3.fromRGB(50,160,220),pauseColor=Color3.fromRGB(220,160,40),stopColor=Color3.fromRGB(200,70,70),historyColor=Color3.fromRGB(80,100,200),muteColor=Color3.fromRGB(180,80,80),muteOnColor=Color3.fromRGB(80,200,100),searchColor=Color3.fromRGB(80,140,240),infoColor=Color3.fromRGB(80,160,240),settingColor=Color3.fromRGB(100,120,180),timeSlider=Color3.fromRGB(80,170,250),speedBtnColor=Color3.fromRGB(80,100,180),textColor=Color3.fromRGB(230,240,255),labelColor=Color3.fromRGB(210,225,250),miniBtnColor=Color3.fromRGB(40,50,80),tabActive=Color3.fromRGB(80,140,240),tabInactive=Color3.fromRGB(25,45,70),scrollBarColor=Color3.fromRGB(60,70,100),loopRed=Color3.fromRGB(200,70,70),loopGreen=Color3.fromRGB(80,200,100),loopOrange=Color3.fromRGB(220,160,40),loopOff=Color3.fromRGB(130,130,130),loopOn=Color3.fromRGB(80,200,100)},
@@ -822,14 +858,23 @@ local function applyTheme(tn)
     if S.UrlTextBox then S.UrlTextBox.TextColor3=t.textColor end; if S.SecretKeyTextBox then S.SecretKeyTextBox.TextColor3=t.textColor end
     if S.SecretKeyContainer then S.SecretKeyContainer.BackgroundColor3=t.inputBg end
     if S.SettingsScrollFrame then S.SettingsScrollFrame.ScrollBarImageColor3=t.scrollBarColor end
-    if S.SearchPanelStroke then S.SearchPanelStroke.Color=t.searchColor end; if S.InfoPanelStroke then S.InfoPanelStroke.Color=t.infoColor end
+    if S.SearchPanelStroke then
+        S.SearchPanelStroke.Color=t.searchColor
+        S.SearchPanelStroke.Thickness=3.5
+        S.SearchPanelStroke.Transparency=0.5
+    end
+    if S.InfoPanelStroke then
+        S.InfoPanelStroke.Color=t.infoColor
+        S.InfoPanelStroke.Thickness=3.5
+        S.InfoPanelStroke.Transparency=0.5
+    end
     -- Extended theme coverage: reuse existing S. references only; no extra local GUI variables.
     if S.SearchPanel then S.SearchPanel.BackgroundColor3=t.mainBg end
     if S.InfoPanel then S.InfoPanel.BackgroundColor3=t.mainBg end
     if S.SettingsPanel then S.SettingsPanel.BackgroundColor3=t.mainBg end
     if S.HistoryPanel then S.HistoryPanel.BackgroundColor3=t.mainBg end
     if S.playingPanel then S.playingPanel.BackgroundColor3=t.mainBg end
-    if S.SettingsPanelUIStroke then S.SettingsPanelUIStroke.Color=t.outlineColor end
+    if S.SettingsPanelUIStroke then S.SettingsPanelUIStroke.Color=(tn=="Neon Light") and t.infoColor or t.outlineColor end
     if S.SearchTabsScroll then S.SearchTabsScroll.BackgroundColor3=t.inputBg end
     if S.InfoTabsScroll then S.InfoTabsScroll.BackgroundColor3=t.inputBg end
     if S.UpdVersionTabs then S.UpdVersionTabs.BackgroundColor3=t.inputBg end
@@ -878,9 +923,10 @@ local function applyTheme(tn)
         extraStroke.Thickness=(tn=="Neon Light") and 1.8 or 1
         extraStroke.Transparency=(tn=="Neon Light") and 0.12 or 0.45
     end
-    if S.UIStroke then S.UIStroke.Thickness=(tn=="Neon Light") and 1.8 or 1 end
-    if S.SearchPanelStroke then S.SearchPanelStroke.Thickness=(tn=="Neon Light") and 1.6 or 1 end
-    if S.InfoPanelStroke then S.InfoPanelStroke.Thickness=(tn=="Neon Light") and 1.6 or 1 end
+    -- Preserve the original outline sizing across themes.
+    if S.UIStroke then S.UIStroke.Thickness=3 end
+    if S.SearchPanelStroke then S.SearchPanelStroke.Thickness=3.5; S.SearchPanelStroke.Transparency=0.5 end
+    if S.InfoPanelStroke then S.InfoPanelStroke.Thickness=3.5; S.InfoPanelStroke.Transparency=0.5 end
     if S.MiniSongLabel then S.MiniSongLabel.TextColor3=t.textColor end
     if S.MiniTimeLabel then S.MiniTimeLabel.TextColor3=t.labelColor end
     if S.VolumeLabel then S.VolumeLabel.TextColor3=t.labelColor end; if S.SpeedLabel then S.SpeedLabel.TextColor3=t.labelColor end
@@ -1448,6 +1494,9 @@ local function setupPlaylistLoop()
 end
 
 local function playMusicFromUrl(url, fn, playlistIdx)
+    if not isCurrentExecution() then return false end
+    S._playRequestId=(tonumber(S._playRequestId) or 0)+1
+    local playRequestId=S._playRequestId
     local newIndex=playlistIdx or 0
     if S.currentSound then pcall(function() S.currentSound:Stop(); S.currentSound:Destroy() end); S.currentSound=nil end
     if S.playlistCheckConnection then pcall(function() S.playlistCheckConnection:Disconnect() end); S.playlistCheckConnection=nil end
@@ -1467,6 +1516,18 @@ local function playMusicFromUrl(url, fn, playlistIdx)
     if S.ExtraMiniImage and S.currentPlaylistIndex>0 and S.playlistSongs[S.currentPlaylistIndex] then local img=S.playlistSongs[S.currentPlaylistIndex].imageAsset; S.ExtraMiniImage.Image=(img and img~="") and img or "" elseif S.ExtraMiniImage then S.ExtraMiniImage.Image="" end
     
     local function createAndPlaySound(soundId)
+        if not isCurrentExecution() or playRequestId~=S._playRequestId then return false end
+        -- Remove any orphaned player sounds before creating the single active track.
+        for _,container in ipairs({workspace, SoundService}) do
+            pcall(function()
+                for _,obj in ipairs(container:GetDescendants()) do
+                    if obj:IsA("Sound") and obj.Name=="MusicPlayerSound" then
+                        obj:Stop(); obj:Destroy()
+                    end
+                end
+            end)
+        end
+        if not isCurrentExecution() or playRequestId~=S._playRequestId then return false end
         local sound=Instance.new("Sound"); S.currentSound=sound; sound.Name="MusicPlayerSound"; sound.SoundId=soundId
         sound.Volume=playbackRestoreInProgress and 0 or S.currentVolume; sound.Looped=false; sound.PlaybackSpeed=S.currentSpeed
         sound.Parent=workspace
@@ -2560,7 +2621,7 @@ local function createMainGUI()
     S.MainFrame=Instance.new("Frame"); S.MainFrame.Size=UDim2.new(0,400,0,345); S.MainFrame.Position=UDim2.new(0.5,-200,0.5,-172); S.MainFrame.BackgroundColor3=Color3.fromRGB(40,40,40); S.MainFrame.BorderSizePixel=0; S.MainFrame.Active=true; S.MainFrame.Draggable=false; S.MainFrame.Parent=S.ScreenGui; Instance.new("UICorner",S.MainFrame).CornerRadius=UDim.new(0,10)
     S.OutlineFrame=Instance.new("Frame"); S.OutlineFrame.Size=UDim2.new(1,6,1,6); S.OutlineFrame.Position=UDim2.new(0,-3,0,-3); S.OutlineFrame.BackgroundColor3=Color3.fromRGB(40,40,40); S.OutlineFrame.BorderSizePixel=0; S.OutlineFrame.ZIndex=0; S.OutlineFrame.Parent=S.MainFrame; Instance.new("UICorner",S.OutlineFrame).CornerRadius=UDim.new(0,12)
     S.UIStroke=Instance.new("UIStroke"); S.UIStroke.Thickness=3; S.UIStroke.Color=Color3.fromRGB(80,80,80); S.UIStroke.Parent=S.OutlineFrame
-    spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while S.UIStroke and S.UIStroke.Parent do TweenService:Create(S.UIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
+    spawn(function() local i=1; while S.UIStroke and S.UIStroke.Parent do local cl=(S.currentTheme=="Neon Light") and {Color3.fromRGB(0,220,255),Color3.fromRGB(165,105,255)} or {Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; if i>#cl then i=1 end; TweenService:Create(S.UIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; wait(2) end end)
     
     S.TitleBar=Instance.new("Frame"); S.TitleBar.Size=UDim2.new(1,0,0,35); S.TitleBar.BackgroundColor3=Color3.fromRGB(30,30,30); S.TitleBar.BorderSizePixel=0; S.TitleBar.Parent=S.MainFrame; Instance.new("UICorner",S.TitleBar).CornerRadius=UDim.new(0,10)
     S.TitleText=Instance.new("TextLabel"); S.TitleText.Size=UDim2.new(0,200,1,0); S.TitleText.Position=UDim2.new(0,15,0,0); S.TitleText.BackgroundTransparency=1; S.TitleText.Text="GitHub MP3 Player"; S.TitleText.TextColor3=Color3.fromRGB(255,255,255); S.TitleText.TextXAlignment=Enum.TextXAlignment.Left; S.TitleText.Font=Enum.Font.GothamBold; S.TitleText.TextSize=16; S.TitleText.Parent=S.TitleBar
@@ -3644,7 +3705,7 @@ FIXES
     S.MiniFrame=Instance.new("Frame"); S.MiniFrame.Size=UDim2.new(0,360,0,80); S.MiniFrame.Position=UDim2.new(0.5,-180,0.1,0); S.MiniFrame.BackgroundColor3=Color3.fromRGB(40,40,40); S.MiniFrame.BorderSizePixel=0; S.MiniFrame.Active=true; S.MiniFrame.Draggable=true; S.MiniFrame.Parent=S.MiniScreenGui; Instance.new("UICorner",S.MiniFrame).CornerRadius=UDim.new(0,15)
     S.MiniOutlineFrame=Instance.new("Frame"); S.MiniOutlineFrame.Size=UDim2.new(1,6,1,6); S.MiniOutlineFrame.Position=UDim2.new(0,-3,0,-3); S.MiniOutlineFrame.BackgroundColor3=Color3.fromRGB(40,40,40); S.MiniOutlineFrame.BorderSizePixel=0; S.MiniOutlineFrame.ZIndex=0; S.MiniOutlineFrame.Parent=S.MiniFrame; Instance.new("UICorner",S.MiniOutlineFrame).CornerRadius=UDim.new(0,16)
     S.MiniUIStroke=Instance.new("UIStroke"); S.MiniUIStroke.Thickness=3; S.MiniUIStroke.Color=Color3.fromRGB(80,80,80); S.MiniUIStroke.Parent=S.MiniOutlineFrame
-    spawn(function() local cl={Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; local i=1; while S.MiniUIStroke and S.MiniUIStroke.Parent do TweenService:Create(S.MiniUIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; if i>#cl then i=1 end; wait(2) end end)
+    spawn(function() local i=1; while S.MiniUIStroke and S.MiniUIStroke.Parent do local cl=(S.currentTheme=="Neon Light") and {Color3.fromRGB(0,220,255),Color3.fromRGB(165,105,255)} or {Color3.fromRGB(255,50,50),Color3.fromRGB(255,150,50),Color3.fromRGB(255,255,50),Color3.fromRGB(50,255,50),Color3.fromRGB(50,150,255),Color3.fromRGB(150,50,255),Color3.fromRGB(255,50,255)}; if i>#cl then i=1 end; TweenService:Create(S.MiniUIStroke,TweenInfo.new(2),{Color=cl[i]}):Play(); i=i+1; wait(2) end end)
     S.MiniSongLabel=Instance.new("TextLabel"); S.MiniSongLabel.Size=UDim2.new(1,-65,0,22); S.MiniSongLabel.Position=UDim2.new(0,15,0,5); S.MiniSongLabel.BackgroundTransparency=1; S.MiniSongLabel.Text=""; S.MiniSongLabel.TextColor3=Color3.fromRGB(255,255,255); S.MiniSongLabel.TextXAlignment=Enum.TextXAlignment.Left; S.MiniSongLabel.Font=Enum.Font.GothamBold; S.MiniSongLabel.TextSize=14; S.MiniSongLabel.TextTruncate=Enum.TextTruncate.AtEnd; S.MiniSongLabel.Parent=S.MiniFrame
     S.MiniTimeLabel=Instance.new("TextLabel"); S.MiniTimeLabel.Size=UDim2.new(1,-60,0,16); S.MiniTimeLabel.Position=UDim2.new(0,15,0,27); S.MiniTimeLabel.BackgroundTransparency=1; S.MiniTimeLabel.Text="0:00 / 0:00"; S.MiniTimeLabel.TextColor3=Color3.fromRGB(200,200,200); S.MiniTimeLabel.TextXAlignment=Enum.TextXAlignment.Left; S.MiniTimeLabel.Font=Enum.Font.Gotham; S.MiniTimeLabel.TextSize=11; S.MiniTimeLabel.Parent=S.MiniFrame
     S.MiniTimeSliderBg=Instance.new("Frame"); S.MiniTimeSliderBg.Size=UDim2.new(1,-60,0,8); S.MiniTimeSliderBg.Position=UDim2.new(0,15,0,49); S.MiniTimeSliderBg.BackgroundColor3=Color3.fromRGB(60,60,60); S.MiniTimeSliderBg.BorderSizePixel=0; S.MiniTimeSliderBg.Active=true; S.MiniTimeSliderBg.Parent=S.MiniFrame; Instance.new("UICorner",S.MiniTimeSliderBg).CornerRadius=UDim.new(0,5)
@@ -3878,6 +3939,7 @@ end)
 
 local guiOK=runInitStep("create main GUI",function()
     setLoadingStatus("Building player interface...", 0.62)
+    if not isCurrentExecution() then error("This execution was superseded by a newer launch") end
     createMainGUI()
     setLoadingStatus("Building interface and applying saved translations...", 0.82)
 end)
