@@ -1,9 +1,10 @@
 --[[
 	Dex++
-	Version 3.1
+	Version 3.2
 	
 	Developed by Chillz
-	Decompiler fixed + rspy plugin + adonis bypass by mcdaggitt,
+	Decompiler fixed again
+    + rspy plugin + adonis bypass. by mcdaggitt,
 	Dex++ is a revival of Moon's Dex, made to fulfill Moon's Dex prophecy.
 ]]
 
@@ -14613,7 +14614,7 @@ Main = (function()
 		RepoURL = "https://raw.githubusercontent.com/luau/SynSaveInstance/main/",
 		SSI = "saveinstance",
 	}
-	local synsaveinstance = loadstring(oldgame:HttpGet(Params.RepoURL .. Params.SSI .. ".luau", true), Params.SSI)()
+	
 	
 	    local function wrappedsaveinstance(obj, filepath, options)
 		            options["FilePath"] = filepath
@@ -14668,22 +14669,19 @@ Main = (function()
 		env.isdecompilefallback = function()
 			return typeof(decompile) ~= "function" or typeof(getscriptbytecode) == "function" or false
 		end
+
+		-- another decompiler fix for bytecode 12
+		local BYTEFALL_ENDPOINT = "https://decompiler.bytefall.dev/decompile"
 		
-		
-        -- DECOMPILERS
-		
-		local luaexpert_last_call = 0
-		
-		local function LuaExpertDec(script_instance)
+		local function ByteFallDec(script_instance)
 			local success, bytecode = pcall(env.getscriptbytecode, script_instance)
 
-			if (not success) then
+			if not success then
 				return "-- Failed to get script bytecode, error:\n\n--[[\n" .. tostring(bytecode) .. "\n--]]"
 			end
 
-			local time_elapsed = os.clock() - luaexpert_last_call
-			if time_elapsed <= 0.6 then
-				task.wait(0.6 - time_elapsed)
+			if type(bytecode) ~= "string" or bytecode == "" then
+				return "-- ByteFall: getscriptbytecode returned empty"
 			end
 
 			local encoder = base64_encode or (crypt and crypt.base64encode) or (crypt and crypt.base64 and crypt.base64.encode)
@@ -14705,9 +14703,13 @@ Main = (function()
 
 			local HttpService = game:GetService("HttpService")
 			local req = env.request or (syn and syn.request) or (http and http.request) or http_request or request
-			
-			local httpResult = req({
-				Url = "https://api.lua.expert/decompile",
+
+			if type(req) ~= "function" then
+				return "-- ByteFall: no HTTP request function available"
+			end
+
+			local requestSuccess, httpResult = pcall(req, {
+				Url = BYTEFALL_ENDPOINT,
 				Method = "POST",
 				Headers = {
 					["Content-Type"] = "application/json"
@@ -14717,20 +14719,33 @@ Main = (function()
 				})
 			})
 
-			luaexpert_last_call = os.clock()
-
-			if (not httpResult or httpResult.StatusCode ~= 200) then
-				return "-- Error occurred while requesting lua.expert API, error:\n\n--[[\n" .. tostring(httpResult and httpResult.Body or "No response") .. "\n--]]"
-			else
-				return httpResult.Body
+			if not requestSuccess then
+				return "-- ByteFall request failed: " .. tostring(httpResult)
 			end
+
+			if type(httpResult) ~= "table" then
+				return "-- ByteFall returned an invalid response"
+			end
+
+			local statusCode = httpResult.StatusCode or httpResult.Status or 0
+			local responseBody = tostring(httpResult.Body or "")
+
+			if statusCode == 200 then
+				return responseBody
+			elseif statusCode == 400 then
+				return "-- ByteFall (400 bad request): " .. responseBody
+			elseif statusCode == 404 then
+				return "-- ByteFall (404 not found): wrong endpoint?"
+			elseif statusCode == 500 then
+				return "-- ByteFall (500 decompilation failed): " .. responseBody
+			end
+
+			return "-- ByteFall (HTTP " .. tostring(statusCode) .. "): " .. responseBody
 		end
 
-		-- Hook it directly into Dex
 		env.decompile = function(...)
 			if typeof(getscriptbytecode) == "function" then
-				-- Forced to only use lua.expert API
-				return LuaExpertDec(...)
+				return ByteFallDec(...)
 			else
 			    return "-- getscriptbytecode is not supported by your executor. Cannot decompile."
 			end
